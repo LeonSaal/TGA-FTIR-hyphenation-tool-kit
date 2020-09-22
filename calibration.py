@@ -12,8 +12,8 @@ from .input_output import TGA, FTIR, corrections
 
 def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     #calculation and smoothing of DTG
-    TG=(TGA_data['mass']/TGA_data['mass'][0])
-    DTG=sp.signal.SAVGOL_filter(TG, SAVGOL.getint('window_length'), SAVGOL.getint('polyorder'), deriv=1)
+    TG=(TGA_data['sample_mass']/TGA_data['sample_mass'][0])
+    DTG=sp.signal.savgol_filter(TG, SAVGOL.getint('window_length'), SAVGOL.getint('polyorder'), deriv=1)
   
     #detect mass steps
     peaks,properties=sp.signal.find_peaks(-DTG,height=0.00025,width=0,rel_height=rel_height,prominence=0.00025)
@@ -24,15 +24,15 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     steps=np.zeros(len(peaks))
     samples=20
     for i in range(len(peaks)):
-        steps[i]=np.mean(TGA_data['mass'][step_end[i]:step_end[i]+samples])
+        steps[i]=np.mean(TGA_data['sample_mass'][step_end[i]:step_end[i]+samples])
     
     #calculate step height
     step_height=np.zeros(len(steps))
-    steps=np.insert(steps,0,TGA_data['mass'][0])
+    steps=np.insert(steps,0,TGA_data['sample_mass'][0])
         
     step_height=np.zeros(len(step_start))
     for i in range(len(step_start)):
-        step_height[i]=np.mean(TGA_data['mass'][step_start[i]-samples:step_start[i]])-np.mean(TGA_data['mass'][step_end[i]:step_end[i]+samples])
+        step_height[i]=np.mean(TGA_data['sample_mass'][step_start[i]-samples:step_start[i]])-np.mean(TGA_data['sample_mass'][step_end[i]:step_end[i]+samples])
     
     rel_step_height=step_height/steps[0]*100
     
@@ -40,15 +40,15 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     if plot==True:
         #plotting of DTG
         fig=plt.figure()
-        x=TGA_data['Ts']
+        x=TGA_data['sample_temp']
         y=-DTG
         plt.plot(x,y)
         plt.vlines(x[step_end],0,max(y),linestyle='dashed')
         plt.vlines(x[step_start],0,max(y),linestyle='dashed')
         plt.vlines(x[peaks],y[peaks]-properties['peak_heights'],y[peaks])
         plt.hlines(y[peaks]-properties['peak_heights'],x[step_end],x[step_start])
-        plt.xlabel('{} {} {}'.format(PARAMS['ts'],SEP,UNITS['ts']))
-        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['mass'],UNITS['time']))
+        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'],UNITS['time']))
         plt.title('DTG')
         plt.show()
         
@@ -58,9 +58,9 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.vlines(x[step_end],steps[1:],steps[:-1],linestyle='dashed')
         for i in range(len(step_end)):
             plt.text(x[step_end[i]]+5,steps[i+1]+step_height[i]/2,str(round(step_height[i],3))+' mg ('+str(round(rel_step_height[i],2))+' %)')
-        plt.plot(x,TGA_data['mass'])
-        plt.xlabel('{} {} {}'.format(PARAMS['ts'],SEP,UNITS['ts']))
-        plt.ylabel('{} {} {}'.format(PARAMS['mass'],SEP,UNITS['mass']))
+        plt.plot(x,TGA_data['sample_mass'])
+        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
         plt.title('TG')
         plt.show()
         
@@ -71,10 +71,10 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
         for i in range(len(step_end)):
             plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
-        plt.plot(x,TGA_data['mass']/TGA_data['mass'][0]*100)
-        plt.text(800,95,str(round(TGA_data['mass'][0],2))+' mg', horizontalalignment='center')
-        plt.xlabel('{} {} {}'.format(PARAMS['ts'],SEP,UNITS['ts']))
-        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['mass'],SEP,UNITS['mass'],UNITS['mass']))
+        plt.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
+        plt.text(800,95,str(round(TGA_data['sample_mass'][0],2))+' mg', horizontalalignment='center')
+        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass'],UNITS['sample_mass']))
         plt.title('TG')
         plt.show()
         
@@ -91,7 +91,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
     if plot:
         colors =plt.rcPARAMS['axes.prop_cycle'].by_key()['color']
     
-        x=FTIR_data['t'] 
+        x=FTIR_data['time'] 
         #x=x/60
         #setup figure and plot first gas
         graph=[None] 
@@ -118,7 +118,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
     #Integration
     for gas in gases:
         for i in range(len(step_end)):
-            subset=FTIR_data[gas][(FTIR_data['t']>=step_start[i]) & (FTIR_data['t']<=step_end[i])]
+            subset=FTIR_data[gas][(FTIR_data['time']>=step_start[i]) & (FTIR_data['time']<=step_end[i])]
             #Baseline correction
             if corr_baseline=='linear':
                 baseline=np.linspace(subset.iloc[0],subset.iloc[len(subset)-1],len(subset))
@@ -131,7 +131,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
             integrals.loc[i,gas]=integral
             
             if plot==True:
-                x=FTIR_data['t'][(FTIR_data['t']>=step_start[i]) & (FTIR_data['t']<=step_end[i])]
+                x=FTIR_data['time'][(FTIR_data['time']>=step_start[i]) & (FTIR_data['time']<=step_end[i])]
                 graph[gases.index(gas)].plot(x,baseline,color=colors[gases.index(gas)],linestyle='dashed')
 
     if plot==True:
@@ -143,10 +143,10 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
 def eval_lin(x,slope,intercept):
     return slope*x+intercept
 
-def calibration_stats(x_Kali,y_Kali,linreg,alpha=.95,beta=None,m=1,k=3):
+def calibration_stats(x_cali,y_cali,linreg,alpha=.95,beta=None,m=1,k=3):
     gases=linreg.index
     
-    n=len(x_Kali)
+    n=len(x_cali)
     if n==2:
         return pd.DataFrame()
     f=n-2
@@ -158,10 +158,10 @@ def calibration_stats(x_Kali,y_Kali,linreg,alpha=.95,beta=None,m=1,k=3):
         b=linreg['slope'][gas]
         a=linreg['intercept'][gas]
         
-        s_yx=np.sqrt(np.sum(np.power(b*x_Kali[gas]+a-y_Kali[gas],2))/(n-2))
+        s_yx=np.sqrt(np.sum(np.power(b*x_cali[gas]+a-y_cali[gas],2))/(n-2))
         s_x0=s_yx/b
-        x_=np.mean(x_Kali[gas])
-        Q_x=np.sum(np.power(x_Kali[gas]-x_,2))
+        x_=np.mean(x_cali[gas])
+        Q_x=np.sum(np.power(x_cali[gas]-x_,2))
         
         x_NG=s_x0*sp.stats.t.ppf(alpha,f)*np.sqrt(1/m+1/n+(x_*x_)/Q_x)
         
@@ -219,24 +219,26 @@ def calibrate(plot=False,mode='load',method='max'):
             FTIR_data=corrections.corr_FTIR(FTIR_data,baseline,plot=False)
             #info.update(io.FTIR_data_info(FTIR_data))
             try:
-                FTIR_data['t']+=60*info['background_delay']
+                FTIR_data['time']+=60*info['background_delay']
             except:
-                FTIR_data['t']+=60*COUPLING.getfloat('background_delay')
+                FTIR_data['time']+=60*COUPLING.getfloat('background_delay')
             print('----------------------------------------------------\n{}'.format(info['name']))
         
             #calculating mass steps and integrating FTIR_data signals
             [steps,rel_steps,stepstart,stepend]=mass_step(TGA_data,plot=plot)
             integrals=integrate_peaks(FTIR_data,stepstart,stepend,plot=plot,corr_baseline=None,gases=gases)
             
-            integrals.insert(loc=0,column='mass',value=steps)
+            integrals.insert(loc=0,column='sample_mass',value=steps)
             data=data.append(pd.concat({sample: integrals}, names=['samples','step']))
         
         #assigning gases to mass steps
         for sample in data.index.levels[0]:
-            for i,step in enumerate(data.loc[sample,'mass']):
-                integrals=data.loc[sample].drop(['mass'],axis=1)
+            release_steps=[]
+            for i,step in enumerate(data.loc[sample,'sample_mass']):
+                integrals=data.loc[sample].drop(['sample_mass'],axis=1)
                 norm=integrals.divide(integrals.max(axis=0).values,axis=1).loc[i]
                 gas=norm.loc[norm==1].index.values[0]
+                release_steps.append(gas)
                 if gas not in x_cali.columns:
                     x_cali[gas]=np.nan
                     y_cali[gas]=np.nan
@@ -245,13 +247,48 @@ def calibrate(plot=False,mode='load',method='max'):
                     y_cali=y_cali.append(pd.DataFrame(index=[sample]))
                 x_cali[gas][sample]=step
                 y_cali[gas][sample]=integrals.loc[i,gas]
-
-
+        
+        cols=['slope','intercept','r_value','p_value','std_error']
+        if method=='iter':
+            for gas in gases:
+                #slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
+                x=x_cali[gas].dropna(axis=0).astype(float)
+                y=y_cali[gas].dropna(axis=0).astype(float)
+                regression=pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
+    
+                if gas not in linreg.index:
+                    linreg=linreg.append(regression,verify_integrity=True)
+                else:
+                    linreg.loc[[gas]]=regression
+                
+            n_iter=10
+            X_cali=pd.DataFrame()
+            temp_linreg=pd.DataFrame(index=release_steps,columns=cols)
+            for i in range(n_iter):
+                for step in data.index.levels[1]:
+                    gas=release_steps[step]
+                    X_cali[gas]=data.loc[(slice(None),step),'sample_mass'].droplevel(1)
+                    for other in set(release_steps) - set([gas]):
+                        corr=(data.loc[(slice(None),step),other].droplevel(1)-linreg['intercept'][other])/linreg['slope'][other]
+                        X_cali[gas]=np.subtract(X_cali[gas],corr*(corr>0))
+                        
+                    x=X_cali[gas].values.astype(float)
+                    y=data.loc[(slice(None),step),gas].values.astype(float)
+                    temp_linreg.update(pd.DataFrame(np.array([sp.stats.linregress(x,y)]),columns=cols,index=[gas]))
+            
+                linreg.update(temp_linreg)
+                
+            for step in data.index.levels[1]:
+                    gas=release_steps[step]
+                    for other in set(release_steps) - set([gas]):
+                        x_cali[gas]=x_cali[gas].subtract((data.loc[(slice(None),step),other].droplevel(1)-linreg['intercept'][other])/linreg['slope'][other])
+            
         #regression
         for gas in gases:
             x_cali.update(x_cali[gas]/(MOLAR_MASS.getfloat(gas)))
-            slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
-            regression=pd.DataFrame([[slope,intercept,np.power(r_value,2),p_value,std_err]],index=[gas],columns=['slope','intercept','r^2','p_value','std_error'])
+            x=x_cali[gas].dropna(axis=0).astype(float)
+            y=y_cali[gas].dropna(axis=0).astype(float)
+            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
 
             if gas not in linreg.index:
                 linreg=linreg.append(regression,verify_integrity=True)
@@ -260,18 +297,20 @@ def calibrate(plot=False,mode='load',method='max'):
 
         if method=='co_oxi':
             x_cali['co'].update(x_cali['co']-((data.loc[(slice(None),1),'co2']-linreg.loc['co2','intercept'])/linreg.loc['co2','slope']).values)
-            slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali['co'].dropna(axis=0).astype(float),y_cali['co'].dropna(axis=0).astype(float))
-            regression=pd.DataFrame([[slope,intercept,np.power(r_value,2),p_value,std_err]],index=['co'],columns=['slope','intercept','r^2','p_value','std_error'])
+            
+            x=x_cali['co'].dropna(axis=0).astype(float)
+            y=y_cali['co'].dropna(axis=0).astype(float)
+            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['co'],columns=cols)
             linreg.loc[['co']]=regression
         
         if method=='mlr':
-            Y_cali=data.loc[(slice(None),slice(None)),'mass']
-            X_cali=data.drop(['mass'],axis=1)
+            Y_cali=data.loc[(slice(None),slice(None)),'sample_mass']
+            X_cali=data.drop(['sample_mass'],axis=1)
             mlr=linear_model.LinearRegression()#RANSACRegressor()#fit_intercept=0.0)
             mlr.fit(X_cali,Y_cali)
             
             for i, gas in enumerate(x_cali.columns):
-                linreg.loc[[gas]]=pd.DataFrame([[1/mlr.coef_[i]*MOLAR_MASS.getfloat(gas),0,np.nan,np.nan,np.nan]],index=[gas],columns=['slope','intercept','r^2','p_value','std_error'])
+                linreg.loc[[gas]]=pd.DataFrame([[1/mlr.coef_[i]*MOLAR_MASS.getfloat(gas),0,np.nan,np.nan,np.nan]],index=[gas],columns=cols)
         
         stats=calibration_stats(x_cali,y_cali,linreg)
         
