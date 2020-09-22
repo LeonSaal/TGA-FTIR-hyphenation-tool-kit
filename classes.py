@@ -6,10 +6,10 @@ import os
 import re
 import pickle
 
-from .config import SAVGOL, PATHS
+from .config import SAVGOL, PATHS, COUPLING
 from .input_output import corrections, TGA, FTIR, samplelog, general
 from .calibration import calibrate
-from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG
+from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG, get_label
 from .fitting import fitting as fit
 
 WINDOW_LENGTH=SAVGOL.getint('window_length')
@@ -26,22 +26,38 @@ class TG_IR:
         if mode=='construct':
             try:
                 self.tga=TGA.read_TGA(name,profile=profile)
-                self.info=TGA.TGA_info(name,self.tga,profile=profile)
-                self.tga['dtg']=-savgol_filter(self.tga['mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+                self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+                
+                try:
+                    self.info=TGA.TGA_info(name,self.tga,profile=profile)
+                except:
+                    print('Failed to derive TG info. Using default values.')
+                    self.info=dict()
+                    self.info['name']=name
+                    self.info['initial_mass']=self.tga.loc[0,'sample_mass']
+                    self.info['reference_mass']='initial_mass'
+                    self.info['background_delay']=COUPLING.getint('background_delay')
+                    self.info['switch_temp']=[max(self.tga['reference_temp'])]
+                    self.info['method_gases']=['? method_gas ?']
             except:
                 print('No TG data for {} was found'.format(name))
-            
+
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
+                
+                try:
+                    self.info.update(FTIR.FTIR_info(self))
+                except:
+                    pass
+                try:
+                    self.ir['time']=self.ir['time']+60*self.info['background_delay']
+                    self.ir=pd.merge(self.tga.filter(['time','sample_temp','reference_temp'],axis=1),self.ir, how='left',on='time').dropna(axis=0)
+                except:
+                    pass
             except:
                 print('No IR data for {} was found'.format(name))
-            self.info.update(FTIR.FTIR_info(self))
-            try:
-                self.ir['t']=self.ir['t']+60*self.info['background_delay']
-                self.ir=pd.merge(self.tga.filter(['t','Ts'],axis=1),self.ir, how='left',on='t').dropna(axis=0)
-            except:
-                pass
+
             if alias=='load':
                 try:
                     alias=samplelog().loc[name,'alias']
@@ -72,7 +88,7 @@ class TG_IR:
         self.info['reference']=reference
         try:
             self.tga=corrections.corr_TGA(self.tga,reference)
-            self.tga['dtg']=-savgol_filter(self.tga['mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+            self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
         except:
             print('Failed to correct TG data.')
             
@@ -86,6 +102,7 @@ class TG_IR:
             TGA.dry_weight(self,**kwargs)
         except:
             print('Failed to derive TG info.')
+
         try:
             self.info.update(FTIR.FTIR_info(self))
         except:
@@ -114,7 +131,7 @@ class TG_IR:
             return
         else:            
             if which=='TG':
-                plot_TGA(self,'mass',**kwargs)
+                plot_TGA(self,'sample_mass',**kwargs)
             
             if which=='heat_flow':
                 if 'heat_flow' in self.tga.columns:
@@ -129,43 +146,41 @@ class TG_IR:
             return
         
         
-    def fit(self,reference,tol_c=30,tol_hwhm=95,T_max=None,plot=True,func=fit.multi_gauss,y_axis='orig',save=True):
+    def fit(self,reference,T_max=None,save=True,**kwargs):
         if T_max==None:
-            T_max=max(self.tga['Ts'])
-        elif T_max>max(self.tga['Ts']):
+            T_max=max(self.tga['sample_temp'])
+        elif T_max>max(self.tga['sample_temp']):
             print('$T_{max}$ exceeds maximum temperature of data')
-            T_max=max(self.tga['Ts'])
+            T_max=max(self.tga['sample_temp'])
             
         ###extracting initial values for fitting from reference
-        references=pd.read_excel(os.path.join(PATHS['dir_home'],'Initial_center.xlsx'),index_col=0,header=None)
-        init_params=references.loc[['gas',reference]].dropna(axis=1)
-
-        #find needed gases
-        gases=list(set(init_params.loc['gas']))
-
-        #initial center
-        temps=pd.DataFrame(columns=gases,index=range(len(init_params.columns)))
+        presets=dict()
+        references=pd.read_excel(os.path.join(PATHS['dir_home'],'Fitting parameter.xlsx'),index_col=0,header=None,sheet_name=None)
+        gases=list(set(references['center_0'].loc['gas']))
+        cols=[key for key in references]
         
-        #labels for the center
-        labels=pd.DataFrame(columns=gases,index=range(len(init_params.columns)))
-        for column in init_params.columns:
-            temps[init_params[column]['gas']][temps[init_params[column]['gas']].count()]=init_params[column][reference]
-            labels[init_params[column]['gas']][labels[init_params[column]['gas']].count()]=references[column]['group']
-        temps=temps.where(temps<T_max+tol_hwhm).dropna(thresh=1)
-        labels=labels.where(temps<T_max+tol_hwhm).dropna(thresh=1)
-        
-        if save==True:
+        for gas in gases:
+            index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i]==gas)]
+            data=pd.DataFrame(index=index)
+            for key in references:
+                #print(references[key])
+                references[key]=references[key]#.dropna(axis=0,thresh=1).dropna(axis=1,thresh=1)
+                data[key]=pd.DataFrame(references[key].loc[reference,:][references[key].loc['gas',:]==gas].T.values,index=index,columns=[key])#.dropna(axis=1)
+            presets[gas]=data.dropna(axis=0,how='all')            
+            
+        if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
             os.makedirs(path)
             os.chdir(path)
             
         temp=copy.deepcopy(self)
-        temp.tga=temp.tga[temp.tga['Ts']<T_max]
-        temp.ir=temp.ir[temp.ir['Ts']<T_max]
-        peaks, sumsqerr=fit.fitting(temp,temps,labels,func,tol_center=tol_c,max_hwhm=tol_hwhm,plot=plot,y_axis=y_axis,save=save)
+        temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
+        temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
+        peaks, sumsqerr=fit.fitting(temp,presets,**kwargs)
         
         os.chdir(PATHS['dir_home'])
         return peaks, sumsqerr
+    
     
     def save(self,how='pickle',**kwargs):
         samplelog(self.info,**kwargs)
@@ -187,100 +202,7 @@ class TG_IR:
                     except:
                         pass
     def calibrate(self,**kwargs):
-        try:
-            self.linreg,self.stats=calibrate(**kwargs)
-        except:
-            pass
-                
-
-def fits(*TG_IR,reference=None,tol_c=30,tol_hwhm=95,T_max=None,plot=True,y_axis='orig',init_offs=[0,0,0],save=True,labels=None,temps=None):
-    if reference!=None:
-        references=pd.read_excel(os.path.join(PATHS['dir_home'],'Initial_center.xlsx'),index_col=0,header=None)
-        if T_max==None:
-            T_max=min([max(obj.tga['Ts']) for obj in TG_IR])
-
-        elif T_max>min([max(obj.tga['Ts']) for obj in TG_IR]):
-            T_max=T_max=min([max(obj.tga['Ts']) for obj in TG_IR])
-            print('$T_{max}$ exceeds maximum temperature of data')
-
-
-        init_params=references.loc[['gas',reference]].dropna(axis=1)
-        #find needed gases
-        gases=list(set(init_params.loc['gas']))
-
-        ###extracting initial values for fitting from reference
-        #initial center
-        temps=pd.DataFrame(columns=gases,index=range(len(init_params.columns)))
-        #labels for the center
-        labels=pd.DataFrame(columns=gases,index=range(len(init_params.columns)))
-        for column in init_params.columns:
-            temps[init_params[column]['gas']][temps[init_params[column]['gas']].count()]=init_params[column][reference]
-            labels[init_params[column]['gas']][labels[init_params[column]['gas']].count()]=references[column]['group'] 
-        temps=temps.where(temps<T_max+tol_hwhm).dropna(thresh=1)
-        labels=labels.where(temps<T_max+tol_hwhm).dropna(thresh=1)
-
-    else:
-        gases=labels.columns
-    
-    #initializing of output DataFrames
-    col_labels=[group+'_'+gas.upper() for gas in gases for group in labels[gas].dropna()]+[gas.upper() for gas in gases]
-    err=pd.DataFrame(columns=gases)
-    names=['center','height','hwhm','area','mmol','mmol_per_mg']
-    res=dict()
-    for name in names:
-        res[name]=pd.DataFrame(columns=col_labels)
-    
-    #make subdirectory to save data
-    if save==True:
-        path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+'_'.join(list(set([str(obj.info['sample']) for obj in TG_IR]))))
-        os.makedirs(path)
-        os.chdir(path)
-    
-    #cycling through samples
-    for obj in TG_IR:
-        #fitting of the sample and calculating the amount of functional groups
-        if T_max!=None:
-            temp=copy.deepcopy(obj)
-            temp.tga=temp.tga[temp.tga['Ts']<T_max]
-            temp.ir=temp.ir[temp.ir['Ts']<T_max]
-        else:
-            temp=obj
-        peaks,sumsqerr=fit.fitting(temp,temps,labels,fit.multi_gauss,tol_center=tol_c,max_hwhm=tol_hwhm,plot=plot,y_axis=y_axis,save=save,init_offs=init_offs)
-
-        #writing data to output DataFrames
-        for key in res:
-            res[key]=res[key].append(peaks[key].rename(obj.info['name']).T)  
-        err=err.append(sumsqerr)
-
-    # calculate statistical values
-    dm=1e-6
-    for key in res:
-        samples=list(set([plt.get_label(re.search('(?<=_)\d{5}(?=_\d{2,3})',index).group()) for index in res[key].index]))
-        stddev=pd.DataFrame(columns=res[key].columns,index=[sample+'_stddev' for sample in samples])
-        mean=pd.DataFrame(columns=res[key].columns,index=[sample+'_mean' for sample in samples])
-        for sample in samples:
-            for column in res[key].columns:
-                gas=column[column.rfind('_')+1:].lower()
-                indices=[index for index in res[key].index if plt.get_label(re.search('(?<=_)\d{5}(?=_\d{2,3})',index).group())==sample]
-                subset=res[key][column].loc[indices]
-                if key=='mmol_per_mg':
-                    mmol=res['mmol'][gas.upper()].loc[indices]#res['mmol'][column].loc[indices]
-                    g=mmol/subset
-                    lod=TG_IR[0].stats['x_NG'][gas]
-                    dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
-                    dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
-                    stddev[column][sample+'_stddev']=dmmol
-                else:
-                    stddev[column][sample+'_stddev']=np.std(subset)
-                mean[column][sample+'_mean']=np.mean(subset)
-        res[key]=res[key].append(mean)
-        res[key]=res[key].append(stddev)        
-    
-    #exporting data
-    if save==True:
-        with pd.ExcelWriter('summary.xlsx') as writer:
-            for key in res:
-                res[key].dropna(axis=1).to_excel(writer,sheet_name=key)
-            err.to_excel(writer,sheet_name='sum_squerr')
-        os.chdir(PATHS['dir_home'])
-    return res
+        #try:
+        self.linreg,self.stats=calibrate(**kwargs)
+       # except:
+        #    pass
