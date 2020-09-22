@@ -6,7 +6,7 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 from .general import find_files
-from ..config import PATHS, COUPLING, DPI
+from ..config import PATHS, COUPLING, DPI, PARAMS, UNITS, SEP
 from ..plotting import get_label
 
 
@@ -21,7 +21,7 @@ def read_TGA(file,profile='Otto'):
         skiprows=11
         
     try:
-        data=pd.read_csv(path, delim_whitespace=True,decimal=',' ,names=['Index','t','Ts','Tr','mass'],skiprows=skiprows, skipfooter=11,converters={'mass':lambda x: float(x)},engine='python').drop(columns='Index')
+        data=pd.read_csv(path, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=skiprows, skipfooter=11,converters={'sample_mass':lambda x: float(x)},engine='python').drop(columns='Index')
         
     except:
         return
@@ -29,7 +29,7 @@ def read_TGA(file,profile='Otto'):
     #check if there is heat flow information and append it 
     try:
         path_mW=find_files(file,'_mW.txt',PATHS['dir_data'])[0]
-        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','t','Ts','Tr','heat_flow'],skiprows=skiprows, skipfooter=11, usecols=['heat_flow'],engine='python')
+        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=skiprows, skipfooter=11, usecols=['heat_flow'],engine='python')
     except:
         pass
     
@@ -45,7 +45,7 @@ def TGA_info(file,TGA,profile='Otto'):
         
     if profile=='Falk':
         skipheader=6
-        
+
     #extract information on the measurement from the header and footer of the TGA file
     footer=pd.read_table(path,encoding='ansi',skipfooter=2,index_col=False,names=[0],engine='python').tail(3)
     header=str(pd.read_table(path,encoding='ansi',skiprows=skipheader,nrows=1,index_col=False,names=[0],engine='python').iloc[0,0])
@@ -55,11 +55,11 @@ def TGA_info(file,TGA,profile='Otto'):
     info['time']=re.search('(?<=\s)\S+$',header).group()#header[header.rfind(' ')+1:].strip()
     method_name=str(footer.iloc[2,0]).strip()
     info['method_name']=method_name
-    info['sample_mass']=pd.to_numeric(re.search('(?<=\s)\S+(?=\smg)',footer.iloc[0,0]).group().replace(',','.'))#str(footer).strip()
+    info['initial_mass']=pd.to_numeric(re.search('(?<=\s)\S+(?=\smg)',footer.iloc[0,0]).group().replace(',','.'))#str(footer).strip()
     #if the sample wasn't weighed in automatically, the mass at t=0 is used instead
-    if info['sample_mass']==0:
-        info['sample_mass']=TGA['mass'][0]
-    info['reference_mass']='sample_mass'
+    if info['initial_mass']==0:
+        info['initial_mass']=TGA['sample_mass'][0]
+    info['reference_mass']='initial_mass'
 
     # extract method info from method
     last_i=0
@@ -102,56 +102,56 @@ def TGA_info(file,TGA,profile='Otto'):
     
     return info
 
-def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False):
+def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,None],ylim=[None,None]):
     if type(how)==type(None):
         dry_point=0
     elif type(how)!=str:
-        dry_point=TG_IR.tga['t'][TG_IR.tga['Ts']>=how].iloc[0]
+        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how].iloc[0]
     else :
         if how=='h2o':
             try:
-                ref=TG_IR.ir.filter(items=['Ts','h2o'])
-                #ref['h2o']/=TG_IR.linreg['slope']['h2o']*18/15/TG_IR.info['sample_mass']
+                ref=TG_IR.ir.filter(items=['sample_temp','h2o'])
+                #ref['h2o']/=TG_IR.linreg['slope']['h2o']*18/15/TG_IR.info['initial_mass']
                 ylabel=get_label(how)
             except:
                 print('No water signal found. Falling back to DTG.')
-                how='mass'
+                how='sample_mass'
         
-        if how=='mass':
-            ref=TG_IR.tga.filter(items=['Ts','mass'])
-            ref['mass']=-sp.signal.savgol_filter(TG_IR.tga['mass']/TG_IR.info['sample_mass'], 51, 3, deriv=1)
+        if how=='sample_mass':
+            ref=TG_IR.tga.filter(items=['sample_temp','sample_mass'])
+            ref['sample_mass']=-sp.signal.savgol_filter(TG_IR.tga['sample_mass']/TG_IR.info['initial_mass'], 51, 3, deriv=1)
             ylabel='DTG'
-        min_T=ref['Ts'][ref[how]>=max(ref[how][(ref['Ts']>50) & (ref['Ts']<200)])].values[0]
+        min_T=ref['sample_temp'][ref[how]>=max(ref[how][(ref['sample_temp']>50) & (ref['sample_temp']<200)])].values[0]
         max_T=min_T+50
 
-        x=ref['Ts'][(ref['Ts']>min_T) & (ref['Ts']<max_T)]
-        y=ref[how][(ref['Ts']>min_T) & (ref['Ts']<max_T)]
+        x=ref['sample_temp'][(ref['sample_temp']>min_T) & (ref['sample_temp']<max_T)]
+        y=ref[how][(ref['sample_temp']>min_T) & (ref['sample_temp']<max_T)]
         slope,intercept,r_val,p_val,std_err =sp.stats.linregress(x,y)
 
-        dry_point=ref['Ts'][ref['Ts'] >=-intercept/slope].index[0]
+        dry_point=ref['sample_temp'][ref['sample_temp'] >=-intercept/slope].index[0]
     
     #getting the dry_mass at the dry_point as well as the final weight and calculating the relative
     #mass-loss and the water content from it
-    dry_temp=TG_IR.tga['Ts'][dry_point]
+    dry_temp=TG_IR.tga['sample_temp'][dry_point]
     names=['dry']+TG_IR.info['method_gases']
     info={}
-    if (how=='h2o') or (how=='mass'):
-        times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['Tr'].isin(TG_IR.info['switch_temp'])])
+    if (how=='h2o') or (how=='sample_mass'):
+        times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=['dry']+TG_IR.info['method_gases']
-        info['dry_mass']=TG_IR.tga['mass'][dry_point]
+        info['dry_mass']=TG_IR.tga['sample_mass'][dry_point]
         info['reference_mass']='dry_mass'
         info['dry_temp']=dry_temp
         info['dry_time']=dry_point
     elif how==None:
-        info['reference_mass']='sample_mass'
-        times=[0]+list(TG_IR.tga.index[TG_IR.tga['Tr'].isin(TG_IR.info['switch_temp'])])
+        info['reference_mass']='initial_mass'
+        times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=TG_IR.info['method_gases']   
     if ref_mass!=None:
         info['reference_mass']=ref_mass
-    weights=TG_IR.tga['mass'][TG_IR.tga.index.isin(times)].values
+    weights=TG_IR.tga['sample_mass'][TG_IR.tga.index.isin(times)].values
     mass_loss=abs(np.diff(weights))
     
-    info['final_mass']=TG_IR.tga['mass'][len(TG_IR.tga)-1]
+    info['final_mass']=TG_IR.tga['sample_mass'][len(TG_IR.tga)-1]
     TG_IR.info.update(info)
     for name,ml in zip(names,mass_loss):
         info['ml_'+name]=ml
@@ -159,10 +159,10 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False):
     TG_IR.info.update(info)
     
     #plotting
-    if plot==True:
+    if plot:
         fig=plt.figure()
-        x=TG_IR.tga['Ts']
-        y=TG_IR.tga['mass']
+        x=TG_IR.tga['sample_temp']
+        y=TG_IR.tga['sample_mass']
         plt.plot(x,y,label='TGA')
         
         for i in range(len(times)-1):
@@ -172,12 +172,15 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False):
         
         plt.scatter(x[times],y[times],c='r')
         plt.hlines(weights[1:],x[times[:-1]],x[times[1:]],linestyle='dashed')
-        plt.ylabel('TGA /mg')
-        plt.xlabel('T /°C')
+        plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
+        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        plt.ylim(ylim)
         if type(how)==str:
             ax2=plt.twinx()
-            ax2.plot(ref['Ts'],ref[how],linestyle='dashed')
+            ax2.plot(ref['sample_temp'],ref[how],linestyle='dashed')
             ax2.set_ylabel(ylabel)
+        plt.xlim(xlim)
+        
         plt.show()   
                 
         if save:

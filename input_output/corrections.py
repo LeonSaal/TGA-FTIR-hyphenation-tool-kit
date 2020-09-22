@@ -13,14 +13,14 @@ def corr_TGA(TGA,file_baseline,plot=False):
     path_baseline=find_files(file_baseline,'.txt',PATHS['dir_data'])[0]
     #opens the buoyancy blank value 'baseline' and substracts them from the original data 
     try:
-        reference_mass=pd.read_csv(path_baseline, delim_whitespace=True,decimal=',' ,names=['Index','t','Ts','Tr','mass'],skiprows=13, skipfooter=11,converters={'mass': lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
-        corr_data['mass']=corr_data['mass'].subtract(reference_mass['mass'][:len(TGA)])
+        reference_mass=pd.read_csv(path_baseline, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=13, skipfooter=11,converters={'sample_mass': lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
+        corr_data['sample_mass']=corr_data['sample_mass'].subtract(reference_mass['sample_mass'][:len(TGA)])
     except:
         print('>',path_baseline,' was not found.')
         return None
     try:
         path_mW=find_files(file_baseline,'_mW.txt',PATHS['dir_data'])[0]
-        reference_heat_flow=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','t','Ts','Tr','heat_flow'],skiprows=13, skipfooter=11, usecols=['heat_flow'],engine='python')
+        reference_heat_flow=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=13, skipfooter=11, usecols=['heat_flow'],engine='python')
         corr_data['heat_flow']=corr_data['heat_flow'].subtract(reference_heat_flow['heat_flow'][:len(TGA)])
     except:
         pass
@@ -28,11 +28,11 @@ def corr_TGA(TGA,file_baseline,plot=False):
     #plotting of data, baseline and corrected value
     if plot==True:
         plt.figure()
-        x=TGA['Ts']
-        y=TGA['mass']
+        x=TGA['sample_temp']
+        y=TGA['sample_mass']
         plt.plot(x,y,label='data')
-        plt.plot(x,reference_mass['mass'][:len(TGA)],label='baseline')
-        plt.plot(x,corr_data['mass'],label='corrected')
+        plt.plot(x,reference_mass['sample_mass'][:len(TGA)],label='baseline')
+        plt.plot(x,corr_data['sample_mass'],label='corrected')
         plt.xlabel('T /°C')
         plt.ylabel(y.name+' /mg')
         plt.legend()
@@ -112,9 +112,9 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         
         fig=plt.figure()
         try:
-            x=FTIR['Ts']
+            x=FTIR['sample_temp']
         except:
-            x=FTIR['t']
+            x=FTIR['time']
         y=co2_baseline
 
         
@@ -126,9 +126,9 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         
         plt.vlines(x.iloc[valleys],min(co2_baseline),max(FTIR['co2']-y),linestyle='dashed')
         plt.legend()
-        if x.name=='t':    
+        if x.name=='time':    
             plt.xlabel(x.name+' /min')
-        elif x.name=='Ts':    
+        elif x.name=='sample_temp':    
             plt.xlabel('T /°C')
         plt.ylabel('$CO_2$ /AU')
         plt.title('$CO_2$ baseline correction')
@@ -144,9 +144,9 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         plt.hlines(0,min(x),max(x),ls='dashed')
         
         plt.legend()
-        if x.name=='t':    
+        if x.name=='time':    
             plt.xlabel(x.name+' /min')
-        elif x.name=='Ts':    
+        elif x.name=='sample_temp':    
             plt.xlabel('T /°C')
         plt.ylabel('AU')
         plt.title('$H_2O$ baseline correction')
@@ -155,7 +155,7 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
     
     if save==True:
         out=pd.DataFrame()
-        out['t']=x
+        out['time']=x
         out['data']=FTIR['co2']
         out['baseline']=baseline[:len(x)]
         out['corr_baseline']=co2_baseline

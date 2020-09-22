@@ -19,12 +19,14 @@ def read_FTIR(file_name):
         return
     else:
         #make DataFrame with the first gas, keeping the time column
-        data=pd.read_csv(files[0], delimiter=';', decimal=',', names=['t',gases[0]])
+        data=pd.read_csv(files[0], delimiter=';', decimal=',', names=['time',gases[0]])
     
         #append the IR data from the other gases as new columns
         for i in range(1,len(gases)):
-            data[gases[i]]=pd.read_csv(files[i], delimiter=';', decimal=',', names=['t',gases[i]], usecols=[gases[i]])
-        data['t']=(data['t']*60).astype(int)
+            data[gases[i]]=pd.read_csv(files[i], delimiter=';', decimal=',', names=['time',gases[i]], usecols=[gases[i]])
+        
+        #convert time column for minutes to seconds 
+        data['time']=(data['time']*60).astype(int)
         return data.dropna()
 
 def FTIR_info(TG_IR):
