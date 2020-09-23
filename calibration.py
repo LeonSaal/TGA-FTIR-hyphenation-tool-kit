@@ -189,6 +189,7 @@ def calibrate(plot=False,mode='load',method='max'):
             #print('Calibration data loaded.')
         except:
             print('No calibration data found. Supply mode=\'recalibrate\'!')
+            os.chdir(PATHS['dir_home'])
             return
     
     #new calibration
@@ -206,6 +207,7 @@ def calibrate(plot=False,mode='load',method='max'):
             with open('Sample_list.txt', 'w') as file:
                 file.write('Samples\tBaseline')
             print('Fill in \'Sample_list.txt\' and rerun!')
+            os.chdir(PATHS['dir_home'])
             return
         #calculating mass steps and integrating FTIR_data signals for all samples
         for sample,baseline in zip(samples['Samples'],samples['Baseline']):
@@ -333,7 +335,7 @@ def calibrate(plot=False,mode='load',method='max'):
 
             x_bounds=np.array((min(x),max(x)))
             plt.plot(x_bounds,x_bounds*linreg['slope'][gas]+linreg['intercept'][gas],label='regression',ls='dashed')
-            plt.text(max(x),min(y),'y = {:.3f} $\cdot$ x {:+.3f}, $R^2$ = {:.5}'.format(linreg['slope'][gas],linreg['intercept'][gas],str(linreg['r^2'][gas])),horizontalalignment='right')
+            plt.text(max(x),min(y),'y = {:.3f} $\cdot$ x {:+.3f}, $R^2$ = {:.5}'.format(linreg['slope'][gas],linreg['intercept'][gas],linreg['r_value'][gas]**2),horizontalalignment='right')
             plt.xlabel(UNITS['molar_amount'])
             plt.ylabel(UNITS['int_ir'])
             plt.title(get_label(gas))

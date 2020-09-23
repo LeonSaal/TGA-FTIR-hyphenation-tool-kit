@@ -3,13 +3,13 @@ import numpy as np
 from scipy.signal import savgol_filter
 import copy
 import os
-import re
-import pickle
 
+import pickle
 from .config import SAVGOL, PATHS, COUPLING
-from .input_output import corrections, TGA, FTIR, samplelog, general
+from .input_output import corrections, TGA, FTIR, general
+from .input_output.samplelog import samplelog
 from .calibration import calibrate
-from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG, get_label
+from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG
 from .fitting import fitting as fit
 
 WINDOW_LENGTH=SAVGOL.getint('window_length')
@@ -17,10 +17,10 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    try:
-        linreg,stats = calibrate(mode='load')
-    except:
-        pass
+    #try:
+    linreg,stats = calibrate(mode='load')
+    #except:
+    #    pass
 
     def __init__(self,name,mode='construct',profile='Otto',alias='load'):
         if mode=='construct':
@@ -79,11 +79,18 @@ class TG_IR:
                 self.__dict__[key]=obj.__dict__[key]
                
         
-    def corr(self,reference,**kwargs):
+    def corr(self,reference='load',**kwargs):
         if 'reference' in self.info:
             print('Sample has already been corrected! Re-initialise object for correction.')
             return
         
+        if reference=='load':
+                try:
+                    reference=samplelog().loc[self.info['name'],'reference']
+                except:
+                    print('No reference found in Samplelog. Please supply \'reference = \'')
+                    return
+
         # correction of data
         self.info['reference']=reference
         try:
@@ -152,21 +159,9 @@ class TG_IR:
         elif T_max>max(self.tga['sample_temp']):
             print('$T_{max}$ exceeds maximum temperature of data')
             T_max=max(self.tga['sample_temp'])
-            
-        ###extracting initial values for fitting from reference
-        presets=dict()
-        references=pd.read_excel(os.path.join(PATHS['dir_home'],'Fitting parameter.xlsx'),index_col=0,header=None,sheet_name=None)
-        gases=list(set(references['center_0'].loc['gas']))
-        cols=[key for key in references]
-        
-        for gas in gases:
-            index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i]==gas)]
-            data=pd.DataFrame(index=index)
-            for key in references:
-                #print(references[key])
-                references[key]=references[key]#.dropna(axis=0,thresh=1).dropna(axis=1,thresh=1)
-                data[key]=pd.DataFrame(references[key].loc[reference,:][references[key].loc['gas',:]==gas].T.values,index=index,columns=[key])#.dropna(axis=1)
-            presets[gas]=data.dropna(axis=0,how='all')            
+         
+        presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
+        print(presets)
             
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
