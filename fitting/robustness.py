@@ -1,15 +1,12 @@
 import pandas as pd
 import numpy as np
-from TG_IR import fits
-from Functions.general import time
-from Functions.plotting import get_label
+from .fitting import fits
+from ..input_output.general import time
+from ..plotting import get_label
 import os
 import re
-import configparser
 import matplotlib as plt
-config = configparser.ConfigParser()
-config.read('settings.ini')
-
+from ..config import PATHS
 
 def robustness(*TG_IR,reference,tol_c=30,tol_hwhm_0=95,T_max=None,save=True):
     var_T=10
@@ -48,12 +45,12 @@ def robustness(*TG_IR,reference,tol_c=30,tol_hwhm_0=95,T_max=None,save=True):
             if key=='offs_c':
                 
                 print('tol_center {}, tol_hwhm {}, offs_c {}, offs_h {}, offs_hwhm {}'.format(tol_center,tol_hwhm,values[key]*i,offs_h,offs_hwhm))
-                references=pd.read_excel(os.path.join(config['paths']['dir_configuration'],'surfgr_C.xlsx'),index_col=0,header=None)
+                references=pd.read_excel(os.path.join(PATHS['dir_home'],'Initial_center.xlsx'),index_col=0,header=None)
                 if T_max==None:
-                    T_max=min([max(obj.tga['Ts']) for obj in TG_IR])
+                    T_max=min([max(obj.tga['sample_temp']) for obj in TG_IR])
 
-                elif T_max>min([max(obj.tga['Ts']) for obj in TG_IR]):
-                    T_max=T_max=min([max(obj.tga['Ts']) for obj in TG_IR])
+                elif T_max>min([max(obj.tga['sample_temp']) for obj in TG_IR]):
+                    T_max=T_max=min([max(obj.tga['sample_temp']) for obj in TG_IR])
                     print('$T_{max}$ exceeds maximum temperature of data')
                 
                 for col in references.loc[['gas',reference]].dropna(axis=1):
@@ -101,8 +98,8 @@ def robustness(*TG_IR,reference,tol_c=30,tol_hwhm_0=95,T_max=None,save=True):
             #break
         #break
     #make subdirectory to save data
-    if save==True:
-        path=os.path.join(config['paths']['dir_configuration'],time()+reference+'_{}_{}'.format(tol_c,tol_hwhm_0))
+    if save:
+        path=os.path.join(PATHS['dir_configuration'],time()+reference+'_{}_{}'.format(tol_c,tol_hwhm_0))
         os.makedirs(path)
         os.chdir(path)
     with pd.ExcelWriter('robustness.xlsx') as writer:
@@ -166,10 +163,10 @@ def robustness(*TG_IR,reference,tol_c=30,tol_hwhm_0=95,T_max=None,save=True):
             plt.xticks(rotation=90)
             plt.tight_layout()
             plt.show()
-            path=os.path.join(config['paths']['dir_home'],'Robustness')
+            path=os.path.join(PATHS['dir_home'],'Robustness')
             if not os.exists(path):
                 os.makedirs(path)
             fig.savefig(os.path.join(path,sample+'_'+param+'.png'), bbox_inches='tight', dpi=300)
             #plt.errorbar(re.search('^.+(?=_p|_m|_init)',key).group(0),1,yerr=.5,label=label)
         #plt.errorbar(['test'],[1],yerr=[.5],label=label)
-    os.chdir(config['paths']['dir_home'])
+    os.chdir(PATHS['dir_home'])
