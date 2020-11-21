@@ -17,10 +17,10 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    #try:
-    linreg,stats = calibrate(mode='load')
-    #except:
-    #    pass
+    try:
+        linreg,stats = calibrate(mode='load')
+    except:
+        pass
 
     def __init__(self,name,mode='construct',profile='Otto',alias='load'):
         if mode=='construct':
