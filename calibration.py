@@ -186,7 +186,7 @@ def calibrate(plot=False,mode='load',method='max'):
             stats=cali['stats']
             data=pd.read_excel('cali.xlsx',sheet_name='data',index_col=[0,1])
             gases=linreg.index
-            #print('Calibration data loaded.')
+            print('Calibration data loaded.')
         except:
             print('No calibration data found. Supply mode=\'recalibrate\'!')
             os.chdir(PATHS['dir_home'])
