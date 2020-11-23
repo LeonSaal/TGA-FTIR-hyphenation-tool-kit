@@ -76,9 +76,12 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
 
 def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=[None,None],legend=True):
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
-
+    
     x=copy.deepcopy(TG_IR.ir[x_axis])
-    calibrated=set(TG_IR.linreg.index)
+    try:
+        calibrated=set(TG_IR.linreg.index)
+    except:
+        calibrated=set()
     on_axis=set(TG_IR.info['gases'])
     if len(gases) == 0:
         if y_axis=='rel':
@@ -158,7 +161,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
 def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
-    calibrated=set(TG_IR.linreg.index)
+    try:
+        calibrated=set(TG_IR.linreg.index)
+    except:
+        calibrated=set()
     on_axis=set(TG_IR.info['gases'])
     if len(gases) == 0:
         intersection=calibrated &  on_axis
