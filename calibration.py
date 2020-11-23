@@ -89,7 +89,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
     
     #Plotten mit Integrationsgrenzen
     if plot:
-        colors =plt.rcPARAMS['axes.prop_cycle'].by_key()['color']
+        colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
         x=FTIR_data['time'] 
         #x=x/60
