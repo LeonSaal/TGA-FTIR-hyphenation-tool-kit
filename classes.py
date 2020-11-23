@@ -107,11 +107,15 @@ class TG_IR:
         # filling TG_IR.info
         try:
             TGA.dry_weight(self,**kwargs)
+            print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+            success=True
         except:
             print('Failed to derive TG info.')
 
         try:
             self.info.update(FTIR.FTIR_info(self))
+            if not success:
+                print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
         except:
             print('Failed to derive IR info.')
                 
