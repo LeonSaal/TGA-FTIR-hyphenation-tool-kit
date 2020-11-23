@@ -41,13 +41,15 @@ def FTIR_info(TG_IR):
     try:
         elems=list(set(re.sub('\d', '',''.join([gas for gas in TG_IR.info['gases'] if len(gas)<5]))))
         for elem in elems:
-            info['mmol_{}'.format(elem)]=0
+            temp=0
             for gas in TG_IR.linreg.index:
                 if elem in gas:
                     if re.search('(?<='+elem+')\d',gas) != None:
-                        info['mmol_{}'.format(elem)]+=int(re.search('(?<='+elem+')\d',gas).group())*info['mmol_{}'.format(gas)]
+                        temp+=int(re.search('(?<='+elem+')\d',gas).group())*info['mmol_{}'.format(gas)]
                     else:
-                        info['mmol_{}'.format(elem)]+=info['mmol_{}'.format(gas)]
+                        temp+=info['mmol_{}'.format(gas)]
+        if temp!=0:
+            info['mmol_{}'.format(elem)]=temp  
     except:
         pass
      
