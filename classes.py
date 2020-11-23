@@ -197,7 +197,7 @@ class TG_IR:
                     except:
                         pass
     def calibrate(self,**kwargs):
-        #try:
-        self.linreg,self.stats=calibrate(**kwargs)
-       # except:
-        #    pass
+        try:
+            self.linreg,self.stats=calibrate(**kwargs)
+        except:
+            pass
