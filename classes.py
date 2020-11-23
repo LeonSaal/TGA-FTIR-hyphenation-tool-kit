@@ -120,6 +120,9 @@ class TG_IR:
             print('Failed to derive IR info.')
                 
     def plot(self,which,**kwargs):
+        options=['TG', 'heat_flow', 'IR', 'DIR', 'cumsum'  'IR_to_DTG']
+        if which not in options:
+            print('\'TG_IR.plot\' supports {} as input for \'which\' figure to plot.'.format(', '.join(['\''+option+'\'' for option in options])))
         if ('ir' not in self.__dict__) and (which in ['IR','DIR','cumsum','IR_to_DTG']):
             print('Option unavailable without IR data.')
             return
