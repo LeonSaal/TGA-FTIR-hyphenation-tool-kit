@@ -1,6 +1,7 @@
 from TGA_FTIR_tools.classes import TG_IR
 from TGA_FTIR_tools.config import PLOTTING
 from TGA_FTIR_tools.calibration import calibrate
+from TGA_FTIR_tools.input_output.samplelog import samplelog
 
 import matplotlib as plt
 plt.rcParams.update({'font.size': PLOTTING.getint('font_size')})
