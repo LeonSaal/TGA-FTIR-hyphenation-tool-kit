@@ -101,7 +101,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
                 print('None of supplied gases was found in IR data and calibrated.')
                 return
         elif y_axis=='orig':
-            intersection = on_axis & gases
+            intersection = on_axis & set(gases)
             print('{} not found in IR data.'.format(' and '.join([gas.upper() for gas in (gases - on_axis)])))
             if len(intersection)!=0:
                 print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
