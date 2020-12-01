@@ -38,6 +38,20 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     
     #plotting
     if plot==True:
+        #plotting of rel. TG
+        plt.figure()
+        rel_steps=steps/steps[0]*100
+        plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)),x[step_end],linestyle='dashed')
+        plt.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
+        for i in range(len(step_end)):
+            plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
+        plt.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
+        plt.text(800,95,str(round(TGA_data['sample_mass'][0],2))+' mg', horizontalalignment='center')
+        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass'],UNITS['sample_mass']))
+        plt.title('TG')
+        plt.show()
+        
         #plotting of DTG
         fig=plt.figure()
         x=TGA_data['sample_temp']
@@ -50,32 +64,6 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'],UNITS['time']))
         plt.title('DTG')
-        plt.show()
-        
-        #plotting of found steps
-        fig=plt.figure()
-        plt.hlines(steps[:-1],np.zeros(len(steps)),x[step_end],linestyle='dashed')
-        plt.vlines(x[step_end],steps[1:],steps[:-1],linestyle='dashed')
-        for i in range(len(step_end)):
-            plt.text(x[step_end[i]]+5,steps[i+1]+step_height[i]/2,str(round(step_height[i],3))+' mg ('+str(round(rel_step_height[i],2))+' %)')
-        plt.plot(x,TGA_data['sample_mass'])
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
-        plt.title('TG')
-        plt.show()
-        
-        #plotting 
-        plt.figure()
-        rel_steps=steps/steps[0]*100
-        plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)),x[step_end],linestyle='dashed')
-        plt.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
-        for i in range(len(step_end)):
-            plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
-        plt.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
-        plt.text(800,95,str(round(TGA_data['sample_mass'][0],2))+' mg', horizontalalignment='center')
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass'],UNITS['sample_mass']))
-        plt.title('TG')
         plt.show()
         
     return step_height,rel_step_height,step_start,step_end
@@ -136,7 +124,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
 
     if plot==True:
         plt.show()
-        print('Baseline correction: ',corr_baseline)
+        #print('Baseline correction: ',corr_baseline)
         
     return integrals 
 
