@@ -188,7 +188,7 @@ def calibrate(plot=False,mode='load',method='max'):
             gases=linreg.index
             print('Calibration data loaded.')
         except:
-            print('No calibration data found. To obtain quantitative IR data supply an \'Calibration\' folder with cali.xlsx or initialize an arbitrary TG_IR object and further run TG_IR.calibrate(mode=\'recalibrate\') or run tga_ftir_tools.calibrate(mode=\'recalibrate\')!')
+            print('No calibration data found. To obtain quantitative IR data supply an \'Calibration\' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode=\'recalibrate\')!')
             os.chdir(PATHS['dir_home'])
             return
     
