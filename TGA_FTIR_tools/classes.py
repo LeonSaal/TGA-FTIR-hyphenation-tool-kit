@@ -161,7 +161,7 @@ class TG_IR:
             return
         
         
-    def fit(self,reference,T_max=None,save=True,**kwargs):
+    def fit(self,reference,T_max=None,save=True,plot=True,**kwargs):
         if T_max==None:
             T_max=max(self.tga['sample_temp'])
         elif T_max>max(self.tga['sample_temp']):
@@ -179,7 +179,7 @@ class TG_IR:
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
         temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
-        peaks, sumsqerr=fit.fitting(temp,presets,**kwargs)
+        peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,**kwargs)
         
         os.chdir(PATHS['dir_home'])
         return peaks, sumsqerr
