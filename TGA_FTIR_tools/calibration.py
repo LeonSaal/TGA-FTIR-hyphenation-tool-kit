@@ -206,7 +206,7 @@ def calibrate(plot=False,mode='load',method='max'):
         except:
             with open('Sample_list.txt', 'w') as file:
                 file.write('Samples\tBaseline')
-            print('\'Sample_list.txt\' was created in the \'Calibration\' folder, please fill in calibration measurements and rerun this command.\')
+            print('\'Sample_list.txt\' was created in the \'Calibration\' folder, please fill in calibration measurements and rerun this command.')
             os.chdir(PATHS['dir_home'])
             return
         #calculating mass steps and integrating FTIR_data signals for all samples
