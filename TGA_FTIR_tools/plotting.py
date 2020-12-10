@@ -220,7 +220,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     stack.plot(x,DTG,label=PARAMS['dtg'])
     stack.set_ylabel('{}, {} {} ${}\,{}^{{-1}}$'.format(PARAMS['dtg'],', '.join([get_label(gas) for gas in gases]),SEP,UNITS['sample_mass'],UNITS['time']))
     if legend:
-        stack.legend(loc=2)
+        stack.legend()
     error.plot(x,DTG-cumul)
     error.hlines(0,min(x),max(x),ls='dashed')
     error.set_ylabel('$\Delta$ {}'.format(PARAMS['dtg']))
