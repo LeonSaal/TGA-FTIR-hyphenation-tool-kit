@@ -18,3 +18,11 @@ def find_files(file,suffix,parent_dir):
             if (re.search(re.escape(file),filename)!=None) and (re.search(suffix+'$',filename,flags=re.IGNORECASE)):
                 files.append(os.path.join(dirpath,filename))   
     return files
+
+def overview(objs):
+    out=pd.DataFrame(columns=['index','name','alias'])
+    out['index']=range(len(objs))
+    for attr in ['name','alias']:
+        out[attr]=[obj.info[attr] for obj in objs]
+    print(out)
+    return
