@@ -110,7 +110,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
             fitting = fig.add_subplot(gs[:-1, 0])
             fitting.set_title('{}, {:.2f} mg'.format(TG_IR.info['alias'],TG_IR.info[ref_mass]))
             error = fig.add_subplot(gs[-1,0],sharex=fitting)
-            fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
+            #fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
             
             #plotting of fit
             fitting.plot(x,data,label='data',lw=2,zorder=num_curves+1)#,ls='',marker='x',markevery=2,c='cyan')
