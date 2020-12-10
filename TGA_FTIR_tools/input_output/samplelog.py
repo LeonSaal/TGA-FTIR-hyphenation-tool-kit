@@ -30,6 +30,7 @@ def samplelog(info=None,overwrite=False):
     
         try:
             samplelog.to_excel(os.path.join(PATHS['dir_home'],'Samplelog.xlsx'))
+            print('Successfully updated \'Samplelog.xlsx\'.')
         except:
             print('Unable to write on \'Samplelog.xlsx\'. Please close file and try again!')
     return samplelog
