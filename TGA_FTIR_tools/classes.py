@@ -45,8 +45,7 @@ class TG_IR:
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
-                print('\'TG_IR\' successfully initialiazed. IR data found for gases {}
-                      \n Run \'TG_IR.info\' for measurement details or run \'TG_IR.corr()\' to apply corrections of a reference measurment.'.format(', '.join([gas.upper() for gas in self.info['gases']])))
+                print('\'TG_IR\' successfully initialiazed. IR data found for gases {}\n Run \'TG_IR.info\' for measurement details or run \'TG_IR.corr()\' to apply corrections of a reference measurment.'.format(', '.join([gas.upper() for gas in self.info['gases']])))
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:
