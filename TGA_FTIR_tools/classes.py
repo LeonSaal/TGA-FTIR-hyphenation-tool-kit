@@ -168,20 +168,21 @@ class TG_IR:
             T_max=max(self.tga['sample_temp'])
          
         presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
-        print(presets)
             
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
             os.makedirs(path)
             os.chdir(path)
             
+        print('Fitting according to \'{}\' in Fitting_parameters.xlsx is in progress ...'.format(reference))
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
         temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
         peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,**kwargs)
+        print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
         
         os.chdir(PATHS['dir_home'])
-        return peaks, sumsqerr
+        return peaks, sumsqerr;
     
     
     def save(self,how='pickle',**kwargs):
