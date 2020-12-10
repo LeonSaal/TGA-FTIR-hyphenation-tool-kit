@@ -222,7 +222,7 @@ def fits(*TG_IR,reference,save=True,**kwargs):
 
 def get_presets(path,reference,FTIR):
     presets=dict()
-    references=pd.read_excel(os.path.join(path,'Fitting parameter.xlsx'),index_col=0,header=None,sheet_name=None)
+    references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
     
     for gas in gases:
