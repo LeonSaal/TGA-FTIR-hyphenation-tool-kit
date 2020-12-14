@@ -39,6 +39,7 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     #plotting
     if plot==True:
         #plotting of rel. TG
+        x=TGA_data['sample_temp']
         plt.figure()
         rel_steps=steps/steps[0]*100
         plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)),x[step_end],linestyle='dashed')
@@ -53,8 +54,7 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.show()
         
         #plotting of DTG
-        fig=plt.figure()
-        x=TGA_data['sample_temp']
+        plt.figure()
         y=-DTG
         plt.plot(x,y)
         plt.vlines(x[step_end],0,max(y),linestyle='dashed')
@@ -344,7 +344,7 @@ def calibrate(plot=False,mode='load',method='max'):
                 plt.legend(loc=0)
                 plt.show()
 
-        fig=plt.figure()
+        plt.figure()
         for gas in gases:
             x=x_cali[gas]
             y=y_cali[gas]
