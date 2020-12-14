@@ -118,6 +118,16 @@ class TG_IR:
                 print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
         except:
             print('Failed to derive IR info.')
+            
+    def get_value(self,values, which='sample_mass', at='sample_temp'):
+        if type(values)==int:
+            values=list(values)
+            
+        out=pd.DataFrame(index=pd.Index([values],name=at),columns=[which])
+        for value in values:
+            out[value,which]=self.tga[which][self.tga[at]>=value].values[0]
+    
+        return out
                 
     def plot(self,which,**kwargs):
         options=['TG', 'heat_flow', 'IR', 'DIR', 'cumsum', 'IR_to_DTG']
