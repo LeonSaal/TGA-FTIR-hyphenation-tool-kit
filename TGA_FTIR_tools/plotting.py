@@ -86,7 +86,8 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
     if len(gases) == 0:
         if y_axis=='rel':
             intersection=calibrated &  on_axis
-            print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
+            if on_axis != calibrated:
+                print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
             gases=list(intersection)
         elif y_axis=='orig':
             gases=list(on_axis)
@@ -94,7 +95,8 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         if y_axis=='rel':
             gases=set(gases)
             intersection=calibrated &  on_axis & gases
-            print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
+            if gases != calibrated:
+                print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
             if len(intersection)!=0:
                 print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
                 gases=[gas.lower() for gas in intersection]
@@ -169,12 +171,14 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     on_axis=set(TG_IR.info['gases'])
     if len(gases) == 0:
         intersection=calibrated &  on_axis
-        print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
+        if calibrated != on_axis:
+            print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
         gases=intersection
     
     else:
         intersection=calibrated &  on_axis & gases
-        print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
+        if gases != calibrated:
+            print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
         if len(intersection)!=0:
             print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
             gases=[gas.lower() for gas in intersection]
