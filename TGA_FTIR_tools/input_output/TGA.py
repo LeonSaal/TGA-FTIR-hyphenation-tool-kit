@@ -50,7 +50,7 @@ def TGA_info(file,TGA,profile='Otto'):
     footer=pd.read_table(path,encoding='ansi',skipfooter=2,index_col=False,names=[0],engine='python').tail(3)
     header=str(pd.read_table(path,encoding='ansi',skiprows=skipheader,nrows=1,index_col=False,names=[0],engine='python').iloc[0,0])
     info={}
-    info['name']=re.search('\S+(?=,)',header).group()
+    info['name']=file
     info['date']=re.search('(?<=,\s)\S+(?=\s)',header).group()#header[header.find(',')+2:header.rfind(' ')].strip()
     info['time']=re.search('(?<=\s)\S+$',header).group()#header[header.rfind(' ')+1:].strip()
     method_name=str(footer.iloc[2,0]).strip()
