@@ -17,13 +17,13 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    try:
-        linreg,stats = calibrate(mode='load')
-    except:
-        pass
-
     def __init__(self,name,mode='construct',profile='Otto',alias='load'):
         if mode=='construct':
+            try:
+                linreg,stats = calibrate(mode='load')
+            except:
+                pass
+            
             try:
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
