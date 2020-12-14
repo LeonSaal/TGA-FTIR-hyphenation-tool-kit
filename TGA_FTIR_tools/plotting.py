@@ -138,7 +138,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             
             if i>0:
                 graphs.append(graphs[0].twinx())
-                graphs[i].spines['right'].set_position(('axes',1+i*.1))
+                graphs[i].spines['right'].set_position(('axes',1+(i-1)*.1))
             graphs[i].plot(x,y, color=colors[i])
             graphs[i].set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['ir']))
             graphs[i].yaxis.label.set_color(colors[i])
@@ -149,7 +149,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             y=TG_IR.ir[gas]/tot_area*tot_mol
             graphs[0].plot(x,y,label=get_label(gas))
 
-    if legend and y_axis!='orig':
+    if legend: #and y_axis!='orig':
         plt.legend()
     graphs[0].set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
