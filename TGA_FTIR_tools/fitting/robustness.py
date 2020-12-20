@@ -101,4 +101,4 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
                 os.makedirs(path)
             fig.savefig(os.path.join(path,sample+'_'+param+'.png'), bbox_inches='tight', dpi=DPI)
     os.chdir(PATHS['dir_home'])
-return
+    return
