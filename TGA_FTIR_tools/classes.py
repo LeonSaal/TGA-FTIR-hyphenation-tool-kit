@@ -20,7 +20,7 @@ class TG_IR:
     def __init__(self,name,mode='construct',profile='Otto',alias='load'):
         if mode=='construct':
             try:
-                linreg,stats = calibrate(mode='load')
+                self.inreg,self.stats = calibrate(mode='load')
             except:
                 pass
             
