@@ -152,7 +152,8 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             graphs[0].plot(x,y,label=get_label(gas))
 
     if legend: #and y_axis!='orig':
-        plt.legend()
+        fig.legend()
+        
     graphs[0].set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
     plt.show()

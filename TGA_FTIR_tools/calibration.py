@@ -42,7 +42,7 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         x=TGA_data['sample_temp']
         plt.figure()
         rel_steps=steps/steps[0]*100
-        plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)),x[step_end],linestyle='dashed')
+        plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)-1),x[step_end],linestyle='dashed')
         plt.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
         for i in range(len(step_end)):
             plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')

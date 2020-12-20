@@ -14,14 +14,14 @@ def corr_TGA(TGA,file_baseline,plot=False):
     #opens the buoyancy blank value 'baseline' and substracts them from the original data 
     try:
         reference_mass=pd.read_csv(path_baseline, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=13, skipfooter=11,converters={'sample_mass': lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
-        corr_data['sample_mass']=corr_data['sample_mass'].subtract(reference_mass['sample_mass'][:len(TGA)])
+        corr_data['sample_mass']=corr_data['sample_mass'].subtract(reference_mass['sample_mass'])
     except:
         print('>',path_baseline,' was not found.')
         return None
     try:
         path_mW=find_files(file_baseline,'_mW.txt',PATHS['dir_data'])[0]
         reference_heat_flow=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=13, skipfooter=11, usecols=['heat_flow'],engine='python')
-        corr_data['heat_flow']=corr_data['heat_flow'].subtract(reference_heat_flow['heat_flow'][:len(TGA)])
+        corr_data['heat_flow']=corr_data['heat_flow'].subtract(reference_heat_flow['heat_flow'])
     except:
         pass
     

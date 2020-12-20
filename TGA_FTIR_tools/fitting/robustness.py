@@ -18,7 +18,7 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
     
     #Init values
     print('Initial results:')
-    res=fits(*TG_IR,reference=reference,save=False,T_max=T_max,presets=presets,**kwargs)
+    res=fits(*TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
     for key in params:
         results[key+'_init']=res['mmol_per_mg'].drop(['CO2'],axis=1)
     
@@ -52,7 +52,7 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
                         
         if key !='center_0':
-            res=fits(*TG_IR,reference=reference,save=False,T_max=T_max,presets=temp_presets, **kwargs)
+            res=fits(*TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
             if i==-1:
                 results[key+'_minus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
             elif i==1:
@@ -60,7 +60,7 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
 
     #make subdirectory to save data
     if save:
-        path=os.path.join(PATHS['dir_home'],time()+reference+'_{}_{}'.format(var_T,var_rel))
+        path=os.path.join(PATHS['dir_home'],'Robustness',time()+reference+'_{}_{}'.format(var_T,var_rel))
         os.makedirs(path)
         os.chdir(path)
     with pd.ExcelWriter('robustness.xlsx') as writer:
@@ -96,9 +96,9 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
             plt.xticks(rotation=45)
             plt.tight_layout()
             plt.show()
-            path=os.path.join(PATHS['dir_home'],'Robustness')
-            if not os.path.exists(path):
-                os.makedirs(path)
-            fig.savefig(os.path.join(path,sample+'_'+param+'.png'), bbox_inches='tight', dpi=DPI)
+            # path=os.path.join(PATHS['dir_home'],'Robustness')
+            # if not os.path.exists(path):
+            #     os.makedirs(path)
+            fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
     os.chdir(PATHS['dir_home'])
     return

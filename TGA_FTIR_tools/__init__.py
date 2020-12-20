@@ -5,6 +5,7 @@ from TGA_FTIR_tools.input_output.samplelog import samplelog
 from TGA_FTIR_tools.input_output.general import overview
 from TGA_FTIR_tools.plotting import plots
 from TGA_FTIR_tools.fitting.robustness import robustness
+from TGA_FTIR_tools.fitting.fitting import fits
 
 import matplotlib as plt
 plt.rcParams.update({'font.size': PLOTTING.getint('font_size')})

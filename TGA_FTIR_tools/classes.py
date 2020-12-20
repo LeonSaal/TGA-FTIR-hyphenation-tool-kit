@@ -17,16 +17,17 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    def __init__(self,name,mode='construct',profile='Otto',alias='load'):
+    def __init__(self,name,mode='construct',profile='Otto',alias='load',**kwargs):
         if mode=='construct':
             try:
-                self.inreg,self.stats = calibrate(mode='load')
+                self.linreg,self.stats = calibrate(mode='load')
             except:
                 pass
             
             try:
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+
                 
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
@@ -39,6 +40,12 @@ class TG_IR:
                     self.info['background_delay']=COUPLING.getint('background_delay')
                     self.info['switch_temp']=[max(self.tga['reference_temp'])]
                     self.info['method_gases']=['? method_gas ?']
+                try:
+                    TGA.dry_weight(self,**kwargs)
+                    print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+                except:
+                    pass
+        
             except:
                 print('No TG data for {} was found'.format(name))
 
@@ -123,9 +130,9 @@ class TG_IR:
         if type(values)==int:
             values=list(values)
             
-        out=pd.DataFrame(index=pd.Index([values],name=at),columns=[which])
+        out = pd.DataFrame(index=pd.Index(values,name=at),columns=[which])
         for value in values:
-            out[value,which]=self.tga[which][self.tga[at]>=value].values[0]
+            out.loc[value,which]=self.tga[which][self.tga[at]>=value].values[0]
     
         return out
                 
@@ -176,9 +183,12 @@ class TG_IR:
         elif T_max>max(self.tga['sample_temp']):
             print('$T_{max}$ exceeds maximum temperature of data')
             T_max=max(self.tga['sample_temp'])
-         
-        presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
-            
+        
+        if 'presets' not in kwargs:
+            presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
+        else:
+            presets=kwargs['presets']
+            del kwargs['presets']
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
             os.makedirs(path)
@@ -189,9 +199,9 @@ class TG_IR:
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
         temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
         peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,**kwargs)
-        print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
-        
-        os.chdir(PATHS['dir_home'])
+        if save:
+            print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
+            os.chdir(PATHS['dir_home'])
         return peaks, sumsqerr;
     
     

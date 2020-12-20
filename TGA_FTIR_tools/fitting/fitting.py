@@ -69,7 +69,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
         params_0=np.concatenate(([presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
         params_min=np.concatenate(([presets[gas].loc[:,key+'_min'] for key in ['height', 'center', 'hwhm']])) 
         params_max=np.concatenate(([presets[gas].loc[:,key+'_max'] for key in ['height', 'center', 'hwhm']])) 
-        
+  
         #actual fitting
         x=FTIR['sample_temp']
         #try:
@@ -160,7 +160,12 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
     return peaks.astype(float),sumsqerr
 
 def fits(*TG_IR,reference,save=True,**kwargs):
-    presets=get_presets(PATHS['dir_home'], reference,TG_IR[0].ir)
+    if 'presets' not in kwargs:
+        presets=get_presets(PATHS['dir_home'], reference,TG_IR[0].ir)
+    else:
+        presets=kwargs['presets']
+        del kwargs['presets']
+    
     gases=[key for key in presets]
     
     #initializing of output DataFrames
@@ -173,14 +178,14 @@ def fits(*TG_IR,reference,save=True,**kwargs):
     
     #make subdirectory to save data
     if save:
-        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['sample']) for obj in TG_IR]))))
+        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['name']) for obj in TG_IR]))))
         os.makedirs(path)
         os.chdir(path)
     
     #cycling through samples
     for obj in TG_IR:
         #fitting of the sample and calculating the amount of functional groups
-        peaks, sumsqerr=obj.fit(reference,**kwargs)
+        peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
 
         #writing data to output DataFrames
         for key in res:
@@ -201,7 +206,7 @@ def fits(*TG_IR,reference,save=True,**kwargs):
                 if key=='mmol_per_mg':
                     mmol=res['mmol'][gas.upper()].loc[indices]#res['mmol'][column].loc[indices]
                     g=mmol/subset
-                    lod=TG_IR[0].stats['x_NG'][gas]
+                    lod=TG_IR[0].stats['x_LOD'][gas]
                     dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
                     dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
                     stddev[column][sample+'_stddev']=dmmol
@@ -250,4 +255,6 @@ def get_presets(path,reference,FTIR):
               max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max')]
         infill=dict(zip(params,vals))
         presets[gas]=presets[gas].fillna(infill).dropna()
+        if presets[gas].empty:
+            del presets[gas]
     return presets
