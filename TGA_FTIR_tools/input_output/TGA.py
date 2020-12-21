@@ -114,7 +114,7 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,No
                 #ref['h2o']/=TG_IR.linreg['slope']['h2o']*18/15/TG_IR.info['initial_mass']
                 ylabel=get_label(how)
             except:
-                print('No water signal found. Falling back to DTG.')
+                #print('No water signal found. Falling back to DTG.')
                 how='sample_mass'
         
         if how=='sample_mass':

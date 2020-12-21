@@ -20,15 +20,14 @@ class TG_IR:
     def __init__(self,name,mode='construct',profile='Otto',alias='load',**kwargs):
         if mode=='construct':
             try:
-                self.linreg,self.stats = calibrate(mode='load')
-            except:
-                pass
-            
-            try:
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+                try:
+                    self.linreg,self.stats = calibrate(mode='load')
+                except:
+                    pass
+                print('\'{}\' successfully initialiazed{}.'.format(name,' and calibrated' if 'linreg' in self.__dict__ else ''))
 
-                
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
                 except:
@@ -42,7 +41,7 @@ class TG_IR:
                     self.info['method_gases']=['? method_gas ?']
                 try:
                     TGA.dry_weight(self,**kwargs)
-                    print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+                    #print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
                 except:
                     pass
         
@@ -52,7 +51,7 @@ class TG_IR:
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
-                print('\'TG_IR\' successfully initialiazed. IR data found for gases {}\n Run \'TG_IR.info\' for measurement details or run \'TG_IR.corr()\' to apply corrections of a reference measurment.'.format(', '.join([gas.upper() for gas in self.info['gases']])))
+                print('IR data found for gases {}.\n'.format(', '.join([gas.upper() for gas in self.info['gases']])))
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:
@@ -177,18 +176,16 @@ class TG_IR:
             return
         
         
-    def fit(self,reference,T_max=None,save=True,plot=True,**kwargs):
+    def fit(self,reference,T_max=None,save=True,plot=True,presets=None,**kwargs):
         if T_max==None:
             T_max=max(self.tga['sample_temp'])
         elif T_max>max(self.tga['sample_temp']):
             print('$T_{max}$ exceeds maximum temperature of data')
             T_max=max(self.tga['sample_temp'])
         
-        if 'presets' not in kwargs:
+        if presets==None:
             presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
-        else:
-            presets=kwargs['presets']
-            del kwargs['presets']
+
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
             os.makedirs(path)

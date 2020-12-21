@@ -159,13 +159,10 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
                 peaks.astype(float).to_excel(writer,sheet_name='summary')
     return peaks.astype(float),sumsqerr
 
-def fits(*TG_IR,reference,save=True,**kwargs):
-    if 'presets' not in kwargs:
+def fits(TG_IR,reference,save=True,presets=None,**kwargs):
+    if presets==None:
         presets=get_presets(PATHS['dir_home'], reference,TG_IR[0].ir)
-    else:
-        presets=kwargs['presets']
-        del kwargs['presets']
-    
+
     gases=[key for key in presets]
     
     #initializing of output DataFrames

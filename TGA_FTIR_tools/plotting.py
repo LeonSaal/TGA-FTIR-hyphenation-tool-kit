@@ -86,7 +86,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
     if len(gases) == 0:
         if y_axis=='rel':
             intersection=calibrated &  on_axis
-            if on_axis != calibrated:
+            if len(on_axis - calibrated)!=0:
                 print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
             gases=list(intersection)
         elif y_axis=='orig':
@@ -95,7 +95,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         if y_axis=='rel':
             gases=set(gases)
             intersection=calibrated &  on_axis & gases
-            if gases != calibrated:
+            if len(gases - calibrated)!=0:
                 print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
             if len(intersection)!=0:
                 print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
@@ -178,7 +178,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     
     else:
         intersection=calibrated &  on_axis & gases
-        if gases != calibrated:
+        if len(gases-calibrated)!=0:
             print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
         if len(intersection)!=0:
             print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from ..config import PATHS, BOUNDS, UNITS, DPI
 import copy
 
-def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
+def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
     presets=get_presets(PATHS['dir_home'], reference, TG_IR[0].ir)
     params=['center_0','tol_c','hwhm_max','height_0','hwhm_0']
     results=dict()
@@ -18,7 +18,7 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
     
     #Init values
     print('Initial results:')
-    res=fits(*TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
+    res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
     for key in params:
         results[key+'_init']=res['mmol_per_mg'].drop(['CO2'],axis=1)
     
@@ -28,14 +28,14 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
 
     for key in params:
         for i in  [-1,1]:
-            print('{}\n{}: {}'.format('_'*15,key,variance[key]*i))
+            print('{}\n{} {:+}:'.format('_'*30,key,variance[key]*i))
             temp_presets=copy.deepcopy(presets)
             for gas in gases:
                 if key =='center_0':
                     for group in temp_presets[gas].index:
-                        print(group)
+                        print('\n {}:'.format(group))
                         temp_presets[gas].loc[group]=presets[gas].loc[group]+i*np.array([variance[key], 0, 0, variance[key], 0, 0, variance[key], 0, 0])
-                        res=fits(*TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
+                        res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
                         
                         col=group+'_'+gas.upper()
                         if i==-1:
@@ -51,12 +51,12 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
                     elif key in ['height_0','hwhm_0']:
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
                         
-        if key !='center_0':
-            res=fits(*TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
-            if i==-1:
-                results[key+'_minus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
-            elif i==1:
-                results[key+'_plus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+            if key !='center_0':
+                res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
+                if i==-1:
+                    results[key+'_minus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+                elif i==1:
+                    results[key+'_plus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
 
     #make subdirectory to save data
     if save:
@@ -68,6 +68,7 @@ def robustness(*TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[
             results[key].to_excel(writer,sheet_name=key)
     samples=[re.search('^.+(?=_mean)',index).group() for index in res['mmol_per_mg'].index if re.search('^.+(?=_mean)',index)!=None]     
     
+    print('{0}\n{0}\nResults:\n{0}'.format('_'*30))
     for sample in samples:
         x=['$T_m$','$\Delta T_m$','$HWHM_{max}$','$h_0$','$HWHM_0$']
         x=dict(zip(params,x))
