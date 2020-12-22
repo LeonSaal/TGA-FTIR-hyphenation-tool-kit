@@ -46,7 +46,8 @@ class TG_IR:
                     pass
         
             except:
-                print('No TG data for {} was found'.format(name))
+                del self.tga
+                #print('No TG data for {} was found'.format(name))
 
             try:
                 self.ir=FTIR.read_FTIR(name)
@@ -62,15 +63,19 @@ class TG_IR:
                 except:
                     pass
             except:
+                del self.ir
                 print('No IR data for {} was found'.format(name))
-
+            
+            if 'ir' not in self.__dict__ and 'tga' not in self.__dict__:
+                return
+            
             if alias=='load':
                 try:
                     alias=samplelog().loc[name,'alias']
                 except:
                     alias=np.nan
                 if type(alias)!=str:
-                    self.info['alias']=self.info['name']
+                    self.info['alias']=name
                 else:
                     self.info['alias']=alias
                     
@@ -169,9 +174,9 @@ class TG_IR:
                 else:
                     print('No heat flow data available!')
         
-        if ('linreg' in TG_IR.__dict__) and (which == 'IR_to_DTG'):
+        if ('linreg' in self.__dict__) and (which == 'IR_to_DTG'):
             FTIR_to_DTG(self,**kwargs)
-        elif ('linreg' not in TG_IR.__dict__) and (which == 'IR_to_DTG'):
+        elif ('linreg' not in self.__dict__) and (which == 'IR_to_DTG'):
             print('Option unavailable without calibration!')
             return
         
@@ -195,7 +200,7 @@ class TG_IR:
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
         temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
-        peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,**kwargs)
+        peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,save=save,**kwargs)
         if save:
             print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
             os.chdir(PATHS['dir_home'])

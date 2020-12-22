@@ -47,9 +47,9 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         for i in range(len(step_end)):
             plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
         plt.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
-        plt.text(800,95,str(round(TGA_data['sample_mass'][0],2))+' mg', horizontalalignment='center')
+        plt.text(0.85*max(TGA_data['sample_temp']),100,'sample mass: {:.2f} {}'.format(TGA_data['sample_mass'][0],UNITS['sample_mass']), horizontalalignment='center')
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass'],UNITS['sample_mass']))
+        plt.ylabel('{} {} %'.format(PARAMS['sample_mass'],SEP))
         plt.title('TG')
         plt.show()
         
@@ -79,14 +79,14 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
     if plot:
         colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
-        x=FTIR_data['time'] 
+        x=FTIR_data['time']/60
         #x=x/60
         #setup figure and plot first gas
         graph=[None] 
         fig, graph[0]=plt.subplots()
         fig.subplots_adjust(right=.8)
         
-        graph[0].set_xlabel('t /s')
+        graph[0].set_xlabel('{} {} {}'.format(PARAMS['time'], SEP, UNITS['time']))
         graph[0].set_ylabel('{} {} {}'.format(get_label(gases[0]),SEP,UNITS['ir']))
         graph[0].yaxis.label.set_color(colors[0])
         graph[0].plot(x,FTIR_data[gases[0]])
@@ -98,8 +98,8 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
             graph.append(graph[0].twinx())
             graph[i+1].spines['right'].set_position(('axes',1+i*.1))
             graph[i+1].plot(x,y, color=colors[i+1])
-            graph[i+1].vlines(step_start,0,max(y),linestyle='dashed')
-            graph[i+1].vlines(step_end,0,max(y),linestyle='dashed')
+            graph[i+1].vlines(step_start/60,0,max(y),linestyle='dashed')
+            graph[i+1].vlines(step_end/60,0,max(y),linestyle='dashed')
             graph[i+1].set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['ir']))
             graph[i+1].yaxis.label.set_color(colors[i+1])
     
@@ -119,7 +119,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
             integrals.loc[i,gas]=integral
             
             if plot==True:
-                x=FTIR_data['time'][(FTIR_data['time']>=step_start[i]) & (FTIR_data['time']<=step_end[i])]
+                x=FTIR_data['time'][(FTIR_data['time']>=step_start[i]) & (FTIR_data['time']<=step_end[i])]/60
                 graph[gases.index(gas)].plot(x,baseline,color=colors[gases.index(gas)],linestyle='dashed')
 
     if plot==True:
@@ -169,8 +169,8 @@ def calibrate(plot=False,mode='load',method='max'):
         try:
             cali=pd.read_excel('cali.xlsx',sheet_name=None,index_col=0)
             linreg=cali['linreg']
-            x_cali=cali['x']
-            y_cali=cali['y']
+            x_cali=cali['x in {}'.format(UNITS['molar_amount'])]
+            y_cali=cali['y in {}'.format(UNITS['int_ir'])]
             stats=cali['stats']
             data=pd.read_excel('cali.xlsx',sheet_name='data',index_col=[0,1])
             gases=linreg.index
@@ -218,14 +218,14 @@ def calibrate(plot=False,mode='load',method='max'):
             [steps,rel_steps,stepstart,stepend]=mass_step(TGA_data,plot=plot)
             integrals=integrate_peaks(FTIR_data,stepstart,stepend,plot=plot,corr_baseline=None,gases=gases)
             
-            integrals.insert(loc=0,column='sample_mass',value=steps)
+            integrals.insert(loc=0,column='mass loss in {}'.format(UNITS['sample_mass']),value=steps)
             data=data.append(pd.concat({sample: integrals}, names=['samples','step']))
         
         #assigning gases to mass steps
         for sample in data.index.levels[0]:
             release_steps=[]
-            for i,step in enumerate(data.loc[sample,'sample_mass']):
-                integrals=data.loc[sample].drop(['sample_mass'],axis=1)
+            for i,step in enumerate(data.loc[sample,'mass loss in {}'.format(UNITS['sample_mass'])]):
+                integrals=data.loc[sample].drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1)
                 norm=integrals.divide(integrals.max(axis=0).values,axis=1).loc[i]
                 gas=norm.loc[norm==1].index.values[0]
                 release_steps.append(gas)
@@ -257,7 +257,7 @@ def calibrate(plot=False,mode='load',method='max'):
             for i in range(n_iter):
                 for step in data.index.levels[1]:
                     gas=release_steps[step]
-                    X_cali[gas]=data.loc[(slice(None),step),'sample_mass'].droplevel(1)
+                    X_cali[gas]=data.loc[(slice(None),step),'mass loss in {}'.format(UNITS['sample_mass'])].droplevel(1)
                     for other in set(release_steps) - set([gas]):
                         corr=(data.loc[(slice(None),step),other].droplevel(1)-linreg['intercept'][other])/linreg['slope'][other]
                         X_cali[gas]=np.subtract(X_cali[gas],corr*(corr>0))
@@ -294,8 +294,8 @@ def calibrate(plot=False,mode='load',method='max'):
             linreg.loc[['co']]=regression
         
         if method=='mlr':
-            Y_cali=data.loc[(slice(None),slice(None)),'sample_mass']
-            X_cali=data.drop(['sample_mass'],axis=1)
+            Y_cali=data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]
+            X_cali=data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1)
             mlr=linear_model.LinearRegression()#RANSACRegressor()#fit_intercept=0.0)
             mlr.fit(X_cali,Y_cali)
             
@@ -304,15 +304,16 @@ def calibrate(plot=False,mode='load',method='max'):
         
         stats=calibration_stats(x_cali,y_cali,linreg)
         
-        #saving of calibration
-        with pd.ExcelWriter('cali.xlsx') as writer:
-            linreg.to_excel(writer,sheet_name='linreg')
-            x_cali.to_excel(writer,sheet_name='x')
-            y_cali.to_excel(writer,sheet_name='y')
-            stats.to_excel(writer,sheet_name='stats')
-            data.to_excel(writer,sheet_name='data')
-        
-        print('Calibration completed, data is stored in cali.xlsx in the \'Calibration\' folder.')
+        #saving of 
+        try:
+            with pd.ExcelWriter('cali.xlsx') as writer:
+                linreg.to_excel(writer,sheet_name='linreg')
+                x_cali.to_excel(writer,sheet_name='x in {}'.format(UNITS['molar_amount']))
+                y_cali.to_excel(writer,sheet_name='y in {}'.format(UNITS['int_ir']))
+                stats.to_excel(writer,sheet_name='stats')
+                data.to_excel(writer,sheet_name='data')
+        except:
+            print('Could not write on cali.xlsx. Close file and rerun command.')
             
     #plotting
     if plot:
@@ -358,6 +359,8 @@ def calibrate(plot=False,mode='load',method='max'):
             plt.xlim(0,max(x)+abs(min(x)))
             plt.legend(loc=0)
         plt.show()
+    if mode=='recalibrate':
+        print('Calibration completed, data is stored under {}/cali.xlsx'.format(PATHS['dir_calibration']))
 
     os.chdir(PATHS['dir_home'])
     return linreg,stats

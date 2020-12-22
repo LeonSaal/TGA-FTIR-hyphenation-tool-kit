@@ -13,7 +13,11 @@ from ..plotting import get_label
 
 def read_TGA(file,profile='Otto'):
     #open file from TGA in given directory and make a DataFrame from it
-    path=find_files(file,'.txt',PATHS['dir_data'])[0]
+    try:
+        path=find_files(file,'.txt',PATHS['dir_data'])[0]
+    except:
+        print('No TG data for {} was found'.format(file))
+        return
     
     if profile=='Otto':
         skiprows=13
@@ -21,15 +25,16 @@ def read_TGA(file,profile='Otto'):
         skiprows=11
         
     try:
-        data=pd.read_csv(path, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=skiprows, skipfooter=11,converters={'sample_mass':lambda x: float(x)},engine='python').drop(columns='Index')
+        data=pd.read_csv(path, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=skiprows, skipfooter=11,converters={'sample_mass':lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
         
     except:
+        print('Failed to read TG-data from {}'.format(file))
         return
     
     #check if there is heat flow information and append it 
     try:
         path_mW=find_files(file,'_mW.txt',PATHS['dir_data'])[0]
-        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=skiprows, skipfooter=11, usecols=['heat_flow'],engine='python')
+        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=skiprows, skipfooter=11, converters={'sample_mass': lambda x: float(x.replace(',','.'))}, usecols=['heat_flow'],engine='python')
     except:
         pass
     

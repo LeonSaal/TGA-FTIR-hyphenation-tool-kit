@@ -104,8 +104,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
                 print('None of supplied gases was found in IR data and calibrated.')
                 return
         elif y_axis=='orig':
+            gases=set(gases)
             intersection = on_axis & gases
-            print('{} not found in IR data.'.format(' and '.join([gas.upper() for gas in (gases - on_axis)])))
+            if len(gases - on_axis)!=0:
+                print('{} not found in IR data.'.format(' and '.join([gas.upper() for gas in (gases - on_axis)])))
             if len(intersection)!=0:
                 print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
                 gases=[gas.lower() for gas in intersection]
@@ -240,8 +242,12 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(*TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True):
+def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True):
     #out=pd.DataFrame()
+    if plot=='TG':
+        ylabel='sample_mass'
+    else:
+        ylabel=plot.lower()
     if plot=='IR':
         if gas==None:
             print('Supply \'gas = \'')
@@ -259,15 +265,15 @@ def plots(*TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[
     ax.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
     if plot!='IR':
         if y_axis=='orig':
-            ax.set_ylabel('{} {} ${}$'.format(PARAMS[plot.lower()],SEP,UNITS[plot.lower()]))
+            ax.set_ylabel('{} {} ${}$'.format(PARAMS[ylabel],SEP,UNITS[ylabel]))
         elif y_axis=='rel':
-            ax.set_ylabel('{} {} $\%$'.format(PARAMS[plot.lower()],SEP))
+            ax.set_ylabel('{} {} $\%$'.format(PARAMS[ylabel],SEP))
     elif plot=='IR':
         if y_axis=='orig':
-            ax.set_ylabel('{} {} ${}$'.format(get_label(gas),SEP,UNITS[plot.lower()]))
+            ax.set_ylabel('{} {} ${}$'.format(get_label(gas),SEP,UNITS[ylabel]))
         elif y_axis=='rel':
             ax.set_ylabel('{} {} ${}\,{}^{{-1}}$'.format(get_label(gas),SEP,UNITS['molar_amount'],UNITS['sample_mass']))     
-        ax.set_ylabel('{} {} {} ${}^{{-1}}\,{}^{{-1}}$'.format(PARAMS[plot.lower()],SEP,UNITS[plot.lower()],UNITS['sample_mass'],UNITS['time']))
+        ax.set_ylabel('{} {} {} ${}^{{-1}}\,{}^{{-1}}$'.format(PARAMS[ylabel],SEP,UNITS[ylabel],UNITS['sample_mass'],UNITS['time']))
             
             
     for obj in TG_IR:

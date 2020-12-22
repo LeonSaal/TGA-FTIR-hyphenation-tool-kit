@@ -20,7 +20,7 @@ def corr_TGA(TGA,file_baseline,plot=False):
         return None
     try:
         path_mW=find_files(file_baseline,'_mW.txt',PATHS['dir_data'])[0]
-        reference_heat_flow=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=13, skipfooter=11, usecols=['heat_flow'],engine='python')
+        reference_heat_flow=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=13, skipfooter=11,converters={'sample_mass': lambda x: float(x.replace(',','.'))}, usecols=['heat_flow'],engine='python')
         corr_data['heat_flow']=corr_data['heat_flow'].subtract(reference_heat_flow['heat_flow'])
     except:
         pass
