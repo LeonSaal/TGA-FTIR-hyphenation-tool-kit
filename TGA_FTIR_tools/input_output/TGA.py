@@ -107,16 +107,18 @@ def TGA_info(file,TGA,profile='Otto'):
     
     return info
 
-def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,None],ylim=[None,None]):
+def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,None],ylim=[None,None]):
+    if how=='h2o':
+        how=how.upper()
     if type(how)==type(None):
         dry_point=0
     elif type(how)!=str:
-        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how].iloc[0]
+        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how].values[0]
     else :
-        if how=='h2o':
+        if how=='H2O':
             try:
-                ref=TG_IR.ir.filter(items=['sample_temp','h2o'])
-                #ref['h2o']/=TG_IR.linreg['slope']['h2o']*18/15/TG_IR.info['initial_mass']
+                ref=TG_IR.ir.filter(items=['sample_temp','H2O'])
+                #ref['H2O']/=TG_IR.linreg['slope']['H2O']*18/15/TG_IR.info['initial_mass']
                 ylabel=get_label(how)
             except:
                 #print('No water signal found. Falling back to DTG.')
@@ -140,7 +142,7 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,No
     dry_temp=TG_IR.tga['sample_temp'][dry_point]
     names=['dry']+TG_IR.info['method_gases']
     info={}
-    if (how=='h2o') or (how=='sample_mass'):
+    if (how=='H2O') or (how=='sample_mass') or (type(how)!=str):
         times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=['dry']+TG_IR.info['method_gases']
         info['dry_mass']=TG_IR.tga['sample_mass'][dry_point]
@@ -171,7 +173,7 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,No
         plt.plot(x,y,label='TGA')
         
         for i in range(len(times)-1):
-            plt.annotate(s='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
+            plt.annotate(text='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
             plt.text(x[times[i]]+20,y[times[i]],'{:.2f} mg @ {:.2f} °C'.format(weights[i],x[times[i]]))
             plt.text(x[times[i]]+20,(y[times[i]]+ y[times[i+1]])/2,'$ML$ {}: {:.2f} mg ({:.1f} %)'.format(get_label(names[i]),mass_loss[i],mass_loss[i]/TG_IR.info[TG_IR.info['reference_mass']]*100))
         
@@ -182,10 +184,10 @@ def dry_weight(TG_IR,how='h2o',plot=False,ref_mass=None,save=False,xlim=[None,No
         plt.ylim(ylim)
         if type(how)==str:
             ax2=plt.twinx()
-            ax2.plot(ref['sample_temp'],ref[how],linestyle='dashed')
+            ax2.plot(ref['sample_temp'],ref[how],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
         plt.xlim(xlim)
-        
+        plt.legend()
         plt.show()   
                 
         if save:

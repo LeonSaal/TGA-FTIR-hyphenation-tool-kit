@@ -43,11 +43,11 @@ def corr_TGA(TGA,file_baseline,plot=False):
     return corr_data
 
 def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
-    #opens FTIR data of the baseline and takes the 'co2' column
+    #opens FTIR data of the baseline and takes the 'CO2' column
     corr_data=FTIR.copy()
     try:
         baseline=read_FTIR(file_baseline)
-        baseline=np.array(baseline['co2'])
+        baseline=np.array(baseline['CO2'])
     
         #in the baseline the peaks and valleys as well as the amplitude of the baseline are determined
         peaks_baseline,properties_baseline=sp.signal.find_peaks(baseline,height=[None,None])#,height=[tol*min(baseline),tol*max(baseline)])
@@ -56,8 +56,8 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
     
         #in the original data the peaks and valleys that have similar height as the baseline are determined
         tol=1.5
-        peaks,properties=sp.signal.find_peaks(FTIR['co2'],height=[-tol*amplitude_baseline,tol*amplitude_baseline])
-        valleys,valley_properties=sp.signal.find_peaks(-FTIR['co2'],height=[None,None],prominence=amplitude_baseline*.05) 
+        peaks,properties=sp.signal.find_peaks(FTIR['CO2'],height=[-tol*amplitude_baseline,tol*amplitude_baseline])
+        valleys,valley_properties=sp.signal.find_peaks(-FTIR['CO2'],height=[None,None],prominence=amplitude_baseline*.05) 
     
         #the median distance between between baseline-peaks, the period is determined
         dist_peaks=np.diff(peaks_baseline)
@@ -83,7 +83,7 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         #shifting the baseline in x direction
         c=[]
         for x_offs in range(-1,len_period%x_shift+1):
-            peaks,props=sp.signal.find_peaks(FTIR['co2']-co2_baseline[x_shift+x_offs:len(FTIR)+x_shift+x_offs],height=[None,None],prominence=amplitude_baseline*.02)
+            peaks,props=sp.signal.find_peaks(FTIR['CO2']-co2_baseline[x_shift+x_offs:len(FTIR)+x_shift+x_offs],height=[None,None],prominence=amplitude_baseline*.02)
             c.append(len(peaks))
         x_offs=np.where(c==np.min(c))[0][0]-1
     
@@ -97,14 +97,14 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
     
     ##return value
     
-    corr_data['co']=corr_data['co'].subtract(min(corr_data['co']))
-    corr_data['co']=corr_data['co'].subtract(const_baseline(corr_data['co'],0.002))
-    corr_data['co2']=corr_data['co2'].subtract(co2_baseline)
-    corr_data['co2']=corr_data['co2'].subtract(min(corr_data['co2']))
-    corr_data['co2']=corr_data['co2'].subtract(const_baseline(corr_data['co2'],0.07))
-    corr_data['h2o']=corr_data['h2o'].subtract(h2o_baseline)
-    corr_data['h2o']=corr_data['h2o'].subtract(min(corr_data['h2o']))
-    corr_data['h2o']=corr_data['h2o'].subtract(const_baseline(corr_data['h2o'],0.001))
+    corr_data['CO']=corr_data['CO'].subtract(min(corr_data['CO']))
+    corr_data['CO']=corr_data['CO'].subtract(const_baseline(corr_data['CO'],0.002))
+    corr_data['CO2']=corr_data['CO2'].subtract(co2_baseline)
+    corr_data['CO2']=corr_data['CO2'].subtract(min(corr_data['CO2']))
+    corr_data['CO2']=corr_data['CO2'].subtract(const_baseline(corr_data['CO2'],0.07))
+    corr_data['H2O']=corr_data['H2O'].subtract(h2o_baseline)
+    corr_data['H2O']=corr_data['H2O'].subtract(min(corr_data['H2O']))
+    corr_data['H2O']=corr_data['H2O'].subtract(const_baseline(corr_data['H2O'],0.001))
     
     
     ###plotting of baseline, data and the corrected data
@@ -118,13 +118,13 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         y=co2_baseline
 
         
-        plt.plot(x,FTIR['co2'],label='data')
+        plt.plot(x,FTIR['CO2'],label='data')
         plt.plot(x,baseline[:len(x)], label='baseline')
         plt.plot(x,y,label='corr. baseline')#,alpha=.5)
-        plt.plot(x,corr_data['co2'],label='corr. data')
+        plt.plot(x,corr_data['CO2'],label='corr. data')
         plt.hlines(0,min(x),max(x),ls='dashed')
         
-        plt.vlines(x.iloc[valleys],min(co2_baseline),max(FTIR['co2']-y),linestyle='dashed')
+        plt.vlines(x.iloc[valleys],min(co2_baseline),max(FTIR['CO2']-y),linestyle='dashed')
         plt.legend()
         if x.name=='time':    
             plt.xlabel(x.name+' /min')
@@ -138,9 +138,9 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         fig=plt.figure()
         
         y=h2o_baseline
-        plt.plot(x,FTIR['h2o'],label='data')
+        plt.plot(x,FTIR['H2O'],label='data')
         plt.plot(x,y,label='baseline')
-        plt.plot(x,corr_data['h2o'],label='corr. data')
+        plt.plot(x,corr_data['H2O'],label='corr. data')
         plt.hlines(0,min(x),max(x),ls='dashed')
         
         plt.legend()
@@ -156,10 +156,10 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
     if save==True:
         out=pd.DataFrame()
         out['time']=x
-        out['data']=FTIR['co2']
+        out['data']=FTIR['CO2']
         out['baseline']=baseline[:len(x)]
         out['corr_baseline']=co2_baseline
-        out['corr_data']=corr_data['co2']
+        out['corr_data']=corr_data['CO2']
         out.to_excel('baseline.xlsx')
     return corr_data
 

@@ -12,6 +12,7 @@ def samplelog(info=None,overwrite=False):
     except:
         print('> \'Samplelog.xlsx\' was not found. New file was created under \'{}\'.'.format(path))
         samplelog=pd.DataFrame(columns=['alias','reference'])
+        samplelog.to_excel(path)
         
     if info!=None:
         name=info['name']

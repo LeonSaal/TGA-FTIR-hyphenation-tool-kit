@@ -37,30 +37,30 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
 
 def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
     gases=[key for key in presets]
-    if ('co2' in gases) and ('co' in gases):
-        gases.remove('co2')
-        gases.insert(0,'co2')
+    if ('CO2' in gases) and ('CO' in gases):
+        gases.remove('CO2')
+        gases.insert(0,'CO2')
     #thresholds for fit parameters
     ref_mass=TG_IR.info['reference_mass']
     
     #initializing output DataFrame
-    peaks=pd.DataFrame(columns=['center','height','hwhm','area','mmol','mmol_per_mg'],index=[group+'_'+gas.upper() for gas in gases for group in presets[gas].index]+[gas.upper() for gas in gases])
+    peaks=pd.DataFrame(columns=['center','height','hwhm','area','mmol','mmol_per_mg'],index=[group+'_'+gas for gas in gases for group in presets[gas].index]+[gas for gas in gases])
     sumsqerr=pd.DataFrame(index=[TG_IR.info['name']],columns=gases)
 
     #cycling through gases
     FTIR=TG_IR.ir.copy()
     for gas in gases:
-        if gas=='h2o':
+        if gas=='H2O':
             FTIR[gas]-=baseline_als(FTIR[gas])
             
         #molar desorption
         tot_area=np.sum(TG_IR.ir[gas])
-        if gas == 'h2o':
+        if gas == 'H2O':
             tot_area=np.sum(TG_IR.ir[gas][TG_IR.ir['sample_temp']>TG_IR.info['dry_temp']])
         tot_mol=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]
-        peaks['area'][gas.upper()]=tot_area
-        peaks['mmol'][gas.upper()]=tot_mol
-        peaks['mmol_per_mg'][gas.upper()]=tot_mol/TG_IR.info[ref_mass]
+        peaks['area'][gas]=tot_area
+        peaks['mmol'][gas]=tot_mol
+        peaks['mmol_per_mg'][gas]=tot_mol/TG_IR.info[ref_mass]
         
         if y_axis=='rel':
             FTIR.update(FTIR[gas]/tot_area*tot_mol)
@@ -75,12 +75,12 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
         #try:
         popt,pcov=sp.optimize.curve_fit(func,x,FTIR[gas],p0=params_0,bounds=(params_min,params_max))
        # except:
-          #  print('Failed to fit {} signal'.format(gas.upper()))
+          #  print('Failed to fit {} signal'.format(gas))
            # break
         #return values
         num_curves=len(presets[gas])
         for i in range(num_curves):
-            group=presets[gas].index[i]+'_'+gas.upper()
+            group=presets[gas].index[i]+'_'+gas
             peaks['height'][group]=popt[i]
             peaks['center'][group]=popt[i+num_curves]
             peaks['hwhm'][group]=popt[i+2*num_curves]
@@ -91,6 +91,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
             elif y_axis=='rel':
                 peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol
                 peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
+        
         ###plotting
         
         profiles=pd.DataFrame()
@@ -163,15 +164,12 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
     if presets==None:
         presets=get_presets(PATHS['dir_home'], reference,TG_IR[0].ir)
 
-    gases=[key for key in presets]
-    
     #initializing of output DataFrames
-    col_labels=[group+'_'+gas.upper() for gas in gases for group in presets[gas].dropna()]+[gas.upper() for gas in gases]
-    err=pd.DataFrame(columns=gases)
+    err=pd.DataFrame()
     names=['center','height','hwhm','area','mmol','mmol_per_mg']
     res=dict()
     for name in names:
-        res[name]=pd.DataFrame(columns=col_labels)
+        res[name]=pd.DataFrame()
     
     #make subdirectory to save data
     if save:
@@ -179,45 +177,55 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
         os.makedirs(path)
         os.chdir(path)
     
+    sample_re='^.+(?=_\d{2,3})'
+    num_re='(?<=_)\d{2,3}$'
     #cycling through samples
     for obj in TG_IR:
         #fitting of the sample and calculating the amount of functional groups
+        name=obj.info['name']
+        sample=re.search(sample_re,name).group()
+        num=re.search(num_re,name).group()
         peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
 
         #writing data to output DataFrames
         for key in res:
-            res[key]=res[key].append(peaks[key].rename(obj.info['name']).T)  
-        err=err.append(sumsqerr)
-
+            res[key]=res[key].append(pd.concat({sample:pd.DataFrame(peaks[key].rename(num)).T}, names=['samples','run']))  
+        err=err.append(pd.concat({sample:sumsqerr.rename({name:num})}, names=['samples','run']))
+        
+    
     # calculate statistical values
     dm=COUPLING.getfloat('mass_resolution')*1e-3
     for key in res:
-        samples=list(set([get_label(re.search('(?<=_)\d{5}(?=_\d{2,3})',index).group()) for index in res[key].index]))
-        stddev=pd.DataFrame(columns=res[key].columns,index=[sample+'_stddev' for sample in samples])
-        mean=pd.DataFrame(columns=res[key].columns,index=[sample+'_mean' for sample in samples])
+        res[key].sort_index()
+        sample_re='^.+(?=_\d{2,3})'
+        samples=res[key].index.levels[0]
         for sample in samples:
-            for column in res[key].columns:
-                gas=column[column.rfind('_')+1:].lower()
-                indices=[index for index in res[key].index if get_label(re.search('(?<=_)\d{5}(?=_\d{2,3})',index).group())==sample]
-                subset=res[key][column].loc[indices]
-                if key=='mmol_per_mg':
-                    mmol=res['mmol'][gas.upper()].loc[indices]#res['mmol'][column].loc[indices]
-                    g=mmol/subset
-                    lod=TG_IR[0].stats['x_LOD'][gas]
-                    dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
-                    dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
-                    stddev[column][sample+'_stddev']=dmmol
-                else:
-                    stddev[column][sample+'_stddev']=np.std(subset)
-                mean[column][sample+'_mean']=np.mean(subset)
-        res[key]=res[key].append(mean)
-        res[key]=res[key].append(stddev)        
+            
+            if key=='mmol_per_mg':
+                group_gas=[column[column.rfind('_')+1:] for column in res[key].columns]
+                lod=[TG_IR[0].stats['x_LOD'][gas] for gas in group_gas]
+                subset=res['mmol_per_mg'].loc[sample]
+                mmol=res['mmol'].loc[sample]#res['mmol'][column].loc[indices]
+                g=mmol/subset
+                
+                dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
+                dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
+                
+                stddev=pd.DataFrame(dmmol.rename('dev')).T
+            else:
+                stddev=pd.DataFrame(res[key].loc[sample].std().rename('stddev')).T
+            mean=pd.DataFrame(res[key].loc[sample].mean().rename('mean')).T
+
+            res[key]=res[key].append(pd.concat({sample:mean}, names=['samples','run']))
+            res[key]=res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
+                    
+        res[key].sort_index(inplace=True)       
     
     #exporting data
     if save:
         with pd.ExcelWriter('summary.xlsx') as writer:
             for key in res:
-                res[key].dropna(axis=1).to_excel(writer,sheet_name=key)
+                res[key].dropna(axis=1,thresh=1).to_excel(writer,sheet_name=key)
             err.to_excel(writer,sheet_name='sum_squerr')
         os.chdir(PATHS['dir_home'])
     return res
@@ -228,7 +236,7 @@ def get_presets(path,reference,FTIR):
     gases=list(set(references['center_0'].loc['gas']))
     
     for gas in gases:
-        index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i]==gas)]
+        index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i].upper()==gas)]
         data=pd.DataFrame(index=index)
         for key in references:
             data[key]=pd.DataFrame(references[key].loc[reference,:][references[key].loc['gas',:]==gas].T.values,index=index,columns=[key])#.dropna(axis=1)

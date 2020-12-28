@@ -11,8 +11,9 @@ import copy
 
 def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
     presets=get_presets(PATHS['dir_home'], reference, TG_IR[0].ir)
-    params=['center_0','tol_c','hwhm_max','height_0','hwhm_0']
+    params=['center_0','tolerance_center','hwhm_max','height_0','hwhm_0']
     results=dict()
+    results['summary']=pd.DataFrame()
     variance=dict(zip(params,[var_T,var_T,var_T,var_rel,var_rel]))
     default=dict(zip(params,[0,BOUNDS.getfloat('tol_center'),BOUNDS.getfloat('hwhm_max'),BOUNDS.getfloat('height_0'),BOUNDS.getfloat('hwhm_0')]))
     
@@ -20,10 +21,10 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     print('Initial results:')
     res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
     for key in params:
-        results[key+'_init']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+        results[key+'_init']=res['mmol_per_mg']
     
-    results['center_0_minus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
-    results['center_0_plus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+    results['center_0_minus']=res['mmol_per_mg']
+    results['center_0_plus']=res['mmol_per_mg']
     gases=[key for key in presets]
 
     for key in params:
@@ -33,11 +34,11 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
             for gas in gases:
                 if key =='center_0':
                     for group in temp_presets[gas].index:
-                        print('\n {}:'.format(group))
+                        print('\n{}:'.format(group.capitalize()))
                         temp_presets[gas].loc[group]=presets[gas].loc[group]+i*np.array([variance[key], 0, 0, variance[key], 0, 0, variance[key], 0, 0])
                         res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
                         
-                        col=group+'_'+gas.upper()
+                        col=group+'_'+gas
                         if i==-1:
                             results[key+'_minus'][col]=res['mmol_per_mg'][col]
                         elif i==1:
@@ -46,7 +47,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                 else: 
                     if key=='hwhm_max':
                         temp_presets[gas]+=i*np.array([0, 0, 0, 0, 0, 0, 0, variance[key], 0])
-                    elif key=='tol_c':
+                    elif key=='tolerance_center':
                         temp_presets[gas]+=i*np.array([0, 0, 0, -variance[key], 0, 0, variance[key], 0, 0])
                     elif key in ['height_0','hwhm_0']:
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
@@ -54,52 +55,56 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
             if key !='center_0':
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 if i==-1:
-                    results[key+'_minus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+                    results[key+'_minus']=res['mmol_per_mg']
                 elif i==1:
-                    results[key+'_plus']=res['mmol_per_mg'].drop(['CO2'],axis=1)
+                    results[key+'_plus']=res['mmol_per_mg']
 
     #make subdirectory to save data
     if save:
         path=os.path.join(PATHS['dir_home'],'Robustness',time()+reference+'_{}_{}'.format(var_T,var_rel))
         os.makedirs(path)
         os.chdir(path)
-    with pd.ExcelWriter('robustness.xlsx') as writer:
-        for key in results:
-            results[key].to_excel(writer,sheet_name=key)
-    samples=[re.search('^.+(?=_mean)',index).group() for index in res['mmol_per_mg'].index if re.search('^.+(?=_mean)',index)!=None]     
+
+    samples=results['center_0_init'].index.levels[0]#[re.search('^.+(?=_mean)',index).group() for index in res['mmol_per_mg'].index if re.search('^.+(?=_mean)',index)!=None]     
     
     print('{0}\n{0}\nResults:\n{0}'.format('_'*30))
     for sample in samples:
-        x=['$T_m$','$\Delta T_m$','$HWHM_{max}$','$h_0$','$HWHM_0$']
-        x=dict(zip(params,x))
         print(sample)
+        labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height$','$HWHM_0$']
+        x=results['center_0_init'].columns.drop([gas for gas in gases])
         
-        for param in params:
-            data=dict()
-            data['minus']=dict({'x':[],'y':[],'yerr':[]})
-            data['init']=dict({'x':[],'y':[],'yerr':[]})
-            data['plus']=dict({'x':[],'y':[],'yerr':[]})
-        
-            for key in results:
-                for column in res['mmol_per_mg'].drop(['CO2'],axis=1).columns:#'adsorbed_CO2',
-                    if key.find(param)!=-1:
-                        data[key[key.rfind('_')+1:]].setdefault('x', []).append(column)
-                        data[key[key.rfind('_')+1:]].setdefault('y', []).append(results[key].loc[sample+'_mean',column])
-                        data[key[key.rfind('_')+1:]].setdefault('yerr', []).append(results[key].loc[sample+'_stddev',column])
+        data=dict()
+        data['mean']=pd.DataFrame(columns=x)
+        data['all']=pd.DataFrame(columns=x)
+        for param,label in zip(params,labels):
             fig=plt.figure()
-            plt.title('{}: {}'.format(sample,x[param]))
-            for key in data:
-                xticks=['{} {}'.format(group[:group.rfind('_')].capitalize(),get_label(group[group.rfind('_')+1:].lower())) for group in data[key]['x']]
-                plt.errorbar(xticks,data[key]['y'],yerr=data[key]['yerr'],label='{} {}'.format(key,variance[param] if key!='init' else default[param]),marker='x',capsize=10,ls='none')
+            plt.title('{}: {}'.format(sample,label))
+            for run in ['minus','init','plus']:
+                index='_'.join([param,run])
+                y=results[index].loc[sample,'mean',:].drop([gas for gas in gases],axis=1)
+                yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop([gas for gas in gases],axis=1)
+                yerr=results[index].loc[sample,'dev',:].drop([gas for gas in gases],axis=1)
+                xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
+                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(run,variance[param] if run!='init' else default[param]),marker='x',capsize=10,ls='none')
+                data['mean']=data['mean'].append(y)
+                data['all']=data['all'].append(yall)
             plt.ylim(ylim)
             plt.ylabel('${}\,{}^{{-1}}$'.format(UNITS['molar_amount'],UNITS['sample_mass']))
             plt.legend()
             plt.xticks(rotation=45)
             plt.tight_layout()
             plt.show()
-            # path=os.path.join(PATHS['dir_home'],'Robustness')
-            # if not os.path.exists(path):
-            #     os.makedirs(path)
             fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
+
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].mean(axis=0).rename('mean')).T}, names=['samples','run']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].std(axis=0).rename('meanstddev')).T}, names=['samples','run']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].std(axis=0).rename('stddev')).T}, names=['samples','run']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].min(axis=0).rename('min')).T}, names=['samples','run']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].max(axis=0).rename('max')).T}, names=['samples','run']))
+      
+    if save:
+        with pd.ExcelWriter('robustness.xlsx') as writer:
+            for key in results:
+                results[key].to_excel(writer,sheet_name=key)
     os.chdir(PATHS['dir_home'])
-    return
+    return 

@@ -26,7 +26,7 @@ class TG_IR:
                     self.linreg,self.stats = calibrate(mode='load')
                 except:
                     pass
-                print('\'{}\' successfully initialiazed{}.'.format(name,' and calibrated' if 'linreg' in self.__dict__ else ''))
+                print('\'{}\' successfully initialiazed.'.format(name))
 
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
@@ -52,7 +52,7 @@ class TG_IR:
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
-                print('IR data found for gases {}.\n'.format(', '.join([gas.upper() for gas in self.info['gases']])))
+                print('IR data found{} for gases {}.\n'.format(' and calibrated (*)' if 'linreg' in self.__dict__ else '',', '.join([gas+('*' if 'linreg' in self.__dict__ and gas in self.linreg.index else '') for gas in self.info['gases']])))
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:

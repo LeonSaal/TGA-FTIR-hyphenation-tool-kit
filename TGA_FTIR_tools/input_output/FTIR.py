@@ -12,7 +12,7 @@ def read_FTIR(file_name):
     gases=[]
     paths=[]
     for file in files:
-        gases.append(file[file.rfind('_')+1:file.rfind('.')].lower())
+        gases.append(file[file.rfind('_')+1:file.rfind('.')].upper())
         paths.append(file) 
 
     if gases==[]:

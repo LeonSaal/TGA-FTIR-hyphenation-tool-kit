@@ -286,12 +286,12 @@ def calibrate(plot=False,mode='load',method='max'):
                 linreg.loc[[gas]]=regression
 
         if method=='co_oxi':
-            x_cali['co'].update(x_cali['co']-((data.loc[(slice(None),1),'co2']-linreg.loc['co2','intercept'])/linreg.loc['co2','slope']).values)
+            x_cali['CO'].update(x_cali['CO']-((data.loc[(slice(None),1),'CO2']-linreg.loc['CO2','intercept'])/linreg.loc['CO2','slope']).values)
             
-            x=x_cali['co'].dropna(axis=0).astype(float)
-            y=y_cali['co'].dropna(axis=0).astype(float)
-            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['co'],columns=cols)
-            linreg.loc[['co']]=regression
+            x=x_cali['CO'].dropna(axis=0).astype(float)
+            y=y_cali['CO'].dropna(axis=0).astype(float)
+            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
+            linreg.loc[['CO']]=regression
         
         if method=='mlr':
             Y_cali=data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]

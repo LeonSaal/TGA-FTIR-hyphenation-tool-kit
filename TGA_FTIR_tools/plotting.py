@@ -75,6 +75,7 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
         fig.savefig(os.path.join(path_plots_tga,'{}_TG_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
 
 def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=[None,None],legend=True):
+    gases=[gas.upper() for gas in gases]
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     x=copy.deepcopy(TG_IR.ir[x_axis])
@@ -87,7 +88,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         if y_axis=='rel':
             intersection=calibrated &  on_axis
             if len(on_axis - calibrated)!=0:
-                print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
+                print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),' and '.join([gas for gas in intersection])))
             gases=list(intersection)
         elif y_axis=='orig':
             gases=list(on_axis)
@@ -96,10 +97,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             gases=set(gases)
             intersection=calibrated &  on_axis & gases
             if len(gases - calibrated)!=0:
-                print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
+                print('{} not calibrated.'.format(' and '.join([gas for gas in (gases - calibrated)])))
             if len(intersection)!=0:
-                print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
-                gases=[gas.lower() for gas in intersection]
+                print('Proceeding with {}.'.format(' and '.join([gas for gas in intersection])))
+                gases=intersection
             else:
                 print('None of supplied gases was found in IR data and calibrated.')
                 return
@@ -107,10 +108,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             gases=set(gases)
             intersection = on_axis & gases
             if len(gases - on_axis)!=0:
-                print('{} not found in IR data.'.format(' and '.join([gas.upper() for gas in (gases - on_axis)])))
+                print('{} not found in IR data.'.format(' and '.join([gas for gas in (gases - on_axis)])))
             if len(intersection)!=0:
-                print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
-                gases=[gas.lower() for gas in intersection]
+                print('Proceeding with {}.'.format(' and '.join([gas for gas in intersection])))
+                gases=intersection
             else:
                 print('None of supplied gases was found in IR data.')   
                 return
@@ -167,6 +168,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
 def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
+    gases=[gas.upper() for gas in gases]
     try:
         calibrated=set(TG_IR.linreg.index)
     except:
@@ -175,16 +177,16 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     if len(gases) == 0:
         intersection=calibrated &  on_axis
         if calibrated != on_axis:
-            print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas.upper() for gas in list(on_axis - calibrated)]),' and '.join([gas.upper() for gas in intersection])))
+            print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),' and '.join([gas for gas in intersection])))
         gases=intersection
     
     else:
         intersection=calibrated &  on_axis & gases
         if len(gases-calibrated)!=0:
-            print('{} not calibrated.'.format(' and '.join([gas.upper() for gas in (gases - calibrated)])))
+            print('{} not calibrated.'.format(' and '.join([gas for gas in (gases - calibrated)])))
         if len(intersection)!=0:
-            print('Proceeding with {}.'.format(' and '.join([gas.upper() for gas in intersection])))
-            gases=[gas.lower() for gas in intersection]
+            print('Proceeding with {}.'.format(' and '.join([gas for gas in intersection])))
+            gases=intersection
         else:
             print('None of supplied gases was found in IR data and calibrated.')
             return
@@ -253,13 +255,13 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
             print('Supply \'gas = \'')
             return
         else:
-            gas=gas.lower()
+            gas=gas.upper()
             if gas not in TG_IR[0].ir.columns:
-                print('{} was not found in IR data.'.format(gas.upper()))
+                print('{} was not found in IR data.'.format(gas))
                 return
         if y_axis=='rel':
             if gas not in TG_IR[0].linreg.index:
-                print('{} is not calibrated.'.format(gas.upper()))
+                print('{} is not calibrated.'.format(gas))
                 return
     fig,ax=plt.subplots()
     ax.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
