@@ -42,7 +42,7 @@ def corr_TGA(TGA,file_baseline,plot=False):
         
     return corr_data
 
-def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
+def corr_FTIR(FTIR,file_baseline,plot=False):
     #opens FTIR data of the baseline and takes the 'CO2' column
     corr_data=FTIR.copy()
     try:
@@ -117,7 +117,6 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
             x=FTIR['time']
         y=co2_baseline
 
-        
         plt.plot(x,FTIR['CO2'],label='data')
         plt.plot(x,baseline[:len(x)], label='baseline')
         plt.plot(x,y,label='corr. baseline')#,alpha=.5)
@@ -152,15 +151,6 @@ def corr_FTIR(FTIR,file_baseline,save=False,plot=False):
         plt.title('$H_2O$ baseline correction')
         plt.show()
 
-    
-    if save==True:
-        out=pd.DataFrame()
-        out['time']=x
-        out['data']=FTIR['CO2']
-        out['baseline']=baseline[:len(x)]
-        out['corr_baseline']=co2_baseline
-        out['corr_data']=corr_data['CO2']
-        out.to_excel('baseline.xlsx')
     return corr_data
 
 

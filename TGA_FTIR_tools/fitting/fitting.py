@@ -35,11 +35,19 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
         w = p * (y > z) + (1-p) * (y < z)
     return z
 
-def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
+def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,predef_tol=0.01):
+    data=[]
+    for key in presets:
+        data+=[presets[key].loc[:,'link'].rename(key)]
+    links=pd.concat(data,axis=1)
+    links=links.replace(0,np.nan).dropna(thresh=1)
+    if links.dropna(axis=1).empty:
+        print('You cannnot predefine fitting parameters for all supplied gases!')
+        links=pd.DataFrame()
     gases=[key for key in presets]
-    if ('CO2' in gases) and ('CO' in gases):
-        gases.remove('CO2')
-        gases.insert(0,'CO2')
+    for gas in links.dropna(axis=1).columns:
+        gases.remove(gas)
+        gases.append(gas)
     #thresholds for fit parameters
     ref_mass=TG_IR.info['reference_mass']
     
@@ -50,13 +58,17 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
     #cycling through gases
     FTIR=TG_IR.ir.copy()
     for gas in gases:
+        # correction of water-signal drift
         if gas=='H2O':
             FTIR[gas]-=baseline_als(FTIR[gas])
             
-        #molar desorption
+        ## molar desorption
         tot_area=np.sum(TG_IR.ir[gas])
+    
         if gas == 'H2O':
+            # total area of water is calculated above dry-point
             tot_area=np.sum(TG_IR.ir[gas][TG_IR.ir['sample_temp']>TG_IR.info['dry_temp']])
+            
         tot_mol=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]
         peaks['area'][gas]=tot_area
         peaks['mmol'][gas]=tot_mol
@@ -64,19 +76,43 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
         
         if y_axis=='rel':
             FTIR.update(FTIR[gas]/tot_area*tot_mol)
-          
-        #guesses and bounds
+        
+        # predefining guesses and bounds
+        if gas in links.dropna(axis=1).columns:
+            df=links.loc[:,gas].dropna()
+            for group in df.index:
+                other=links.columns[links.loc[group].isna()].values[0]
+                for letter in df[group]:
+                    if letter=='c':
+                        param='center'
+                    if letter=='w':
+                        param='hwhm'
+                    if letter=='h':
+                        param='height'
+                    if param=='height':
+                        preset=peaks.loc['{}_{}'.format(group,other),param]/TG_IR.linreg['slope'][other]*TG_IR.linreg['slope'][gas]
+                    else:
+                        preset=peaks.loc['{}_{}'.format(group,other),param]
+                    presets[gas].loc[group,'{}_0'.format(param)]=preset 
+                    presets[gas].loc[group,'{}_min'.format(param)]=preset*(1-predef_tol)
+                    presets[gas].loc[group,'{}_max'.format(param)]=preset*(1+predef_tol)
+
+        #guesses 
         params_0=np.concatenate(([presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
+        # ...and bounds
         params_min=np.concatenate(([presets[gas].loc[:,key+'_min'] for key in ['height', 'center', 'hwhm']])) 
         params_max=np.concatenate(([presets[gas].loc[:,key+'_max'] for key in ['height', 'center', 'hwhm']])) 
-  
+        
+
+        
         #actual fitting
         x=FTIR['sample_temp']
         #try:
         popt,pcov=sp.optimize.curve_fit(func,x,FTIR[gas],p0=params_0,bounds=(params_min,params_max))
-       # except:
-          #  print('Failed to fit {} signal'.format(gas))
-           # break
+        # except:
+        #     print('Failed to fit {} signal'.format(gas))
+        #     break
+        
         #return values
         num_curves=len(presets[gas])
         for i in range(num_curves):
@@ -154,7 +190,15 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True):
                 with pd.ExcelWriter(f_name,engine='openpyxl') as writer:
                     profiles.to_excel(writer,sheet_name=gas)
                     presets[gas].to_excel(writer,sheet_name=gas+'_param')
-
+                    
+    #calculate summarized groups
+    groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
+    for group in groups:
+        group_set=peaks[['mmol','mmol_per_mg']].loc[peaks.index.map(lambda x: x.startswith(group))]
+        if len(group_set)>1:
+            peaks=peaks.append(pd.DataFrame(group_set.sum(axis=0).rename(group+'_sum')).T)
+            peaks=peaks.append(pd.DataFrame(group_set.mean(axis=0).rename(group+'_mean')).T)
+    
     if save:                
         with pd.ExcelWriter(f_name,engine='openpyxl', mode='a') as writer:
                 peaks.astype(float).to_excel(writer,sheet_name='summary')
@@ -177,12 +221,12 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
         os.makedirs(path)
         os.chdir(path)
     
-    sample_re='^.+(?=_\d{2,3})'
-    num_re='(?<=_)\d{2,3}$'
+    sample_re='^.+(?=_\d{1,3})'
+    num_re='(?<=_)\d{1,3}$'
     #cycling through samples
     for obj in TG_IR:
         #fitting of the sample and calculating the amount of functional groups
-        name=obj.info['name']
+        name=obj.info['alias']
         sample=re.search(sample_re,name).group()
         num=re.search(num_re,name).group()
         peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
@@ -192,26 +236,27 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
             res[key]=res[key].append(pd.concat({sample:pd.DataFrame(peaks[key].rename(num)).T}, names=['samples','run']))  
         err=err.append(pd.concat({sample:sumsqerr.rename({name:num})}, names=['samples','run']))
         
-    
     # calculate statistical values
     dm=COUPLING.getfloat('mass_resolution')*1e-3
     for key in res:
-        res[key].sort_index()
-        sample_re='^.+(?=_\d{2,3})'
         samples=res[key].index.levels[0]
         for sample in samples:
             
             if key=='mmol_per_mg':
-                group_gas=[column[column.rfind('_')+1:] for column in res[key].columns]
+                drop_cols=[col for col in res[key].columns if ('_sum' in col) or ('_mean' in col)]
+                columns=res[key].columns.drop(drop_cols)
+                group_gas=[column[column.rfind('_')+1:] for column in columns]
+
                 lod=[TG_IR[0].stats['x_LOD'][gas] for gas in group_gas]
-                subset=res['mmol_per_mg'].loc[sample]
-                mmol=res['mmol'].loc[sample]#res['mmol'][column].loc[indices]
+                subset=res['mmol_per_mg'].loc[sample,columns]
+                mmol=res['mmol'].loc[sample,columns]#res['mmol'][column].loc[indices]
                 g=mmol/subset
                 
                 dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
                 dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
-                
-                stddev=pd.DataFrame(dmmol.rename('dev')).T
+            
+                stddev=pd.concat([pd.DataFrame(dmmol.rename('dev')).T,pd.DataFrame(res[key].loc[sample,drop_cols].std().rename('dev')).T],axis=1)
+
             else:
                 stddev=pd.DataFrame(res[key].loc[sample].std().rename('stddev')).T
             mean=pd.DataFrame(res[key].loc[sample].mean().rename('mean')).T
@@ -249,7 +294,8 @@ def get_presets(path,reference,FTIR):
             'height_min', 
             'center_max',
             'hwhm_max', 
-            'height_max']
+            'height_max',
+            'link']
         vals=[pd.Series(presets[gas].loc[:,'height_max']).fillna(max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max'))*BOUNDS.getfloat('height_0'),
               pd.Series(presets[gas].loc[:,'hwhm_max']).fillna(BOUNDS.getfloat('hwhm_max'))*BOUNDS.getfloat('hwhm_0'),
               pd.Series(presets[gas].loc[:,'center_0']-BOUNDS.getfloat('tol_center')), 
@@ -257,7 +303,8 @@ def get_presets(path,reference,FTIR):
               BOUNDS.getfloat('height_min'), 
               pd.Series(presets[gas].loc[:,'center_0']+BOUNDS.getfloat('tol_center')), 
               BOUNDS.getfloat('hwhm_max'), 
-              max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max')]
+              max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max'),
+              0]
         infill=dict(zip(params,vals))
         presets[gas]=presets[gas].fillna(infill).dropna()
         if presets[gas].empty:

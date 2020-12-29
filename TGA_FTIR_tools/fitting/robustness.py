@@ -71,7 +71,8 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     for sample in samples:
         print(sample)
         labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height$','$HWHM_0$']
-        x=results['center_0_init'].columns.drop([gas for gas in gases])
+        drop_cols=[gas for gas in gases]#+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
+        x=results['center_0_init'].columns.drop(drop_cols)
         
         data=dict()
         data['mean']=pd.DataFrame(columns=x)
@@ -81,9 +82,9 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
             plt.title('{}: {}'.format(sample,label))
             for run in ['minus','init','plus']:
                 index='_'.join([param,run])
-                y=results[index].loc[sample,'mean',:].drop([gas for gas in gases],axis=1)
-                yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop([gas for gas in gases],axis=1)
-                yerr=results[index].loc[sample,'dev',:].drop([gas for gas in gases],axis=1)
+                y=results[index].loc[sample,'mean',:].drop(drop_cols,axis=1)
+                yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop(drop_cols,axis=1)
+                yerr=results[index].loc[sample,'dev',:].drop(drop_cols,axis=1)
                 xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
                 plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(run,variance[param] if run!='init' else default[param]),marker='x',capsize=10,ls='none')
                 data['mean']=data['mean'].append(y)

@@ -56,53 +56,59 @@ def TGA_info(file,TGA,profile='Otto'):
     header=str(pd.read_table(path,encoding='ansi',skiprows=skipheader,nrows=1,index_col=False,names=[0],engine='python').iloc[0,0])
     info={}
     info['name']=file
-    info['date']=re.search('(?<=,\s)\S+(?=\s)',header).group()#header[header.find(',')+2:header.rfind(' ')].strip()
-    info['time']=re.search('(?<=\s)\S+$',header).group()#header[header.rfind(' ')+1:].strip()
-    method_name=str(footer.iloc[2,0]).strip()
-    info['method_name']=method_name
+    info['date']=re.search('\d{2}\.\d{2}\.\d{2}',header).group()
+    info['time']=re.search('\d{2}:\d{2}:\d{2}',header).group()
+    method=str(footer.iloc[2,0]).strip()
+    info['method']=method
     info['initial_mass']=pd.to_numeric(re.search('(?<=\s)\S+(?=\smg)',footer.iloc[0,0]).group().replace(',','.'))#str(footer).strip()
+    
     #if the sample wasn't weighed in automatically, the mass at t=0 is used instead
     if info['initial_mass']==0:
         info['initial_mass']=TGA['sample_mass'][0]
     info['reference_mass']='initial_mass'
-
+    
     # extract method info from method
     last_i=0
     values=[]
     parameters=[]
-    for i in range(len(method_name)):
-        if method_name[i]=='=':
+    for i in range(len(method)):
+        if method[i]=='=':
             parameters.append('background_state')
             
-        elif method_name[i]=='<':
+        elif method[i]=='<':
             parameters.append('lower_temp')
             
-        elif (method_name[i]=='>') or (method_name[i]=='/'):
+        elif (method[i]=='>') or (method[i]=='('):
             parameters.append('high_temp')
+            
+        elif (method[i]=='/') and (method[last_i-1]=='<'):
+            parameters.append('high_temp')  
         
-        elif (method_name[i]==')') and (method_name[last_i-1]=='('):
+        elif (method[i]==')') and (method[last_i-1]=='('):
             parameters.append('method_gas')
             
-        elif (method_name[i]=='(') and (method_name[last_i-1]=='/'):
+        elif (method[i]=='/'):
             parameters.append('gradient')
-            
-        elif (method_name[i]=='/') and (method_name[last_i-1]=='<'):
-            parameters.append('high_temp')
-            
-        if (method_name[i] in '=<>()/')==True:
-            val=method_name[last_i:i]
+
+        if method[i] in '=<>()/_' and i-last_i>=1:
+            val=method[last_i:i]
             if val.isnumeric()==True:
                 val=int(val)
             values.append(val)
             last_i=i+1
-    
+            if method[i]=='_':
+                break
+        if i-last_i==0 and method[i] in '=<>()/_' and method[last_i] in '=<>()/_':
+            last_i=i+1
+
     parameters.append('crucible')
-    values.append(method_name[method_name.rfind('_')+1:])
+    values.append(method[last_i:])
     try:
-        info['background_delay']=int(re.search('^\d+(?==)',method_name).group())
+        info['background_delay']=int(re.search('^\d+(?==)',method).group())
     except:
         info['background_delay']=COUPLING.getint('background_delay')
-    info['method_gases']=[values[index].lower() for index in range(len(parameters)) if parameters[index]=='method_gas']
+
+    info['method_gases']=[values[index].upper() for index in range(len(parameters)) if parameters[index]=='method_gas']
     info['switch_temp']=[values[index] for index in range(len(parameters)) if parameters[index]=='high_temp']
     
     return info
@@ -118,7 +124,6 @@ def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,No
         if how=='H2O':
             try:
                 ref=TG_IR.ir.filter(items=['sample_temp','H2O'])
-                #ref['H2O']/=TG_IR.linreg['slope']['H2O']*18/15/TG_IR.info['initial_mass']
                 ylabel=get_label(how)
             except:
                 #print('No water signal found. Falling back to DTG.')

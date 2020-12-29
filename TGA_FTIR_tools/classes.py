@@ -26,8 +26,8 @@ class TG_IR:
                     self.linreg,self.stats = calibrate(mode='load')
                 except:
                     pass
-                print('\'{}\' successfully initialiazed.'.format(name))
-
+                print('\n\'{}\' successfully initialiazed.'.format(name))
+                
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
                 except:
@@ -41,14 +41,12 @@ class TG_IR:
                     self.info['method_gases']=['? method_gas ?']
                 try:
                     TGA.dry_weight(self,**kwargs)
-                    #print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
                 except:
                     pass
         
             except:
                 del self.tga
-                #print('No TG data for {} was found'.format(name))
-
+        
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
@@ -90,7 +88,7 @@ class TG_IR:
                 self.__dict__[key]=obj.__dict__[key]
                
         
-    def corr(self,reference='load',**kwargs):
+    def corr(self,reference='load',plot=False,**kwargs):
         if 'reference' in self.info:
             print('Sample has already been corrected! Re-initialise object for correction.')
             return
@@ -105,13 +103,13 @@ class TG_IR:
         # correction of data
         self.info['reference']=reference
         try:
-            self.tga=corrections.corr_TGA(self.tga,reference)
+            self.tga=corrections.corr_TGA(self.tga,reference,plot=plot)
             self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
         except:
             print('Failed to correct TG data.')
             
         try:
-            self.ir=corrections.corr_FTIR(self.ir,reference)
+            self.ir=corrections.corr_FTIR(self.ir,reference,plot=plot)
         except:
             print('Failed to correct IR data.')
             
@@ -130,15 +128,22 @@ class TG_IR:
         except:
             print('Failed to derive IR info.')
             
-    def get_value(self,values, which='sample_mass', at='sample_temp'):
-        if type(values)==int:
-            values=list(values)
+    def get_value(self,*values, which='sample_mass', at='sample_temp'):
+        #if type(values)==int:
+           # values=[values]
             
-        out = pd.DataFrame(index=pd.Index(values,name=at),columns=[which])
+        out = pd.DataFrame(index=[which],columns=pd.Index(values,name=at))
         for value in values:
-            out.loc[value,which]=self.tga[which][self.tga[at]>=value].values[0]
+            out.loc[which,value]=self.tga[which][self.tga[at]>=value].values[0]
     
         return out
+    def dry_weight(self,**kwargs):
+        try:
+            TGA.dry_weight(self,**kwargs)
+            print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+
+        except:
+            print('Failed to derive TG info.')
                 
     def plot(self,which,**kwargs):
         options=['TG', 'heat_flow', 'IR', 'DIR', 'cumsum', 'IR_to_DTG']

@@ -1,6 +1,8 @@
 import configparser
+import os
+file='settings.ini'
 config = configparser.ConfigParser()
-config.read('settings.ini')
+config.read(file)
 
 PATHS=config['paths']
 
@@ -28,3 +30,13 @@ SAVGOL=config['savgol']
 
 BOUNDS=config['fitting']
 
+if PATHS['dir_home']=='':
+    cwd=os.getcwd().replace(os.sep,os.altsep)
+    print('No dir_home path was supplied in {}. dir_home was set to \'{}\''.format(file,cwd))
+    config['paths']['dir_home']=cwd
+if PATHS['dir_data']=='':
+    print('\nNo dir_data path was supplied in {}.'.format(file))
+    config['paths']['dir_data']=input('Supply directory of Data:').replace(os.sep,os.altsep)
+
+with open(file, 'w') as configfile:
+    config.write(configfile)

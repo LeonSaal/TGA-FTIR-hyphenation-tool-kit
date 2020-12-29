@@ -62,8 +62,6 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
     TGA.yaxis.label.set_color(gTGA.get_color())
     DTG.yaxis.label.set_color(gDTG.get_color())
     
-   # graphss=[gTGA,gDTG]
-    
     TGA.set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     plt.show()
     
@@ -75,7 +73,7 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
         fig.savefig(os.path.join(path_plots_tga,'{}_TG_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
 
 def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=[None,None],legend=True):
-    gases=[gas.upper() for gas in gases]
+    gases=set([gas.upper() for gas in gases])
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     x=copy.deepcopy(TG_IR.ir[x_axis])
@@ -89,9 +87,9 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             intersection=calibrated &  on_axis
             if len(on_axis - calibrated)!=0:
                 print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),' and '.join([gas for gas in intersection])))
-            gases=list(intersection)
+            gases=intersection
         elif y_axis=='orig':
-            gases=list(on_axis)
+            gases=on_axis
     else:
         if y_axis=='rel':
             gases=set(gases)
@@ -115,7 +113,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             else:
                 print('None of supplied gases was found in IR data.')   
                 return
-            
+    gases=list(gases)        
         
     #setup figure and plot first gas
     graphs=[]
@@ -168,7 +166,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
 def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
-    gases=[gas.upper() for gas in gases]
+    gases=set([gas.upper() for gas in gases])
     try:
         calibrated=set(TG_IR.linreg.index)
     except:
@@ -235,7 +233,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     error.hlines(0,min(x),max(x),ls='dashed')
     error.set_ylabel('$\Delta$ {}'.format(PARAMS['dtg']))
     stack.set_xlim(xlim)
-    fig.show()
+    plt.show()
     if save:
         path_plot_irdtg=os.path.join(PATHS['dir_plots'],'IRDTG')
         if os.path.exists(path_plot_irdtg)==False:
