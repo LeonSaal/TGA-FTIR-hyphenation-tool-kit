@@ -6,10 +6,11 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 from .general import find_files
-from ..config import PATHS, COUPLING, DPI, PARAMS, UNITS, SEP
+from ..config import PATHS, COUPLING, DPI, PARAMS, UNITS, SEP, SAVGOL
 from ..plotting import get_label
 
-
+WINDOW_LENGTH=SAVGOL.getint('window_length')
+POLYORDER=SAVGOL.getint('POLYORDER')
 
 def read_TGA(file,profile='Otto'):
     #open file from TGA in given directory and make a DataFrame from it
@@ -113,31 +114,31 @@ def TGA_info(file,TGA,profile='Otto'):
     
     return info
 
-def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,None],ylim=[None,None]):
-    if how=='h2o':
-        how=how.upper()
-    if type(how)==type(None):
+def dry_weight(TG_IR,how_dry='H2O',plot=False,ref_mass='dry_mass',save=False,xlim=[None,None],ylim=[None,None]):
+    if how_dry=='h2o':
+        how_dry=how_dry.upper()
+    if type(how_dry)==type(None):
         dry_point=0
-    elif type(how)!=str:
-        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how].values[0]
+    elif type(how_dry)!=str:
+        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how_dry].values[0]
     else :
-        if how=='H2O':
+        if how_dry=='H2O':
             try:
                 ref=TG_IR.ir.filter(items=['sample_temp','H2O'])
-                ylabel=get_label(how)
+                ylabel=get_label(how_dry)
             except:
                 #print('No water signal found. Falling back to DTG.')
-                how='sample_mass'
+                how_dry='sample_mass'
         
-        if how=='sample_mass':
+        if how_dry=='sample_mass':
             ref=TG_IR.tga.filter(items=['sample_temp','sample_mass'])
-            ref['sample_mass']=-sp.signal.savgol_filter(TG_IR.tga['sample_mass']/TG_IR.info['initial_mass'], 51, 3, deriv=1)
+            ref['sample_mass']=-sp.signal.savgol_filter(TG_IR.tga['sample_mass']/TG_IR.info['initial_mass'], WINDOW_LENGTH, POLYORDER, deriv=1)
             ylabel='DTG'
-        min_T=ref['sample_temp'][ref[how]>=max(ref[how][(ref['sample_temp']>50) & (ref['sample_temp']<200)])].values[0]
+        min_T=ref['sample_temp'][ref[how_dry]>=max(ref[how_dry][(ref['sample_temp']>50) & (ref['sample_temp']<200)])].values[0]
         max_T=min_T+50
 
         x=ref['sample_temp'][(ref['sample_temp']>min_T) & (ref['sample_temp']<max_T)]
-        y=ref[how][(ref['sample_temp']>min_T) & (ref['sample_temp']<max_T)]
+        y=ref[how_dry][(ref['sample_temp']>min_T) & (ref['sample_temp']<max_T)]
         slope,intercept,r_val,p_val,std_err =sp.stats.linregress(x,y)
 
         dry_point=ref['sample_temp'][ref['sample_temp'] >=-intercept/slope].index[0]
@@ -147,18 +148,18 @@ def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,No
     dry_temp=TG_IR.tga['sample_temp'][dry_point]
     names=['dry']+TG_IR.info['method_gases']
     info={}
-    if (how=='H2O') or (how=='sample_mass') or (type(how)!=str):
+    if (how_dry=='H2O') or (how_dry=='sample_mass') or (type(how_dry)!=str):
         times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=['dry']+TG_IR.info['method_gases']
         info['dry_mass']=TG_IR.tga['sample_mass'][dry_point]
         info['reference_mass']='dry_mass'
         info['dry_temp']=dry_temp
         info['dry_time']=dry_point
-    elif how==None:
+    elif how_dry==None:
         info['reference_mass']='initial_mass'
         times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=TG_IR.info['method_gases']   
-    if ref_mass!=None:
+    if ref_mass!='dry_mass':
         info['reference_mass']=ref_mass
     weights=TG_IR.tga['sample_mass'][TG_IR.tga.index.isin(times)].values
     mass_loss=abs(np.diff(weights))
@@ -187,9 +188,9 @@ def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,No
         plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         plt.ylim(ylim)
-        if type(how)==str:
+        if type(how_dry)==str:
             ax2=plt.twinx()
-            ax2.plot(ref['sample_temp'],ref[how],linestyle='dashed',label=ylabel)
+            ax2.plot(ref['sample_temp'],ref[how_dry],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
         plt.xlim(xlim)
         plt.title('Dry mass determination')
