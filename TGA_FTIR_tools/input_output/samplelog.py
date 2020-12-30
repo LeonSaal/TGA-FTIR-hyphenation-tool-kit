@@ -12,11 +12,13 @@ def samplelog(info=None,overwrite=False):
     except:
         print('> \'Samplelog.xlsx\' was not found. New file was created under \'{}\'.'.format(path))
         samplelog=pd.DataFrame(columns=['alias','reference'])
+        samplelog.index.name='name'
         samplelog.to_excel(path)
         
     if info!=None:
         name=info['name']
         data=pd.DataFrame.from_dict(info,orient='index',columns=[name]).T.drop(['name'],1)
+        data.index.name='name'
         
         for key in data.columns:
             if key not in samplelog.columns:

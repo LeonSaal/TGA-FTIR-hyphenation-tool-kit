@@ -192,6 +192,7 @@ def dry_weight(TG_IR,how='H2O',plot=False,ref_mass=None,save=False,xlim=[None,No
             ax2.plot(ref['sample_temp'],ref[how],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
         plt.xlim(xlim)
+        plt.title('Dry mass determination')
         plt.legend()
         plt.show()   
                 

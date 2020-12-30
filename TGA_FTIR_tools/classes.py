@@ -108,14 +108,14 @@ class TG_IR:
         except:
             print('Failed to correct TG data.')
             
-        try:
-            self.ir=corrections.corr_FTIR(self.ir,reference,plot=plot)
-        except:
-            print('Failed to correct IR data.')
+        # try:
+        self.ir.update(corrections.corr_FTIR(self.ir,reference,plot=plot))
+        # except:
+        #     print('Failed to correct IR data.')
             
         # filling TG_IR.info
         try:
-            TGA.dry_weight(self,**kwargs)
+            TGA.dry_weight(self,plot=plot,**kwargs)
             print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
             success=True
         except:

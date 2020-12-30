@@ -8,6 +8,8 @@ import copy
 from .config import PATHS, DPI,LABELS, SEP, UNITS, PARAMS, MOLAR_MASS, SAVGOL
 from .input_output.general import time
 
+WINDOW_LENGTH=SAVGOL.getint('window_length')
+POLYORDER=SAVGOL.getint('POLYORDER')
 
 def get_label(key):
     if key in LABELS:
@@ -166,7 +168,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
 def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
-    gases=set([gas.upper() for gas in gases])
+    gases_temp=set([gas.upper() for gas in gases])
     try:
         calibrated=set(TG_IR.linreg.index)
     except:
@@ -176,19 +178,21 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         intersection=calibrated &  on_axis
         if calibrated != on_axis:
             print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),' and '.join([gas for gas in intersection])))
-        gases=intersection
+        gases_temp=list(intersection)
     
     else:
-        intersection=calibrated &  on_axis & gases
-        if len(gases-calibrated)!=0:
-            print('{} not calibrated.'.format(' and '.join([gas for gas in (gases - calibrated)])))
+        intersection=calibrated &  on_axis & gases_temp
+        if len(gases_temp-calibrated)!=0:
+            print('{} not calibrated.'.format(' and '.join([gas for gas in (gases_temp - calibrated)])))
         if len(intersection)!=0:
-            print('Proceeding with {}.'.format(' and '.join([gas for gas in intersection])))
-            gases=intersection
+            print('Proceeding with {}.'.format(' and '.join([gas for gas in intersection]))) 
+            gases_temp=list(intersection)
+            gases_temp.sort(key = lambda i: gases.index(i) if i in gases else len(gases))
         else:
             print('None of supplied gases was found in IR data and calibrated.')
             return
-
+    
+    gases=gases_temp
     data=pd.merge(TG_IR.tga,TG_IR.ir,how='left',on=['time','sample_temp']).dropna()
     DTG=-sp.signal.savgol_filter(data['sample_mass'], 13, 3, deriv=1)
     
@@ -242,8 +246,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True):
-    #out=pd.DataFrame()
+def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True,reference_mass='reference_mass'):
     if plot=='TG':
         ylabel='sample_mass'
     else:
@@ -277,6 +280,11 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
             
             
     for obj in TG_IR:
+        if reference_mass=='reference_mass':
+            ref_mass=obj.info[obj.info[reference_mass]]
+        else:
+            ref_mass=obj.info[reference_mass]
+            
         if plot=='TG':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
@@ -284,7 +292,16 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
             if y_axis=='orig':
                 y=obj.tga['sample_mass']
             elif y_axis=='rel':
-                y=obj.tga['sample_mass']/obj.info[obj.info['reference_mass']]
+                y=100*obj.tga['sample_mass']/ref_mass
+            ax.plot(x,y,label=obj.info['alias'])
+        if plot=='DTG':
+            x=copy.deepcopy(obj.tga[x_axis])
+            if x_axis=='time':
+                x/=60
+            if y_axis=='orig':
+                y=-60*sp.signal.savgol_filter(obj.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+            elif y_axis=='rel':
+                y=-60*sp.signal.savgol_filter(100*obj.tga['sample_mass']/ref_mass,WINDOW_LENGTH,POLYORDER,deriv=1)
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='heat flow':
             x=copy.deepcopy(obj.tga[x_axis])
@@ -293,7 +310,7 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
             if y_axis=='orig':
                 y=obj.tga['heat_flow']
             elif y_axis=='rel':
-                y=obj.tga['heat_flow']/obj.info[obj.info['reference_mass']]
+                y=obj.tga['heat_flow']/ref_mass
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='IR':
             x=copy.deepcopy(obj.ir[x_axis])
@@ -301,9 +318,9 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
                 x/=60
             if y_axis=='orig':
                 y=obj.ir[gas]
-                ax.plot(x,y,label=obj.info['alias'])#+', dry mass: '+str(round(obj.info['reference_mass'],2))+' mg'
+                ax.plot(x,y,label=obj.info['alias'])
             elif y_axis=='rel':
-                y=obj.ir[gas]/obj.linreg['slope'][gas]/obj.info[obj.info['reference_mass']]
+                y=obj.ir[gas]/obj.linreg['slope'][gas]/ref_mass
                 ax.plot(x,y,label='{}, {:.2f} {}'.format(obj.info['alias'],obj.info['initial_mass'],UNITS['sample_mass']))
             
         

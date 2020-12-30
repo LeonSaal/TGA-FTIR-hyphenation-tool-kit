@@ -32,10 +32,13 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
             print('{}\n{} {:+}:'.format('_'*30,key,variance[key]*i))
             temp_presets=copy.deepcopy(presets)
             for gas in gases:
+                links=temp_presets[gas].pop('link')
                 if key =='center_0':
                     for group in temp_presets[gas].index:
                         print('\n{}:'.format(group.capitalize()))
-                        temp_presets[gas].loc[group]=presets[gas].loc[group]+i*np.array([variance[key], 0, 0, variance[key], 0, 0, variance[key], 0, 0])
+                        temp_presets[gas].drop('link',axis=1,inplace=True,errors='ignore')
+                        temp_presets[gas].loc[group]=presets[gas].drop('link',axis=1).loc[group]+i*np.array([variance[key], 0, 0, variance[key], 0, 0, variance[key], 0, 0])
+                        temp_presets[gas]=pd.concat([temp_presets[gas],links],axis=1)
                         res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
                         
                         col=group+'_'+gas
@@ -53,6 +56,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
                         
             if key !='center_0':
+                temp_presets[gas]=pd.concat([temp_presets[gas],links],axis=1)
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 if i==-1:
                     results[key+'_minus']=res['mmol_per_mg']

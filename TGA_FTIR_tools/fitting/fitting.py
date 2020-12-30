@@ -40,8 +40,8 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
     for key in presets:
         data+=[presets[key].loc[:,'link'].rename(key)]
     links=pd.concat(data,axis=1)
-    links=links.replace(0,np.nan).dropna(thresh=1)
-    if links.dropna(axis=1).empty:
+    links=links.replace('0',np.nan).dropna(thresh=1)
+    if links.dropna(axis=1).empty and not links.empty:
         print('You cannnot predefine fitting parameters for all supplied gases!')
         links=pd.DataFrame()
     gases=[key for key in presets]
@@ -227,8 +227,17 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
     for obj in TG_IR:
         #fitting of the sample and calculating the amount of functional groups
         name=obj.info['alias']
-        sample=re.search(sample_re,name).group()
-        num=re.search(num_re,name).group()
+        sample=re.search(sample_re,name)
+        num=re.search(num_re,name)
+        if sample!=None:
+            sample=sample.group()
+        else:
+            sample=name
+        if num!=None:
+            num=num.group()
+        else:
+            num=0
+
         peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
 
         #writing data to output DataFrames
@@ -304,7 +313,7 @@ def get_presets(path,reference,FTIR):
               pd.Series(presets[gas].loc[:,'center_0']+BOUNDS.getfloat('tol_center')), 
               BOUNDS.getfloat('hwhm_max'), 
               max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max'),
-              0]
+              '0']
         infill=dict(zip(params,vals))
         presets[gas]=presets[gas].fillna(infill).dropna()
         if presets[gas].empty:
