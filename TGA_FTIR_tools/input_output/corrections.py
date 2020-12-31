@@ -109,7 +109,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
             thresh=IR_NOISE.getfloat(gas.lower())
         else:
             thresh=np.median(baseline[gas]-min(baseline[gas]))
-        print(gas,thresh)
+
         corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
 
         ###plotting of baseline, data and the corrected data
