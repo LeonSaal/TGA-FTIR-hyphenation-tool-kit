@@ -129,9 +129,6 @@ class TG_IR:
             print('Failed to derive IR info.')
             
     def get_value(self,*values, which='sample_mass', at='sample_temp'):
-        #if type(values)==int:
-           # values=[values]
-            
         out = pd.DataFrame(index=[which],columns=pd.Index(values,name=at))
         for value in values:
             out.loc[which,value]=self.tga[which][self.tga[at]>=value].values[0]

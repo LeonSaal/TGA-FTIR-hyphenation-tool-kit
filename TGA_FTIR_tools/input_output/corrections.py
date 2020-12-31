@@ -44,14 +44,14 @@ def corr_TGA(TGA,file_baseline,plot=False):
 
 def corr_FTIR(FTIR,file_baseline,plot=False):
     #opens FTIR data of the baseline and takes the 'CO2' column
-    corr_data=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp']))
+    corr_data=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp'],errors='ignore'))
     try:
         baseline=read_FTIR(file_baseline)
         gases=baseline.columns.drop(['time']).values
         print('Baseline found for {}'.format(', '.join(gases)))
     except:
         print('No baseline data found.')
-        baseline=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp']))
+        baseline=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp'],errors='ignore'))
         
     for gas in gases:
         if gas=='CO2':
@@ -109,7 +109,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
             thresh=IR_NOISE.getfloat(gas.lower())
         else:
             thresh=np.median(baseline[gas]-min(baseline[gas]))
-        print(gas,thresh)
+            
         corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
 
         ###plotting of baseline, data and the corrected data
