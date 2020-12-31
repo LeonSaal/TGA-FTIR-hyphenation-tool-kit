@@ -206,7 +206,8 @@ def calibrate(plot=False,mode='load',method='max'):
             FTIR_data=FTIR.read_FTIR(sample)
             info['gases']=FTIR_data.columns[1:].to_list()
             gases=info['gases']
-            FTIR_data=corrections.corr_FTIR(FTIR_data,baseline,plot=False)
+            #FTIR_data=corrections.corr_FTIR(FTIR_data,baseline,plot=False)
+            FTIR_data.update(corrections.corr_FTIR(FTIR_data,baseline,plot=plot))
             #info.update(io.FTIR_data_info(FTIR_data))
             try:
                 FTIR_data['time']+=60*info['background_delay']
