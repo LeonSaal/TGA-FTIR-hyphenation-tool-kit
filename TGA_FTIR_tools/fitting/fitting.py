@@ -40,12 +40,13 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
     for key in presets:
         data+=[presets[key].loc[:,'link'].rename(key)]
     links=pd.concat(data,axis=1)
-    links=links.replace('0',np.nan).dropna(thresh=1)
-    if links.dropna(axis=1).empty and not links.empty:
+    gas_links=links.replace('0',np.nan).dropna(thresh=1).dropna(thresh=1,axis=1)
+    if gas_links.dropna(axis=1).empty and not links.empty:
         print('You cannnot predefine fitting parameters for all supplied gases!')
+        gas_links=pd.DataFrame()
         links=pd.DataFrame()
     gases=[key for key in presets]
-    for gas in links.dropna(axis=1).columns:
+    for gas in gas_links.columns:
         gases.remove(gas)
         gases.append(gas)
     #thresholds for fit parameters
@@ -78,11 +79,11 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             FTIR.update(FTIR[gas]/tot_area*tot_mol)
         
         # predefining guesses and bounds
-        if gas in links.dropna(axis=1).columns:
-            df=links.loc[:,gas].dropna()
+        if gas in gas_links:
+            df=links.dropna(thresh=2).replace('0',np.nan).dropna(thresh=1)
             for group in df.index:
-                other=links.columns[links.loc[group].isna()].values[0]
-                for letter in df[group]:
+                other=links.loc[group,:].index[links.loc[group]=='0'].values[0]
+                for letter in df.loc[group,gas]:
                     if letter=='c':
                         param='center'
                     if letter=='w':
