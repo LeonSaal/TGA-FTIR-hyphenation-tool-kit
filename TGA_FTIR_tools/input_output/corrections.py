@@ -4,7 +4,7 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 from .general import find_files
-from ..config import PATHS, PARAMS, UNITS, SEP
+from ..config import PATHS, PARAMS, UNITS, SEP, IR_NOISE
 from .FTIR import read_FTIR
 from ..plotting import get_label
 
@@ -105,7 +105,11 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
         else:
             corr_data[gas]=np.zeros(len(FTIR))
         
-        thresh=np.median(baseline[gas]-min(baseline[gas]))
+        if gas.lower() in IR_NOISE:
+            thresh=IR_NOISE.getfloat(gas.lower())
+        else:
+            thresh=np.median(baseline[gas]-min(baseline[gas]))
+        print(gas,thresh)
         corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
 
         ###plotting of baseline, data and the corrected data

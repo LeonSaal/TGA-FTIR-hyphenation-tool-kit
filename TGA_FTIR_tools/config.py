@@ -41,4 +41,6 @@ SAVGOL=config['savgol']
 
 BOUNDS=config['fitting']
 
+IR_NOISE=config['ir_noise']
+
 
