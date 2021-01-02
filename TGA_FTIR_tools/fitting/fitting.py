@@ -108,11 +108,11 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         
         #actual fitting
         x=FTIR['sample_temp']
-        #try:
-        popt,pcov=sp.optimize.curve_fit(func,x,FTIR[gas],p0=params_0,bounds=(params_min,params_max))
-        # except:
-        #     print('Failed to fit {} signal'.format(gas))
-        #     break
+        try:
+            popt,pcov=sp.optimize.curve_fit(func,x,FTIR[gas],p0=params_0,bounds=(params_min,params_max))
+        except:
+            print('Failed to fit {} signal'.format(gas))
+            break
         
         #return values
         num_curves=len(presets[gas])

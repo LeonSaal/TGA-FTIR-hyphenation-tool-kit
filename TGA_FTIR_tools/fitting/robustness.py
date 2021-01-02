@@ -4,10 +4,10 @@ from .fitting import fits, get_presets
 from ..input_output.general import time
 from ..plotting import get_label
 import os
-import re
 import matplotlib.pyplot as plt
 from ..config import PATHS, BOUNDS, UNITS, DPI
 import copy
+import time as tm
 
 def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
     presets=get_presets(PATHS['dir_home'], reference, TG_IR[0].ir)
@@ -19,26 +19,26 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     
     #Init values
     print('Initial results:')
+    start=tm.time()
     res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
+    length=tm.time()-start
     for key in params:
         results[key+'_init']=res['mmol_per_mg']
     
     results['center_0_minus']=res['mmol_per_mg']
     results['center_0_plus']=res['mmol_per_mg']
     gases=[key for key in presets]
-
+    print('\nVarying fitting parameters...\nApproximate remaining time: {:.2f} min'.format((length*2*(4+sum([len(presets[key]) for key in presets]))/60)+1))
     for key in params:
         for i in  [-1,1]:
-            print('{}\n{} {:+}:'.format('_'*30,key,variance[key]*i))
+            print('{0}\n{0}\n{1} {2:+}:'.format('_'*90,key,variance[key]*i))
             temp_presets=copy.deepcopy(presets)
             for gas in gases:
-                links=temp_presets[gas].pop('link')
+                cols=temp_presets[gas].drop('link',axis=1).columns
                 if key =='center_0':
                     for group in temp_presets[gas].index:
-                        print('\n{}:'.format(group.capitalize()))
-                        temp_presets[gas].drop('link',axis=1,inplace=True,errors='ignore')
-                        temp_presets[gas].loc[group]=presets[gas].drop('link',axis=1).loc[group]+i*np.array([variance[key], 0, 0, variance[key], 0, 0, variance[key], 0, 0])
-                        temp_presets[gas]=pd.concat([temp_presets[gas],links],axis=1)
+                        print('\n{} {}:'.format(group.capitalize(),gas))
+                        temp_presets[gas].loc[group,cols]=presets[gas].loc[group,cols]+i*np.array([variance[key], 0, 0,variance[key], 0, 0,variance[key], 0, 0])
                         res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
                         
                         col=group+'_'+gas
@@ -49,14 +49,13 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                 
                 else: 
                     if key=='hwhm_max':
-                        temp_presets[gas]+=i*np.array([0, 0, 0, 0, 0, 0, 0, variance[key], 0])
+                        temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0, 0, 0, 0, 0,variance[key], 0])
                     elif key=='tolerance_center':
-                        temp_presets[gas]+=i*np.array([0, 0, 0, -variance[key], 0, 0, variance[key], 0, 0])
+                        temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0,-variance[key], 0, 0,variance[key], 0, 0])
                     elif key in ['height_0','hwhm_0']:
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
-                        
+        
             if key !='center_0':
-                temp_presets[gas]=pd.concat([temp_presets[gas],links],axis=1)
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 if i==-1:
                     results[key+'_minus']=res['mmol_per_mg']

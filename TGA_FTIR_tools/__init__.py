@@ -1,12 +1,17 @@
-from TGA_FTIR_tools.classes import TG_IR
-from TGA_FTIR_tools.config import PLOTTING
-from TGA_FTIR_tools.calibration import calibrate
-from TGA_FTIR_tools.input_output.samplelog import samplelog
-from TGA_FTIR_tools.input_output.general import overview
-from TGA_FTIR_tools.plotting import plots
-from TGA_FTIR_tools.fitting.robustness import robustness
-from TGA_FTIR_tools.fitting.fitting import fits
+from .classes import TG_IR
+from .config import PLOTTING
+from .calibration import calibrate
+from .input_output import samplelog
+from .input_output import overview
+from .plotting import plots
+from .fitting import robustness
+from .fitting import fits
 
 import matplotlib as plt
 plt.rcParams.update({'font.size': PLOTTING.getint('font_size')})
 plt.rcParams['figure.figsize'] = PLOTTING.getfloat('figure_width')/2.54,PLOTTING.getfloat('figure_height')/2.54
+
+try:
+    linreg,stats=calibrate()
+except:
+    pass

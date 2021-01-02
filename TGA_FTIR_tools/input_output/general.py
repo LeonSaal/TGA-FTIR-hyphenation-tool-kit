@@ -21,8 +21,8 @@ def find_files(file,suffix,parent_dir):
     return files
 
 def overview(objs):
-    out=pd.DataFrame(columns=['index','name','alias'])
-    out['index']=range(len(objs))
+    out=pd.DataFrame(columns=['name','alias'])
+    out.index.name='index'
     for attr in ['name','alias']:
         out[attr]=[obj.info[attr] for obj in objs]
     print(out)

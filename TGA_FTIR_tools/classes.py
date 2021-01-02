@@ -7,10 +7,10 @@ import os
 import pickle
 from .config import SAVGOL, PATHS, COUPLING
 from .input_output import corrections, TGA, FTIR, general
-from .input_output.samplelog import samplelog
+from .input_output import samplelog
 from .calibration import calibrate
 from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG
-from .fitting import fitting as fit
+from .fitting import fitting, get_presets 
 
 WINDOW_LENGTH=SAVGOL.getint('window_length')
 POLYORDER=SAVGOL.getint('POLYORDER')
@@ -22,11 +22,7 @@ class TG_IR:
             try:
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
-                try:
-                    self.linreg,self.stats = calibrate(mode='load')
-                except:
-                    pass
-                print('\n\'{}\' successfully initialiazed.'.format(name))
+
                 
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
@@ -43,6 +39,7 @@ class TG_IR:
                     TGA.dry_weight(self,**kwargs)
                 except:
                     pass
+                print('TGA data was found.')
         
             except:
                 del self.tga
@@ -50,7 +47,11 @@ class TG_IR:
             try:
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
-                print('IR data found{} for gases {}.\n'.format(' and calibrated (*)' if 'linreg' in self.__dict__ else '',', '.join([gas+('*' if 'linreg' in self.__dict__ and gas in self.linreg.index else '') for gas in self.info['gases']])))
+                try:
+                    self.linreg,self.stats = calibrate(mode='load')
+                except:
+                    pass
+                print('IR data found{} for gases {}.'.format(' and calibrated (*)' if 'linreg' in self.__dict__ else '',', '.join([gas+('*' if 'linreg' in self.__dict__ and gas in self.linreg.index else '') for gas in self.info['gases']])))
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:
@@ -62,10 +63,12 @@ class TG_IR:
                     pass
             except:
                 del self.ir
-                print('No IR data for {} was found'.format(name))
+                print('No IR data was found.')
             
             if 'ir' not in self.__dict__ and 'tga' not in self.__dict__:
                 return
+            else:
+                print('>> \'{}\' successfully initialiazed.\n'.format(name))
             
             if alias=='load':
                 try:
@@ -191,7 +194,7 @@ class TG_IR:
             T_max=max(self.tga['sample_temp'])
         
         if presets==None:
-            presets=fit.get_presets(PATHS['dir_home'], reference,self.ir)
+            presets=get_presets(PATHS['dir_home'], reference,self.ir)
 
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
@@ -202,7 +205,7 @@ class TG_IR:
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
         temp.ir=temp.ir[temp.ir['sample_temp']<T_max]
-        peaks, sumsqerr=fit.fitting(temp,presets,plot=plot,save=save,**kwargs)
+        peaks, sumsqerr=fitting(temp,presets,plot=plot,save=save,**kwargs)
         if save:
             print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
             os.chdir(PATHS['dir_home'])
