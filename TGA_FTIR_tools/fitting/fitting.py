@@ -41,7 +41,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         data+=[presets[key].loc[:,'link'].rename(key)]
     links=pd.concat(data,axis=1)
     gas_links=links.replace('0',np.nan).dropna(thresh=1).dropna(thresh=1,axis=1)
-    if gas_links.dropna(axis=1).empty and not links.empty:
+    if gas_links.dropna(axis=1).empty and not links.replace('0',np.nan).dropna(thresh=1).empty:
         print('You cannnot predefine fitting parameters for all supplied gases!')
         gas_links=pd.DataFrame()
         links=pd.DataFrame()
