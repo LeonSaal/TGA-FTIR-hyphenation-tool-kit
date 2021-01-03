@@ -194,10 +194,10 @@ class TG_IR:
             T_max=max(self.tga['sample_temp'])
         
         if presets==None:
-            presets=get_presets(PATHS['dir_home'], reference,self.ir)
+            presets=get_presets(PATHS['dir_home'], reference)
 
         if save:
-            path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name'])
+            path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name']).replace(os.sep,os.altsep)
             os.makedirs(path)
             os.chdir(path)
             

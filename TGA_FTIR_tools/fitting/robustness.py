@@ -10,7 +10,7 @@ import copy
 import time as tm
 
 def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
-    presets=get_presets(PATHS['dir_home'], reference, TG_IR[0].ir)
+    presets_rob=get_presets(PATHS['dir_home'], reference)
     params=['center_0','tolerance_center','hwhm_max','height_0','hwhm_0']
     results=dict()
     results['summary']=pd.DataFrame()
@@ -20,34 +20,35 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     #Init values
     print('Initial results:')
     start=tm.time()
-    res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets, **kwargs)
+    res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets_rob, **kwargs)
     length=tm.time()-start
     for key in params:
         results[key+'_init']=res['mmol_per_mg']
     
-    results['center_0_minus']=res['mmol_per_mg']
-    results['center_0_plus']=res['mmol_per_mg']
-    gases=[key for key in presets]
-    print('\nVarying fitting parameters...\nApproximate remaining time: {:.2f} min'.format((length*2*(4+sum([len(presets[key]) for key in presets]))/60)+1))
+
+    del res
+    
+    gases=[key for key in presets_rob]
+    print('\nVarying fitting parameters...\nApproximate remaining time: {:.1f} min'.format((length*2*(4+sum([len(presets_rob[key]) for key in presets_rob]))/60)*1.1))
     for key in params:
-        for i in  [-1,1]:
+        for i,suffix in  zip([-1,1],['_minus','_plus']):
             print('{0}\n{0}\n{1} {2:+}:'.format('_'*90,key,variance[key]*i))
-            temp_presets=copy.deepcopy(presets)
-            for gas in gases:
-                cols=temp_presets[gas].drop('link',axis=1).columns
+            temp_presets=copy.deepcopy(presets_rob)
+            for gas in gases: 
                 if key =='center_0':
+                    results[key+suffix]=pd.DataFrame(columns=results[key+'_init'].columns)
+
                     for group in temp_presets[gas].index:
+                        cols=temp_presets[gas].drop('link',axis=1).columns
+                        temp_presets=copy.deepcopy(presets_rob)
                         print('\n{} {}:'.format(group.capitalize(),gas))
-                        temp_presets[gas].loc[group,cols]=presets[gas].loc[group,cols]+i*np.array([variance[key], 0, 0,variance[key], 0, 0,variance[key], 0, 0])
-                        res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
-                        
+                        temp_presets[gas].loc[group,cols]=presets_rob[gas].loc[group,cols]+i*np.array([variance[key], 0, 0,variance[key], 0, 0,variance[key], 0, 0])
                         col=group+'_'+gas
-                        if i==-1:
-                            results[key+'_minus'][col]=res['mmol_per_mg'][col]
-                        elif i==1:
-                            results[key+'_plus'][col]=res['mmol_per_mg'][col] 
-                
+                        res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
+                        results[key+suffix][col]=res['mmol_per_mg'][col]
+                        del res
                 else: 
+                    cols=temp_presets[gas].drop('link',axis=1).columns
                     if key=='hwhm_max':
                         temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0, 0, 0, 0, 0,variance[key], 0])
                     elif key=='tolerance_center':
@@ -57,12 +58,11 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
         
             if key !='center_0':
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
-                if i==-1:
-                    results[key+'_minus']=res['mmol_per_mg']
-                elif i==1:
-                    results[key+'_plus']=res['mmol_per_mg']
+                results[key+suffix]=res['mmol_per_mg']
+
 
     #make subdirectory to save data
+    
     if save:
         path=os.path.join(PATHS['dir_home'],'Robustness',time()+reference+'_{}_{}'.format(var_T,var_rel))
         os.makedirs(path)
@@ -74,7 +74,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     for sample in samples:
         print(sample)
         labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height$','$HWHM_0$']
-        drop_cols=[gas for gas in gases]#+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
+        drop_cols=[gas for gas in gases]+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
         x=results['center_0_init'].columns.drop(drop_cols)
         
         data=dict()
@@ -108,7 +108,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
       
     if save:
         with pd.ExcelWriter('robustness.xlsx') as writer:
-            for key in results:
-                results[key].to_excel(writer,sheet_name=key)
+            for key in results:  
+                results[key].sort_index().sort_index(axis=1).to_excel(writer,sheet_name=key)
     os.chdir(PATHS['dir_home'])
     return 

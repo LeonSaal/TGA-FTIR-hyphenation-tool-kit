@@ -36,16 +36,17 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
     return z
 
 def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,predef_tol=0.01):
+    temp_presets=copy.deepcopy(presets)
     data=[]
-    for key in presets:
-        data+=[presets[key].loc[:,'link'].rename(key)]
+    for key in temp_presets:
+        data+=[temp_presets[key].loc[:,'link'].rename(key)]
     links=pd.concat(data,axis=1)
     gas_links=links.replace('0',np.nan).dropna(thresh=1).dropna(thresh=1,axis=1)
     if gas_links.dropna(axis=1).empty and not links.replace('0',np.nan).dropna(thresh=1).empty:
         print('You cannnot predefine fitting parameters for all supplied gases!')
         gas_links=pd.DataFrame()
         links=pd.DataFrame()
-    gases=[key for key in presets]
+    gases=[key for key in temp_presets]
     for gas in gas_links.columns:
         gases.remove(gas)
         gases.append(gas)
@@ -53,7 +54,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
     ref_mass=TG_IR.info['reference_mass']
     
     #initializing output DataFrame
-    peaks=pd.DataFrame(columns=['center','height','hwhm','area','mmol','mmol_per_mg'],index=[group+'_'+gas for gas in gases for group in presets[gas].index]+[gas for gas in gases])
+    peaks=pd.DataFrame(columns=['center','height','hwhm','area','mmol','mmol_per_mg'],index=[group+'_'+gas for gas in gases for group in temp_presets[gas].index]+[gas for gas in gases])
     sumsqerr=pd.DataFrame(index=[TG_IR.info['name']],columns=gases)
 
     #cycling through gases
@@ -94,15 +95,19 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
                         preset=peaks.loc['{}_{}'.format(group,other),param]/TG_IR.linreg['slope'][other]*TG_IR.linreg['slope'][gas]
                     else:
                         preset=peaks.loc['{}_{}'.format(group,other),param]
-                    presets[gas].loc[group,'{}_0'.format(param)]=preset 
-                    presets[gas].loc[group,'{}_min'.format(param)]=preset*(1-predef_tol)
-                    presets[gas].loc[group,'{}_max'.format(param)]=preset*(1+predef_tol)
-
+                    temp_presets[gas].loc[group,'{}_0'.format(param)]=preset 
+                    temp_presets[gas].loc[group,'{}_min'.format(param)]=preset*(1-predef_tol)
+                    temp_presets[gas].loc[group,'{}_max'.format(param)]=preset*(1+predef_tol)
+        
+        
+        for key in ['_0','_min','_max']:
+            temp_presets[gas].loc[:,'height'+key]=temp_presets[gas].loc[:,'height'+key].multiply(max(TG_IR.ir[gas]))
+   
         #guesses 
-        params_0=np.concatenate(([presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
+        params_0=np.concatenate(([temp_presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
         # ...and bounds
-        params_min=np.concatenate(([presets[gas].loc[:,key+'_min'] for key in ['height', 'center', 'hwhm']])) 
-        params_max=np.concatenate(([presets[gas].loc[:,key+'_max'] for key in ['height', 'center', 'hwhm']])) 
+        params_min=np.concatenate(([temp_presets[gas].loc[:,key+'_min'] for key in ['height', 'center', 'hwhm']])) 
+        params_max=np.concatenate(([temp_presets[gas].loc[:,key+'_max'] for key in ['height', 'center', 'hwhm']])) 
         
 
         
@@ -115,9 +120,9 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             break
         
         #return values
-        num_curves=len(presets[gas])
+        num_curves=len(temp_presets[gas])
         for i in range(num_curves):
-            group=presets[gas].index[i]+'_'+gas
+            group=temp_presets[gas].index[i]+'_'+gas
             peaks['height'][group]=popt[i]
             peaks['center'][group]=popt[i+num_curves]
             peaks['hwhm'][group]=popt[i+2*num_curves]
@@ -155,9 +160,9 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             fitting.plot(x,fit,label='fit',lw=2,zorder=num_curves+2)
         for i in range(0,num_curves):
             y=gaussian(x,popt[i],popt[i+num_curves],popt[i+2*num_curves])
-            profiles[presets[gas].index[i]]=y
+            profiles[temp_presets[gas].index[i]]=y
             if plot:
-                fitting.text(popt[num_curves+i],popt[i],presets[gas].index[i],zorder=num_curves+3+i)
+                fitting.text(popt[num_curves+i],popt[i],temp_presets[gas].index[i],zorder=num_curves+3+i)
                 fitting.plot(x,y,linestyle='dashed',zorder=i)
         if plot:
             fitting.legend()
@@ -186,11 +191,11 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             try:
                 with pd.ExcelWriter(f_name,engine='openpyxl', mode='a') as writer:
                     profiles.to_excel(writer,sheet_name=gas)
-                    presets[gas].to_excel(writer,sheet_name=gas+'_param')
+                    temp_presets[gas].to_excel(writer,sheet_name=gas+'_param')
             except:
                 with pd.ExcelWriter(f_name,engine='openpyxl') as writer:
                     profiles.to_excel(writer,sheet_name=gas)
-                    presets[gas].to_excel(writer,sheet_name=gas+'_param')
+                    temp_presets[gas].to_excel(writer,sheet_name=gas+'_param')
                     
     #calculate summarized groups
     groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
@@ -207,8 +212,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
 
 def fits(TG_IR,reference,save=True,presets=None,**kwargs):
     if presets==None:
-        presets=get_presets(PATHS['dir_home'], reference,TG_IR[0].ir)
-
+        presets=get_presets(PATHS['dir_home'], reference)
     #initializing of output DataFrames
     err=pd.DataFrame()
     names=['center','height','hwhm','area','mmol','mmol_per_mg']
@@ -218,7 +222,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
     
     #make subdirectory to save data
     if save:
-        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['name']) for obj in TG_IR]))))
+        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['name']) for obj in TG_IR])))).replace(os.sep,os.altsep)
         os.makedirs(path)
         os.chdir(path)
     
@@ -240,6 +244,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
             num=0
 
         peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
+        #print(peaks)
 
         #writing data to output DataFrames
         for key in res:
@@ -274,10 +279,11 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
             res[key]=res[key].append(pd.concat({sample:mean}, names=['samples','run']))
             res[key]=res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
                     
-        res[key].sort_index(inplace=True)       
+        res[key].sort_index().sort_index(axis=1,inplace=True)        
     
     #exporting data
     if save:
+        print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
         with pd.ExcelWriter('summary.xlsx') as writer:
             for key in res:
                 res[key].dropna(axis=1,thresh=1).to_excel(writer,sheet_name=key)
@@ -285,7 +291,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
         os.chdir(PATHS['dir_home'])
     return res
 
-def get_presets(path,reference,FTIR):
+def get_presets(path,reference):
     presets=dict()
     references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
@@ -306,14 +312,14 @@ def get_presets(path,reference,FTIR):
             'hwhm_max', 
             'height_max',
             'link']
-        vals=[pd.Series(presets[gas].loc[:,'height_max']).fillna(max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max'))*BOUNDS.getfloat('height_0'),
+        vals=[pd.Series(presets[gas].loc[:,'height_max']).fillna(BOUNDS.getfloat('height_0')),
               pd.Series(presets[gas].loc[:,'hwhm_max']).fillna(BOUNDS.getfloat('hwhm_max'))*BOUNDS.getfloat('hwhm_0'),
               pd.Series(presets[gas].loc[:,'center_0']-BOUNDS.getfloat('tol_center')), 
               BOUNDS.getfloat('hwhm_min'),
               BOUNDS.getfloat('height_min'), 
               pd.Series(presets[gas].loc[:,'center_0']+BOUNDS.getfloat('tol_center')), 
               BOUNDS.getfloat('hwhm_max'), 
-              max(FTIR[gas]) if BOUNDS['height_max'] == 'max' else BOUNDS.getfloat('height_max'),
+              BOUNDS.getfloat('height_max'),
               '0']
         infill=dict(zip(params,vals))
         presets[gas]=presets[gas].fillna(infill).dropna()
