@@ -17,15 +17,13 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     variance=dict(zip(params,[var_T,var_T,var_T,var_rel,var_rel]))
     default=dict(zip(params,[0,BOUNDS.getfloat('tol_center'),BOUNDS.getfloat('hwhm_max'),BOUNDS.getfloat('height_0'),BOUNDS.getfloat('hwhm_0')]))
     
-    #Init values
+    #Initial values
     print('Initial results:')
     start=tm.time()
     res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max, presets=presets_rob, **kwargs)
     length=tm.time()-start
     for key in params:
         results[key+'_init']=res['mmol_per_mg']
-    
-
     del res
     
     gases=[key for key in presets_rob]
@@ -34,10 +32,9 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
         for i,suffix in  zip([-1,1],['_minus','_plus']):
             print('{0}\n{0}\n{1} {2:+}:'.format('_'*90,key,variance[key]*i))
             temp_presets=copy.deepcopy(presets_rob)
-            for gas in gases: 
-                if key =='center_0':
-                    results[key+suffix]=pd.DataFrame(columns=results[key+'_init'].columns)
-
+            if key =='center_0':
+                results[key+suffix]=pd.DataFrame(columns=results[key+'_init'].columns)
+                for gas in gases: 
                     for group in temp_presets[gas].index:
                         cols=temp_presets[gas].drop('link',axis=1).columns
                         temp_presets=copy.deepcopy(presets_rob)
@@ -47,7 +44,8 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                         res=fits(TG_IR,reference=reference,save=False,plot=False,presets=temp_presets,**kwargs)
                         results[key+suffix][col]=res['mmol_per_mg'][col]
                         del res
-                else: 
+            else:
+                for gas in gases:
                     cols=temp_presets[gas].drop('link',axis=1).columns
                     if key=='hwhm_max':
                         temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0, 0, 0, 0, 0,variance[key], 0])
@@ -55,14 +53,11 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                         temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0,-variance[key], 0, 0,variance[key], 0, 0])
                     elif key in ['height_0','hwhm_0']:
                         temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
-        
-            if key !='center_0':
+                
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 results[key+suffix]=res['mmol_per_mg']
 
-
     #make subdirectory to save data
-    
     if save:
         path=os.path.join(PATHS['dir_home'],'Robustness',time()+reference+'_{}_{}'.format(var_T,var_rel))
         os.makedirs(path)
@@ -73,23 +68,24 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     print('{0}\n{0}\nResults:\n{0}'.format('_'*30))
     for sample in samples:
         print(sample)
-        labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height$','$HWHM_0$']
+        labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
+        units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
         drop_cols=[gas for gas in gases]+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
         x=results['center_0_init'].columns.drop(drop_cols)
         
         data=dict()
         data['mean']=pd.DataFrame(columns=x)
         data['all']=pd.DataFrame(columns=x)
-        for param,label in zip(params,labels):
+        for param,label,unit in zip(params,labels,units):
             fig=plt.figure()
             plt.title('{}: {}'.format(sample,label))
-            for run in ['minus','init','plus']:
+            for run,i in zip(['plus','init','minus'],[-1,0,1]):
                 index='_'.join([param,run])
                 y=results[index].loc[sample,'mean',:].drop(drop_cols,axis=1)
                 yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop(drop_cols,axis=1)
                 yerr=results[index].loc[sample,'dev',:].drop(drop_cols,axis=1)
                 xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
-                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(run,variance[param] if run!='init' else default[param]),marker='x',capsize=10,ls='none')
+                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
                 data['mean']=data['mean'].append(y)
                 data['all']=data['all'].append(yall)
             plt.ylim(ylim)
