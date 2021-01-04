@@ -56,6 +56,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                 
                 res=fits(TG_IR,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 results[key+suffix]=res['mmol_per_mg']
+            results[key+suffix].sort_index().sort_index(axis=1,inplace=True)
 
     #make subdirectory to save data
     if save:
@@ -70,8 +71,9 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
         print(sample)
         labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
         units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
-        drop_cols=[gas for gas in gases]+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
-        x=results['center_0_init'].columns.drop(drop_cols)
+        drop_cols=[gas for gas in gases]#+[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
+        drop_cols_plot=[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
+        x=results['center_0_init'].columns.drop(drop_cols+drop_cols_plot)
         
         data=dict()
         data['mean']=pd.DataFrame(columns=x)
@@ -85,7 +87,7 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
                 yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop(drop_cols,axis=1)
                 yerr=results[index].loc[sample,'dev',:].drop(drop_cols,axis=1)
                 xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
-                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
+                plt.errorbar(xticks,y.drop(drop_cols_plot,axis=1).values[0],yerr=yerr.drop(drop_cols_plot,axis=1).values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
                 data['mean']=data['mean'].append(y)
                 data['all']=data['all'].append(yall)
             plt.ylim(ylim)
@@ -105,6 +107,6 @@ def robustness(TG_IR,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0
     if save:
         with pd.ExcelWriter('robustness.xlsx') as writer:
             for key in results:  
-                results[key].sort_index().sort_index(axis=1).to_excel(writer,sheet_name=key)
+                results[key].drop(drop_cols,axis=1,errors='ignore').to_excel(writer,sheet_name=key)
     os.chdir(PATHS['dir_home'])
     return 

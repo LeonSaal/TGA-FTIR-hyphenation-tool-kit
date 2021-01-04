@@ -264,7 +264,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
 
                 lod=[TG_IR[0].stats['x_LOD'][gas] for gas in group_gas]
                 subset=res['mmol_per_mg'].loc[sample,columns]
-                mmol=res['mmol'].loc[sample,columns]#res['mmol'][column].loc[indices]
+                mmol=res['mmol'].loc[sample,columns]
                 g=mmol/subset
                 
                 dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
@@ -279,7 +279,8 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
             res[key]=res[key].append(pd.concat({sample:mean}, names=['samples','run']))
             res[key]=res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
                     
-        res[key].sort_index().sort_index(axis=1,inplace=True)        
+        res[key].sort_index(inplace=True)
+        res[key].sort_index(axis=1,inplace=True)        
     
     #exporting data
     if save:
