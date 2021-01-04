@@ -23,7 +23,6 @@ class TG_IR:
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
 
-                
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
                 except:

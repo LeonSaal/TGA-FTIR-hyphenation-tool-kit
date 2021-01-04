@@ -300,7 +300,7 @@ def calibrate(plot=False,mode='load',method='max'):
             mlr=linear_model.LinearRegression()#RANSACRegressor()#fit_intercept=0.0)
             mlr.fit(X_cali,Y_cali)
             
-            for i, gas in enumerate(x_cali.columns):
+            for i, gas in enumerate(X_cali.columns):
                 linreg.loc[[gas]]=pd.DataFrame([[1/mlr.coef_[i]*MOLAR_MASS.getfloat(gas),0,np.nan,np.nan,np.nan]],index=[gas],columns=cols)
         
         stats=calibration_stats(x_cali,y_cali,linreg)
@@ -335,16 +335,14 @@ def calibrate(plot=False,mode='load',method='max'):
             plt.legend(loc=0)
             plt.show()
 
-            if plot=='residual':
-                fig=plt.figure()
-                Y_cali=x.mul(linreg['slope'][gas]).add(linreg['intercept'][gas])
-                plt.scatter(Y_cali,y-Y_cali,label='data (N = {})'.format(len(x)))
-                plt.hlines(0,min(Y_cali),max(Y_cali))
-                plt.xlabel('$\hat{{y}}_i$ {} {}'.format(SEP,UNITS['int_ir']))
-                plt.ylabel('$y_i-\hat{{y}}_i$ {} {}'.format(SEP,UNITS['int_ir']))
-                plt.title('Residual plot: {}'.format(get_label(gas)))
-                plt.legend(loc=0)
-                plt.show()
+            Y_cali=x.mul(linreg['slope'][gas]).add(linreg['intercept'][gas])
+            plt.scatter(Y_cali,y-Y_cali,label='data (N = {})'.format(len(x)))
+            plt.hlines(0,min(Y_cali),max(Y_cali))
+            plt.xlabel('$\hat{{y}}_i$ {} {}'.format(SEP,UNITS['int_ir']))
+            plt.ylabel('$y_i-\hat{{y}}_i$ {} {}'.format(SEP,UNITS['int_ir']))
+            plt.title('Residual plot: {}'.format(get_label(gas)))
+            plt.legend(loc=0)
+            plt.show()
 
         plt.figure()
         for gas in gases:
