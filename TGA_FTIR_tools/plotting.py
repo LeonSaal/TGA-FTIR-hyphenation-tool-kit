@@ -12,6 +12,7 @@ WINDOW_LENGTH=SAVGOL.getint('window_length')
 POLYORDER=SAVGOL.getint('POLYORDER')
 
 def get_label(key):
+    "get labels to put in plots"
     if key in LABELS:
         return LABELS[key]
     try:
@@ -21,6 +22,9 @@ def get_label(key):
         return str(key)
 
 def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],legend=True):
+    "plot TG data"
+    
+    #setting up plot
     fig, TGA=plt.subplots()
     
     fig.subplots_adjust(right=.8)
@@ -28,6 +32,8 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
     DTG=TGA.twinx()
     
     x=copy.deepcopy(TG_IR.tga[x_axis])
+    
+    # adjusting y data and setting axis labels according to y_axis
     if y_axis=='rel':
         y=(TG_IR.tga[plot]/TG_IR.tga['sample_mass'][0])*100
         yDTG=TG_IR.tga['dtg']*60/TG_IR.tga['sample_mass'][0]
@@ -44,6 +50,8 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
         ylabel='{} {} ${}$'.format(PARAMS[plot],SEP,UNITS[plot])
 
     TGA.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
+    
+    # adjusting x data if x_axis == time  and constructing y-axis for temperature
     if x_axis=='time':
         x=x/60
         temp=TGA.twinx()
@@ -52,7 +60,8 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
         temp.set_ylabel('{} {} ${}$'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         if legend:
             temp.legend(loc=1)
-        
+    
+    # actual plotting    
     gTGA,=TGA.plot(x,y,'r-',label=ylabel)
     gDTG,=DTG.plot(x,yDTG,'b--',label='DTG')
     
@@ -75,10 +84,13 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
         fig.savefig(os.path.join(path_plots_tga,'{}_TG_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
 
 def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=[None,None],legend=True):
+    "plot IR data"
     gases=set([gas.upper() for gas in gases])
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     x=copy.deepcopy(TG_IR.ir[x_axis])
+    
+    # catching possible input errors
     try:
         calibrated=set(TG_IR.linreg.index)
     except:
@@ -117,7 +129,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
                 return
     gases=list(gases)        
         
-    #setup figure and plot first gas
+    #setup figure 
     graphs=[]
     fig, g0=plt.subplots()
     fig.subplots_adjust(right=.8)
@@ -129,14 +141,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
     if y_axis=='orig':
         graphs[0].set_ylabel('{} {} ${}$'.format(get_label(gases[0]),SEP,UNITS['ir']))
         graphs[0].yaxis.label.set_color(colors[0])
-        #graphs[0].plot(x,TG_IR.ir[gases[0]])
     elif y_axis=='rel':
         graphs[0].set_ylabel('${}\,{}^{{-1}}\,{}^{{-1}}$'.format(UNITS['molar_amount'],UNITS['sample_mass'],UNITS['time']))
-        #graphs[0].plot(x,TG_IR.ir[gases[0]],label=get_label(gases[0]))
 
-    
-    #append secondary, third... y-axis on right side
-     
+    # plot data and append secondary, third... y-axis on right side if necessary
     for i,gas in enumerate(gases):
         if y_axis=='orig':
             y=TG_IR.ir[gas]
@@ -154,9 +162,9 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             y=TG_IR.ir[gas]/tot_area*tot_mol
             graphs[0].plot(x,y,label=get_label(gas))
 
-    if legend: #and y_axis!='orig':
+    if legend:
         fig.legend()
-        
+            
     graphs[0].set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
     plt.show()
@@ -168,7 +176,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
 def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
+    "reconstructing DTG from calibrated IR data"
     gases_temp=set([gas.upper() for gas in gases])
+    
+    # catching possible input errors
     try:
         calibrated=set(TG_IR.linreg.index)
     except:
@@ -192,6 +203,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
             print('None of supplied gases was found in IR data and calibrated.')
             return
     
+    # setup IR data and calculating DTG 
     gases=gases_temp
     data=pd.merge(TG_IR.tga,TG_IR.ir,how='left',on=['time','sample_temp']).dropna()
     DTG=-sp.signal.savgol_filter(data['sample_mass'], 13, 3, deriv=1)
@@ -202,6 +214,8 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     out['time']=data['time']
     out['sample_temp']=data['sample_temp']
     cumul=np.zeros(len(TG_IR.ir))
+    
+    # calibrating IR data
     for i,gas in enumerate(gases):
         tot_area=np.sum(TG_IR.ir[gas])
         tot_mass=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]*MOLAR_MASS.getfloat(gas)
@@ -209,35 +223,39 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out[gas]=y[i][:]
         cumul+=y[i][:]
    
-    #setup
+    #setup figure
     fig=plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(8, 1)
     stack= fig.add_subplot(gs[:-1, 0])
     stack.set_title('{}, {:.2f} {}'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     error = fig.add_subplot(gs[-1,0],sharex=stack)
 
-    #plotting of fit
     stack.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
     error.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
     
+    # actual plotting
     if x_axis=='time':
         x=x/60
         temp=stack.twinx()
         temp.plot(x,data['sample_temp'],ls='dashed',color='black',label='T')
         temp.set_ylabel('{} {} ${}$'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         if legend:
-            temp.legend(loc=1)
+            temp.legend()
         
     stack.stackplot(x,y,labels=[get_label(gas) for gas in gases])
     stack.plot(x,DTG,label=PARAMS['dtg'])
     stack.set_ylabel('{}, {} {} ${}\,{}^{{-1}}$'.format(PARAMS['dtg'],', '.join([get_label(gas) for gas in gases]),SEP,UNITS['sample_mass'],UNITS['time']))
+    
     if legend:
         stack.legend()
+    
+    # plot error of reconstruction    
     error.plot(x,DTG-cumul)
     error.hlines(0,min(x),max(x),ls='dashed')
     error.set_ylabel('$\Delta$ {}'.format(PARAMS['dtg']))
     stack.set_xlim(xlim)
     plt.show()
+    
     if save:
         path_plot_irdtg=os.path.join(PATHS['dir_plots'],'IRDTG')
         if os.path.exists(path_plot_irdtg)==False:
@@ -247,6 +265,9 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
 def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True,reference_mass='reference_mass'):
+    "overlay plots from different objects"
+    
+    # setting up axis-labels and catching possible input errors
     if plot=='TG':
         ylabel='sample_mass'
     else:
@@ -278,7 +299,7 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
             ax.set_ylabel('{} {} ${}\,{}^{{-1}}$'.format(get_label(gas),SEP,UNITS['molar_amount'],UNITS['sample_mass']))     
         ax.set_ylabel('{} {} {} ${}^{{-1}}\,{}^{{-1}}$'.format(PARAMS[ylabel],SEP,UNITS[ylabel],UNITS['sample_mass'],UNITS['time']))
             
-            
+    # actual plotting       
     for obj in TG_IR:
         if reference_mass=='reference_mass':
             ref_mass=obj.info[obj.info[reference_mass]]

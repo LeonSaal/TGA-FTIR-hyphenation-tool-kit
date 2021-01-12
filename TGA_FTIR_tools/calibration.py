@@ -11,6 +11,7 @@ from .input_output import TGA, FTIR, corrections
 
 
 def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
+    "deriving mass steps via peaks in DTG signal"
     #calculation and smoothing of DTG
     TG=(TGA_data['sample_mass']/TGA_data['sample_mass'][0])
     DTG=sp.signal.savgol_filter(TG, SAVGOL.getint('window_length'), SAVGOL.getint('polyorder'), deriv=1)
@@ -20,7 +21,7 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     step_end=properties['right_ips'].astype(np.int, copy=False)
     step_start=properties['left_ips'].astype(np.int, copy=False)
     
-    #calculate masses of steps
+    #calculate masssteps
     steps=np.zeros(len(peaks))
     samples=20
     for i in range(len(peaks)):
@@ -68,19 +69,19 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         
     return step_height,rel_step_height,step_start,step_end
 
-def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,gases=None):    
-    #Umrechnen des stepsstarts fürs FTIR_data. Zeitversatz durch Wartezeit und Transferline
-    step_start=step_start+60
-    step_end=step_end+60
-   # print(step_start,step_end)
+def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,gases=None):
+    "integrating IR signal in between given bounds"
+    
+    # adsjusting step starts according to coupling delay
+    step_start=step_start+int(60*COUPLING.getfloat('coupling_delay'))
+    step_end=step_end+int(60*COUPLING.getfloat('coupling_delay'))
     integrals=pd.DataFrame(index=range(len(step_start)),columns=gases)
     
-    #Plotten mit Integrationsgrenzen
+    #plotting
     if plot:
         colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
     
         x=FTIR_data['time']/60
-        #x=x/60
         #setup figure and plot first gas
         graph=[None] 
         fig, graph[0]=plt.subplots()
@@ -90,8 +91,8 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
         graph[0].set_ylabel('{} {} {}'.format(get_label(gases[0]),SEP,UNITS['ir']))
         graph[0].yaxis.label.set_color(colors[0])
         graph[0].plot(x,FTIR_data[gases[0]])
+        
         #append secondary, third... y-axis on right side
-       # props=[]
         for i,gas in enumerate(gases[1:]):
             y=FTIR_data[gas]
             
@@ -103,11 +104,11 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
             graph[i+1].set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['ir']))
             graph[i+1].yaxis.label.set_color(colors[i+1])
     
-    #Integration
+    #integration
     for gas in gases:
         for i in range(len(step_end)):
             subset=FTIR_data[gas][(FTIR_data['time']>=step_start[i]) & (FTIR_data['time']<=step_end[i])]
-            #Baseline correction
+            #baseline correction
             if corr_baseline=='linear':
                 baseline=np.linspace(subset.iloc[0],subset.iloc[len(subset)-1],len(subset))
             elif corr_baseline=='const':
@@ -124,24 +125,26 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
 
     if plot==True:
         plt.show()
-        #print('Baseline correction: ',corr_baseline)
         
     return integrals 
 
 def eval_lin(x,slope,intercept):
+    "evaluating linear equation with slope and intercept at ponts x"
     return slope*x+intercept
 
 def calibration_stats(x_cali,y_cali,linreg,alpha=.95,beta=None,m=1,k=3):
+    "calculating calibration stats according to DIN 32645"
     gases=linreg.index
     
     n=len(x_cali)
     if n==2:
         return pd.DataFrame()
+    
     f=n-2
     if beta==None:
         beta=alpha
     
-    stats=pd.DataFrame()#columns=['s_yx','s_x0','x_LOD','x_LOQ'])
+    stats=pd.DataFrame()
     for gas in gases:
         b=linreg['slope'][gas]
         a=linreg['intercept'][gas]
@@ -161,11 +164,13 @@ def calibration_stats(x_cali,y_cali,linreg,alpha=.95,beta=None,m=1,k=3):
     return stats
     
 def calibrate(plot=False,mode='load',method='max'):
-    #gespeicherte calibrierung laden
+    # check if calibration folder is present
     if os.path.exists(PATHS['dir_calibration'])==False:
+        # make directory
         os.makedirs(PATHS['dir_calibration'])
     os.chdir(PATHS['dir_calibration'])
     if mode=='load':
+        # try to load saved calibration
         try:
             cali=pd.read_excel('cali.xlsx',sheet_name=None,index_col=0)
             linreg=cali['linreg']
@@ -174,7 +179,6 @@ def calibrate(plot=False,mode='load',method='max'):
             stats=cali['stats']
             data=pd.read_excel('cali.xlsx',sheet_name='data',index_col=[0,1])
             gases=linreg.index
-            #print('Calibration data loaded.')
         except:
             print('No calibration data found. To obtain quantitative IR data supply an \'Calibration\' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode=\'recalibrate\')!')
             os.chdir(PATHS['dir_home'])
@@ -182,6 +186,7 @@ def calibrate(plot=False,mode='load',method='max'):
     
     #new calibration
     elif mode=='recalibrate':
+        #setting up output DataFrames
         x_cali=pd.DataFrame()
         y_cali=pd.DataFrame()
         linreg=pd.DataFrame()
@@ -199,6 +204,7 @@ def calibrate(plot=False,mode='load',method='max'):
             return
         #calculating mass steps and integrating FTIR_data signals for all samples
         for sample,baseline in zip(samples['Samples'],samples['Baseline']):
+            
             #reading and correcting data
             TGA_data=TGA.read_TGA(sample)
             info=TGA.TGA_info(sample,TGA_data)
@@ -206,16 +212,14 @@ def calibrate(plot=False,mode='load',method='max'):
             FTIR_data=FTIR.read_FTIR(sample)
             info['gases']=FTIR_data.columns[1:].to_list()
             gases=info['gases']
-            #FTIR_data=corrections.corr_FTIR(FTIR_data,baseline,plot=False)
             FTIR_data.update(corrections.corr_FTIR(FTIR_data,baseline,plot=plot))
-            #info.update(io.FTIR_data_info(FTIR_data))
             try:
                 FTIR_data['time']+=60*info['background_delay']
             except:
                 FTIR_data['time']+=60*COUPLING.getfloat('background_delay')
             print('----------------------------------------------------\n{}'.format(info['name']))
         
-            #calculating mass steps and integrating FTIR_data signals
+            #calculating mass steps and integrating FTIR_data signals 
             [steps,rel_steps,stepstart,stepend]=mass_step(TGA_data,plot=plot)
             integrals=integrate_peaks(FTIR_data,stepstart,stepend,plot=plot,corr_baseline=None,gases=gases)
             

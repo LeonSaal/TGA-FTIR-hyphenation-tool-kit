@@ -20,9 +20,11 @@ class TG_IR:
     def __init__(self,name,mode='construct',profile='Otto',alias='load',**kwargs):
         if mode=='construct':
             try:
+                # load TG data
                 self.tga=TGA.read_TGA(name,profile=profile)
                 self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
-
+                
+                # deriving TG info
                 try:
                     self.info=TGA.TGA_info(name,self.tga,profile=profile)
                 except:
@@ -44,13 +46,16 @@ class TG_IR:
                 del self.tga
         
             try:
+                # load IR data
                 self.ir=FTIR.read_FTIR(name)
                 self.info['gases']=self.ir.columns[1:].to_list()
                 try:
+                    # load calibration
                     self.linreg,self.stats = calibrate(mode='load')
                 except:
                     pass
                 print('IR data found{} for gases {}.'.format(' and calibrated (*)' if 'linreg' in self.__dict__ else '',', '.join([gas+('*' if 'linreg' in self.__dict__ and gas in self.linreg.index else '') for gas in self.info['gases']])))
+                #derivinf IR info
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:
@@ -69,12 +74,15 @@ class TG_IR:
             else:
                 print('>> \'{}\' successfully initialiazed.\n'.format(name))
             
+            # assigning alias
             if alias=='load':
                 try:
+                    # from samplelog
                     alias=samplelog().loc[name,'alias']
                 except:
                     alias=np.nan
                 if type(alias)!=str:
+                    # default name
                     self.info['alias']=name
                 else:
                     self.info['alias']=alias
@@ -83,6 +91,8 @@ class TG_IR:
                 self.info['alias']=alias
             else:
                 self.info['alias']=self.info['name']
+        
+        # initialize object from pickle file
         if mode=='pickle':
             with open(os.path.join(PATHS['dir_output'],name+'.pkl'), 'rb') as inp:
                 obj = pickle.load(inp)
@@ -91,16 +101,19 @@ class TG_IR:
                
         
     def corr(self,reference='load',plot=False,**kwargs):
+        "correction of TG and IR data"
+        
         if 'reference' in self.info:
             print('Sample has already been corrected! Re-initialise object for correction.')
             return
         
         if reference=='load':
-                try:
-                    reference=samplelog().loc[self.info['name'],'reference']
-                except:
-                    print('No reference found in Samplelog. Please supply \'reference = \'')
-                    return
+            # try to load reference from samplelig if none is supplied
+            try:
+                reference=samplelog().loc[self.info['name'],'reference']
+            except:
+                print('No reference found in Samplelog. Please supply \'reference = \'')
+                return
 
         # correction of data
         self.info['reference']=reference
@@ -131,12 +144,17 @@ class TG_IR:
             print('Failed to derive IR info.')
             
     def get_value(self,*values, which='sample_mass', at='sample_temp'):
+        "extract values from TG data at e.g. certain temperatures"
+        
         out = pd.DataFrame(index=[which],columns=pd.Index(values,name=at))
         for value in values:
             out.loc[which,value]=self.tga[which][self.tga[at]>=value].values[0]
     
         return out
+    
     def dry_weight(self,**kwargs):
+        "determine dry point and mass of sample"
+        
         try:
             TGA.dry_weight(self,**kwargs)
             print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
@@ -145,9 +163,12 @@ class TG_IR:
             print('Failed to derive TG info.')
                 
     def plot(self,which,**kwargs):
+        "plotting TG and or IR data"
+        
         options=['TG', 'heat_flow', 'IR', 'DIR', 'cumsum', 'IR_to_DTG']
         if which not in options:
             print('\'TG_IR.plot\' supports {} as input for \'which\' figure to plot.'.format(', '.join(['\''+option+'\'' for option in options])))
+            
         if ('ir' not in self.__dict__) and (which in ['IR','DIR','cumsum','IR_to_DTG']):
             print('Option unavailable without IR data.')
             return
@@ -186,20 +207,26 @@ class TG_IR:
         
         
     def fit(self,reference,T_max=None,save=True,plot=True,presets=None,**kwargs):
+        "deconvolution of IR data"
+        
+        # setting upper limit for data 
         if T_max==None:
             T_max=max(self.tga['sample_temp'])
         elif T_max>max(self.tga['sample_temp']):
-            print('$T_{max}$ exceeds maximum temperature of data')
+            print('T_max exceeds maximum temperature of data')
             T_max=max(self.tga['sample_temp'])
         
+        #load presets for deconvolution
         if presets==None:
             presets=get_presets(PATHS['dir_home'], reference)
-
+        
+        #setting up output directory
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name']).replace(os.sep,os.altsep)
             os.makedirs(path)
             os.chdir(path)
-            
+        
+        #fitting
         print('Fitting according to \'{}\' in Fitting_parameters.xlsx is in progress ...'.format(reference))
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
@@ -212,10 +239,15 @@ class TG_IR:
     
     
     def save(self,how='pickle',**kwargs):
+        "save object or its contents as pickle file or excel"
+        
+        #update samplelog
         samplelog(self.info,**kwargs)
         path_output=PATHS['dir_output']
         if os.path.exists(path_output)==False:
             os.makedirs(path_output)
+            
+        #save object
         if how=='pickle':
             with open(os.path.join(path_output,self.info['name']+'.pkl'),'wb') as output:
                 pickle.dump(self,output,pickle.HIGHEST_PROTOCOL)
@@ -231,6 +263,7 @@ class TG_IR:
                     except:
                         pass
     def calibrate(self,**kwargs):
+        "calibrate object"
         try:
             self.linreg,self.stats=calibrate(**kwargs)
         except:

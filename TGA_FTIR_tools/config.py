@@ -1,3 +1,5 @@
+# loading settings from settings.ini
+
 import configparser
 import os
 file='settings.ini'
