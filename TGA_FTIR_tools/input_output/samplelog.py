@@ -5,8 +5,10 @@ import numpy as np
 from ..config import PATHS
 
 def samplelog(info=None,overwrite=False):
+    "load and write samplelog file with obj.info"
     path=os.path.join(PATHS['dir_home'],'Samplelog.xlsx')
     
+    # try to load samplelog file
     try:
         samplelog=pd.read_excel(path,index_col=0)
     except:
@@ -14,7 +16,8 @@ def samplelog(info=None,overwrite=False):
         samplelog=pd.DataFrame(columns=['alias','reference'])
         samplelog.index.name='name'
         samplelog.to_excel(path)
-        
+    
+    # update existing samplelog file
     if info!=None:
         name=info['name']
         data=pd.DataFrame.from_dict(info,orient='index',columns=[name]).T.drop(['name'],1)

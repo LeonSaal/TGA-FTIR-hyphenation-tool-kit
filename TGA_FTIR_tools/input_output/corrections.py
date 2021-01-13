@@ -9,8 +9,10 @@ from .FTIR import read_FTIR
 from ..plotting import get_label
 
 def corr_TGA(TGA,file_baseline,plot=False):
+    "corrects TG data by subtracting buoyancy blank value of crucible"
     corr_data=TGA.copy()
     path_baseline=find_files(file_baseline,'.txt',PATHS['dir_data'])[0]
+    
     #opens the buoyancy blank value 'baseline' and substracts them from the original data 
     try:
         reference_mass=pd.read_csv(path_baseline, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=13, skipfooter=11,converters={'sample_mass': lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
@@ -43,8 +45,10 @@ def corr_TGA(TGA,file_baseline,plot=False):
     return corr_data
 
 def corr_FTIR(FTIR,file_baseline,plot=False):
-    #opens FTIR data of the baseline and takes the 'CO2' column
+    "corrects IR data by setting minimal adsorption to 0 "
+    #setting up output DataFrame
     corr_data=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp'],errors='ignore'))
+    #opens FTIR data of the baseline
     try:
         baseline=read_FTIR(file_baseline)
         gases=baseline.columns.drop(['time']).values
@@ -52,28 +56,30 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
     except:
         print('No baseline data found.')
         baseline=pd.DataFrame(index=FTIR.index,columns=FTIR.columns.drop(['time','sample_temp','reference_temp'],errors='ignore'))
-        
+    
+    # cycling through gases
     for gas in gases:
+        # special CO2 correction due to periodic fluctuations in signal
         if gas=='CO2':
             try:
                 co2_baseline=np.array(baseline['CO2'])
             
-                #in the baseline the peaks and valleys as well as the amplitude of the baseline are determined
-                peaks_baseline,properties_baseline=sp.signal.find_peaks(co2_baseline,height=[None,None])#,height=[tol*min(baseline),tol*max(baseline)])
-                valleys_baseline,valley_properties_baseline=sp.signal.find_peaks(-co2_baseline,height=[None,None])#,height=[tol*min(-baseline),tol*max(-baseline)])
+                # determining the peaks and valleys in the baseline as well as its amplitude 
+                peaks_baseline,properties_baseline=sp.signal.find_peaks(co2_baseline,height=[None,None])
+                valleys_baseline,valley_properties_baseline=sp.signal.find_peaks(-co2_baseline,height=[None,None])
                 amplitude_baseline=np.mean(properties_baseline['peak_heights'])+np.mean(valley_properties_baseline['peak_heights'])
             
-                #in the original data the peaks and valleys that have similar height as the baseline are determined
+                # in the original data the peaks and valleys that have similar height as the baseline are determined
                 tol=1.5
                 peaks,properties=sp.signal.find_peaks(FTIR['CO2'],height=[-tol*amplitude_baseline,tol*amplitude_baseline])
                 valleys,valley_properties=sp.signal.find_peaks(-FTIR['CO2'],height=[None,None],prominence=amplitude_baseline*.05) 
             
-                #the median distance between between baseline-peaks, the period is determined
+                 #the median distance between between baseline-peaks, aka the period is determined
                 dist_peaks=np.diff(peaks_baseline)
                 len_period=int(np.median(dist_peaks))
             
-                #determination of the phase shift in x direction by checking if there is also a valley in the baseline in proximity
-                #the x shift is calculated as the median of the differences
+                # determination of the phase shift in x direction by checking if there is also a valley in the baseline in proximity.
+                # the necessary x shift is calculated as the mode of the differences
                 dists=[]
                 j=0
                 for valley in valleys:
@@ -83,13 +89,12 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
                         dists.append(valleys_baseline[j]-valley)
             
                 x_shift=int(sp.stats.mode(dists)[0])
-            
-                ###modifying of the baseline  
-                #elongating the baseline by one period
+             
+                # elongating the baseline by one period
                 period=co2_baseline[:len_period]
                 co2_baseline=np.concatenate((period,co2_baseline), axis=None)
             
-                #shifting the baseline in x direction
+                # shifting the baseline in x direction
                 c=[]
                 for x_offs in range(-1,len_period%x_shift+1):
                     peaks,props=sp.signal.find_peaks(FTIR['CO2']-co2_baseline[x_shift+x_offs:len(FTIR)+x_shift+x_offs],height=[None,None],prominence=amplitude_baseline*.02)
@@ -105,14 +110,18 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
         else:
             corr_data[gas]=np.zeros(len(FTIR))
         
+        # load threshold of noise from settings.ini or determine it from baseline 
         if gas.lower() in IR_NOISE:
             thresh=IR_NOISE.getfloat(gas.lower())
         else:
-            thresh=np.median(baseline[gas]-min(baseline[gas]))
+            try: 
+                thresh=np.median(baseline[gas]-min(baseline[gas]))
+            except:
+                thresh=0
             
         corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
 
-        ###plotting of baseline, data and the corrected data
+        # plotting of baseline, data and the corrected data
         if plot:
             try:
                 x=FTIR['sample_temp']
@@ -137,6 +146,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
 
 
 def const_baseline(data,thres):
+    "calculate y-offset so the integral of noise in data is equal to zero"
     baseline=data[data<thres]
     
     if len(baseline)==0:

@@ -11,9 +11,11 @@ import re
 
 
 def gaussian(x,height,center,hwhm):
+    "evaluate gaussian function with height, center and HWHM at x"
     return height*np.exp(-np.log(2)*np.power((x-center)/hwhm,2))
 
 def multi_gauss(x,*args):
+    "evaluate sum of multiple gaussian functions with height, center and HWHM at x"
     n=int(len(args)/3)
     heights=args[:n]
     centers=args[n:2*n]
@@ -36,8 +38,11 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
     return z
 
 def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,predef_tol=0.01):
+    "deconvolve IR data of TG_IR with func and multiple presets"
     temp_presets=copy.deepcopy(presets)
     data=[]
+    
+    # extract links between groups and sort gases accordingly
     for key in temp_presets:
         data+=[temp_presets[key].loc[:,'link'].rename(key)]
     links=pd.concat(data,axis=1)
@@ -50,6 +55,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
     for gas in gas_links.columns:
         gases.remove(gas)
         gases.append(gas)
+    
     #thresholds for fit parameters
     ref_mass=TG_IR.info['reference_mass']
     
@@ -64,7 +70,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         if gas=='H2O':
             FTIR[gas]-=baseline_als(FTIR[gas])
             
-        ## molar desorption
+        # molar desorption
         tot_area=np.sum(TG_IR.ir[gas])
     
         if gas == 'H2O':
@@ -103,15 +109,14 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         for key in ['_0','_min','_max']:
             temp_presets[gas].loc[:,'height'+key]=temp_presets[gas].loc[:,'height'+key].multiply(max(TG_IR.ir[gas]))
    
-        #guesses 
+        # guesses 
         params_0=np.concatenate(([temp_presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
+        
         # ...and bounds
         params_min=np.concatenate(([temp_presets[gas].loc[:,key+'_min'] for key in ['height', 'center', 'hwhm']])) 
         params_max=np.concatenate(([temp_presets[gas].loc[:,key+'_max'] for key in ['height', 'center', 'hwhm']])) 
         
-
-        
-        #actual fitting
+        # actual fitting
         x=FTIR['sample_temp']
         try:
             popt,pcov=sp.optimize.curve_fit(func,x,FTIR[gas],p0=params_0,bounds=(params_min,params_max))
@@ -119,7 +124,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             print('Failed to fit {} signal'.format(gas))
             break
         
-        #return values
+        # return values
         num_curves=len(temp_presets[gas])
         for i in range(num_curves):
             group=temp_presets[gas].index[i]+'_'+gas
@@ -134,8 +139,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
                 peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol
                 peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
         
-        ###plotting
-        
+        # plotting
         profiles=pd.DataFrame()
         data=FTIR[gas]
         fit=multi_gauss(x,*popt)
@@ -145,9 +149,10 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         profiles['data']=data
         profiles['fit']=fit
         profiles['diff']=diff
-            
+        
+        # plotting
         if plot:
-            #setup plot
+            # setup plot
             fig=plt.figure(constrained_layout=True)
             gs = fig.add_gridspec(8, 1)
             fitting = fig.add_subplot(gs[:-1, 0])
@@ -155,7 +160,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             error = fig.add_subplot(gs[-1,0],sharex=fitting)
             #fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
             
-            #plotting of fit
+            # plotting of fit
             fitting.plot(x,data,label='data',lw=2,zorder=num_curves+1)#,ls='',marker='x',markevery=2,c='cyan')
             fitting.plot(x,fit,label='fit',lw=2,zorder=num_curves+2)
         for i in range(0,num_curves):
@@ -172,10 +177,10 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             elif y_axis=='rel':
                 fitting.set_ylabel('{} {} ${}\,{}^{{-1}}\,{}^{{-1}}$'.format(get_label(gas), SEP, UNITS['molar_amount'], UNITS['sample_mass'], UNITS['time']))
 
-            #mark center on x-axis
+            # mark center on x-axis
             fitting.scatter(popt[num_curves:2*num_curves],np.zeros(num_curves),marker=7,color='k',s=100,zorder=num_curves+3)
 
-            #plotting of absolute difference
+            # plotting of absolute difference
             abs_max=0.05*max(data)
             
             error.text(0,abs_max,'SQERR: {:.2e}'.format(sumsqerr[gas][TG_IR.info['name']]))#,'SQERR: '+'%.2E'% Decimal(sumsqerr[gas][TG_IR.info['name']]),va='bottom')
@@ -186,6 +191,8 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             error.set_ylim(-abs_max,abs_max)
             plt.show()
             fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
+        
+        # save results to excel
         if save:
             f_name=TG_IR.info['name']+'_'+y_axis+'.xlsx'
             try:
@@ -197,7 +204,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
                     profiles.to_excel(writer,sheet_name=gas)
                     temp_presets[gas].to_excel(writer,sheet_name=gas+'_param')
                     
-    #calculate summarized groups
+    # calculate summarized groups
     groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
     for group in groups:
         group_set=peaks[['mmol','mmol_per_mg']].loc[peaks.index.map(lambda x: x.startswith(group))]
@@ -210,27 +217,31 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
                 peaks.astype(float).to_excel(writer,sheet_name='summary')
     return peaks.astype(float),sumsqerr
 
-def fits(TG_IR,reference,save=True,presets=None,**kwargs):
+def fits(objs,reference,save=True,presets=None,**kwargs):
+    "perform decovolution on multiple TG_IR objects"
+    
+    # load default presets
     if presets==None:
         presets=get_presets(PATHS['dir_home'], reference)
-    #initializing of output DataFrames
+        
+    # initializing of output DataFrames
     err=pd.DataFrame()
     names=['center','height','hwhm','area','mmol','mmol_per_mg']
     res=dict()
     for name in names:
         res[name]=pd.DataFrame()
     
-    #make subdirectory to save data
+    # make subdirectory to save data
     if save:
-        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['name']) for obj in TG_IR])))).replace(os.sep,os.altsep)
+        path=os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'.join(list(set([str(obj.info['name']) for obj in objs])))).replace(os.sep,os.altsep)
         os.makedirs(path)
         os.chdir(path)
     
     sample_re='^.+(?=_\d{1,3})'
     num_re='(?<=_)\d{1,3}$'
-    #cycling through samples
-    for obj in TG_IR:
-        #fitting of the sample and calculating the amount of functional groups
+    # cycling through samples
+    for obj in objs:
+        # fitting of the sample and calculating the amount of functional groups
         name=obj.info['alias']
         sample=re.search(sample_re,name)
         num=re.search(num_re,name)
@@ -244,7 +255,6 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
             num=0
 
         peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
-        #print(peaks)
 
         #writing data to output DataFrames
         for key in res:
@@ -262,7 +272,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
                 columns=res[key].columns.drop(drop_cols)
                 group_gas=[column[column.rfind('_')+1:] for column in columns]
 
-                lod=[TG_IR[0].stats['x_LOD'][gas] for gas in group_gas]
+                lod=[objs[0].stats['x_LOD'][gas] for gas in group_gas]
                 subset=res['mmol_per_mg'].loc[sample,columns]
                 mmol=res['mmol'].loc[sample,columns]
                 g=mmol/subset
@@ -282,7 +292,7 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
         res[key].sort_index(inplace=True)
         res[key].sort_index(axis=1,inplace=True)        
     
-    #exporting data
+    # exporting data
     if save:
         print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
         with pd.ExcelWriter('summary.xlsx') as writer:
@@ -293,10 +303,13 @@ def fits(TG_IR,reference,save=True,presets=None,**kwargs):
     return res
 
 def get_presets(path,reference):
+    "load deconvolution presets from excel file"
+    # load raw data from file
     presets=dict()
     references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
     
+    # organizing data in dict, sorted by gases and filling in missing values
     for gas in gases:
         index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i].upper()==gas)]
         data=pd.DataFrame(index=index)

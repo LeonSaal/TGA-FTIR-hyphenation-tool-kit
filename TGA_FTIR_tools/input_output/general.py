@@ -7,12 +7,14 @@ def time():
     return str(dt.datetime.now().date())+'_'+str(dt.datetime.now().hour)+'-'+str(dt.datetime.now().minute).zfill(2)+'-'+str(dt.datetime.now().second).zfill(2)+'_'    
 
 def find_path(file,parent_dir):
+    "return directory of file in parent_dir and its subdirectories"
     for dirpath,dirnames,filenames in os.walk(parent_dir):
         for filename in filenames:
             if filename[:filename.rfind('.')].find(file)!=-1:
                 return dirpath
             
 def find_files(file,suffix,parent_dir):
+    "return absolute path of file with suffix in parent_dir and its subdirectories"
     files=[]
     for dirpath,dirnames,filenames in os.walk(parent_dir):
         for filename in filenames:
@@ -21,6 +23,7 @@ def find_files(file,suffix,parent_dir):
     return files
 
 def overview(objs):
+    "return name and alias of TG_IR objects in list"
     out=pd.DataFrame(columns=['name','alias'])
     out.index.name='index'
     for attr in ['name','alias']:
