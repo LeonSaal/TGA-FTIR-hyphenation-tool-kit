@@ -76,11 +76,13 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         if gas == 'H2O':
             # total area of water is calculated above dry-point
             tot_area=np.sum(TG_IR.ir[gas][TG_IR.ir['sample_temp']>TG_IR.info['dry_temp']])
+        
+        if 'linreg' in TG_IR.__dict__:
+            tot_mol=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]
+            peaks['mmol'][gas]=tot_mol
+            peaks['mmol_per_mg'][gas]=tot_mol/TG_IR.info[ref_mass]
             
-        tot_mol=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]
         peaks['area'][gas]=tot_area
-        peaks['mmol'][gas]=tot_mol
-        peaks['mmol_per_mg'][gas]=tot_mol/TG_IR.info[ref_mass]
         
         if y_axis=='rel':
             FTIR.update(FTIR[gas]/tot_area*tot_mol)

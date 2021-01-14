@@ -206,9 +206,12 @@ class TG_IR:
             return
         
         
-    def fit(self,reference,T_max=None,save=True,plot=True,presets=None,**kwargs):
+    def fit(self,reference,T_max=None,T_max_tol=50,save=True,plot=True,presets=None,**kwargs):
         "deconvolution of IR data"
-        
+        if 'linreg' not in self.__dict__:
+            print('Option unavailable without calibration!')
+            return
+            
         # setting upper limit for data 
         if T_max==None:
             T_max=max(self.tga['sample_temp'])
@@ -219,6 +222,9 @@ class TG_IR:
         #load presets for deconvolution
         if presets==None:
             presets=get_presets(PATHS['dir_home'], reference)
+            
+        for gas in presets:
+            presets[gas]=presets[gas].drop(presets[gas].index[presets[gas].loc[:,'center_0']>T_max+T_max_tol])
         
         #setting up output directory
         if save:
