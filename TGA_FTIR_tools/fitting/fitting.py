@@ -86,6 +86,9 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         
         if y_axis=='rel':
             FTIR.update(FTIR[gas]/tot_area*tot_mol)
+            
+        for key in ['_0','_min','_max']:
+            temp_presets[gas].loc[:,'height'+key]=temp_presets[gas].loc[:,'height'+key].multiply(max(TG_IR.ir[gas]))
         
         # predefining guesses and bounds
         if gas in gas_links:
@@ -107,10 +110,6 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
                     temp_presets[gas].loc[group,'{}_min'.format(param)]=preset*(1-predef_tol)
                     temp_presets[gas].loc[group,'{}_max'.format(param)]=preset*(1+predef_tol)
         
-        
-        for key in ['_0','_min','_max']:
-            temp_presets[gas].loc[:,'height'+key]=temp_presets[gas].loc[:,'height'+key].multiply(max(TG_IR.ir[gas]))
-   
         # guesses 
         params_0=np.concatenate(([temp_presets[gas].loc[:,key+'_0'] for key in ['height', 'center', 'hwhm']])) 
         

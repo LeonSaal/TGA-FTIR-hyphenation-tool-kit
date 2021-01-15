@@ -244,17 +244,20 @@ class TG_IR:
         return peaks, sumsqerr;
     
     
-    def save(self,how='pickle',**kwargs):
+    def save(self,how='samplelog',**kwargs):
         "save object or its contents as pickle file or excel"
         
         #update samplelog
         samplelog(self.info,**kwargs)
         path_output=PATHS['dir_output']
+        if how=='samplelog':
+            return
+        
         if os.path.exists(path_output)==False:
             os.makedirs(path_output)
-            
         #save object
         if how=='pickle':
+
             with open(os.path.join(path_output,self.info['name']+'.pkl'),'wb') as output:
                 pickle.dump(self,output,pickle.HIGHEST_PROTOCOL)
         elif how=='excel':
@@ -268,6 +271,7 @@ class TG_IR:
                         self.__dict__[key].to_excel(writer,sheet_name=key)
                     except:
                         pass
+                    
     def calibrate(self,**kwargs):
         "calibrate object"
         try:

@@ -9,14 +9,12 @@ def samplelog(info=None,overwrite=False):
     path=os.path.join(PATHS['dir_home'],'Samplelog.xlsx')
     
     # try to load samplelog file
-    try:
-        samplelog=pd.read_excel(path,index_col=0)
-    except:
-        print('> \'Samplelog.xlsx\' was not found. New file was created under \'{}\'.'.format(path))
+    if os.path.exists(path)==False:
         samplelog=pd.DataFrame(columns=['alias','reference'])
         samplelog.index.name='name'
-        samplelog.to_excel(path)
-    
+    else:
+        samplelog=pd.read_excel(path,index_col=0)
+
     # update existing samplelog file
     if info!=None:
         name=info['name']
@@ -36,8 +34,8 @@ def samplelog(info=None,overwrite=False):
     
         try:
             samplelog.to_excel(path)
-            print('Successfully updated \'Samplelog.xlsx\'.')
+            print('> Successfully updated \'Samplelog.xlsx\'.')
         except:
-            print('Unable to write on \'Samplelog.xlsx\'. Please close file and try again!')
+            print('> Unable to write on \'Samplelog.xlsx\'. Please close file and try again!')
         
     return samplelog

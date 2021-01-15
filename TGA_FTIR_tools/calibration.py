@@ -164,12 +164,14 @@ def calibration_stats(x_cali,y_cali,linreg,alpha=.95,beta=None,m=1,k=3):
     return stats
     
 def calibrate(plot=False,mode='load',method='max'):
-    # check if calibration folder is present
-    if os.path.exists(PATHS['dir_calibration'])==False:
-        # make directory
-        os.makedirs(PATHS['dir_calibration'])
-    os.chdir(PATHS['dir_calibration'])
+
     if mode=='load':
+        # check if calibration folder is present
+        if os.path.exists(PATHS['dir_calibration'])==False:
+            print('No calibration data found. To obtain quantitative IR data supply an \'Calibration\' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode=\'recalibrate\')!')
+            return
+        os.chdir(PATHS['dir_calibration'])
+
         # try to load saved calibration
         try:
             cali=pd.read_excel('cali.xlsx',sheet_name=None,index_col=0)
@@ -186,13 +188,19 @@ def calibrate(plot=False,mode='load',method='max'):
     
     #new calibration
     elif mode=='recalibrate':
+        # check if calibration folder is present
+        if os.path.exists(PATHS['dir_calibration'])==False:
+            # make directory
+            os.makedirs(PATHS['dir_calibration'])
+        os.chdir(PATHS['dir_calibration'])
+        
         #setting up output DataFrames
         x_cali=pd.DataFrame()
         y_cali=pd.DataFrame()
         linreg=pd.DataFrame()
         stats=pd.DataFrame()
         data=pd.DataFrame()
-        print('Calibrating...')
+        
         #imporitng sample list for calibration
         try:
             samples=pd.read_csv('Sample_list.txt',delimiter='\t')
@@ -202,7 +210,9 @@ def calibrate(plot=False,mode='load',method='max'):
             print('\'Sample_list.txt\' was created in the \'Calibration\' folder, please fill in calibration measurements and rerun this command.')
             os.chdir(PATHS['dir_home'])
             return
+        
         #calculating mass steps and integrating FTIR_data signals for all samples
+        print('Calibrating...')
         for sample,baseline in zip(samples['Samples'],samples['Baseline']):
             
             #reading and correcting data

@@ -27,8 +27,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
     start=tm.time()
     res=fits(objs,reference=reference,plot=False, save=False, T_max=T_max, presets=presets_rob, **kwargs)
     length=tm.time()-start
-    for key in params:
-        results[key+'_init']=res['mmol_per_mg']
+    results['init']=res['mmol_per_mg']
     del res
     
     gases=[key for key in presets_rob]
@@ -41,7 +40,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
             temp_presets=copy.deepcopy(presets_rob)
             
             if key =='center_0':
-                results[key+suffix]=pd.DataFrame(columns=results[key+'_init'].columns)
+                results[key+suffix]=pd.DataFrame(columns=results['init'].columns)
                 for gas in gases: 
                     # vary center of each group
                     for group in temp_presets[gas].index:
@@ -74,7 +73,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
         os.chdir(path)
         
     # sort and summarize results for each sample
-    samples=results['center_0_init'].index.levels[0]
+    samples=results['init'].index.levels[0]
     print('{0}\n{0}\nResults:\n{0}'.format('_'*30)) 
     for sample in samples:
         print(sample)
@@ -83,9 +82,8 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
         units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
         
         # exclude 'mean' and 'sum' columns from plots
-        drop_cols=[gas for gas in gases]
-        drop_cols_plot=[col for col in results['center_0_init'].columns if ('_sum' in col) or ('_mean' in col)]
-        x=results['center_0_init'].columns.drop(drop_cols+drop_cols_plot)
+        drop_cols=[gas for gas in gases]+[col for col in results['init'].columns if ('_sum' in col) or ('_mean' in col)]
+        x=results['init'].columns.drop(drop_cols)
         
         data=dict()
         data['mean']=pd.DataFrame(columns=x)
@@ -100,7 +98,10 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
             
             # cycle through upper, initial and lower bound of parameter
             for run,i in zip(['plus','init','minus'],[-1,0,1]):
-                index='_'.join([param,run])
+                if run=='init':
+                    index=run
+                else:
+                    index='_'.join([param,run])
                 
                 # make list of mean value and deviation
                 y=results[index].loc[sample,'mean',:].drop(drop_cols,axis=1)
@@ -109,7 +110,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
                 
                 # plot errorbar
                 xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
-                plt.errorbar(xticks,y.drop(drop_cols_plot,axis=1).values[0],yerr=yerr.drop(drop_cols_plot,axis=1).values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
+                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
                 
                 # collect mean as well as individual results for further statistical evalutaion
                 data['mean']=data['mean'].append(y)
@@ -125,11 +126,11 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
             fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
             
         # make further statistical summary
-        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].mean(axis=0).rename('mean')).T}, names=['samples','run']))
-        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].std(axis=0).rename('meanstddev')).T}, names=['samples','run']))
-        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].std(axis=0).rename('stddev')).T}, names=['samples','run']))
-        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].min(axis=0).rename('min')).T}, names=['samples','run']))
-        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].max(axis=0).rename('max')).T}, names=['samples','run']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].mean(axis=0).rename('mean')).T}, names=['samples',' ']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].std(axis=0).rename('meanstddev')).T}, names=['samples',' ']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].std(axis=0).rename('stddev')).T}, names=['samples',' ']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].min(axis=0).rename('min')).T}, names=['samples',' ']))
+        results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].max(axis=0).rename('max')).T}, names=['samples',' ']))
      
     # save results to excel file
     if save:
