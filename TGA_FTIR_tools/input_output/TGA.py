@@ -12,7 +12,12 @@ from ..plotting import get_label
 WINDOW_LENGTH=SAVGOL.getint('window_length')
 POLYORDER=SAVGOL.getint('POLYORDER')
 
-def read_TGA(file,profile='Otto'):
+def read_profiles(profile):
+    profiles=pd.read_excel('Profiles.xlsx',index_col=0)
+    
+    return profiles.loc[profile,:].to_dict() 
+    
+def read_TGA(file,profile=COUPLING['profile']):
     "load TG data from file"
     #open file from TGA in given directory and make a DataFrame from it
     try:
@@ -21,13 +26,16 @@ def read_TGA(file,profile='Otto'):
         print('No TG data for {} was found'.format(file))
         return
     
-    if profile=='Otto':
-        skiprows=13
-    elif profile=='Falk':
-        skiprows=11
+    profiles=read_profiles(profile)
+    names=profiles['names'].split(',')
+    names_heatflow=profiles['names_heatflow']
+    skipfooter=profiles['skipfooter']
+    skiprows=profiles['skiprows']
+    sep=profiles['sep']
+    drop=list(profiles['drop'])
         
     try:
-        data=pd.read_csv(path, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','sample_mass'],skiprows=skiprows, skipfooter=11,converters={'sample_mass':lambda x: float(x.replace(',','.'))},engine='python').drop(columns='Index')
+        data=pd.read_csv(path, delim_whitespace=True,decimal=sep ,names=names,skiprows=skiprows, skipfooter=skipfooter,converters={'sample_mass':lambda x: float(x.replace(sep,'.'))},engine='python').drop(columns=drop,errors='ignore')
         
     except:
         print('Failed to read TG-data from {}'.format(file))
@@ -36,7 +44,7 @@ def read_TGA(file,profile='Otto'):
     #check if there is heat flow information and append it 
     try:
         path_mW=find_files(file,'_mW.txt',PATHS['dir_data'])[0]
-        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=',' ,names=['Index','time','sample_temp','reference_temp','heat_flow'],skiprows=skiprows, skipfooter=11, converters={'sample_mass': lambda x: float(x.replace(',','.'))}, usecols=['heat_flow'],engine='python')
+        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=sep ,names=names_heatflow,skiprows=skiprows, skipfooter=skipfooter, converters={'sample_mass': lambda x: float(x.replace(sep,'.'))}, usecols=['heat_flow'],engine='python')
     except:
         pass
     

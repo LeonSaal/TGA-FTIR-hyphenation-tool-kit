@@ -17,7 +17,7 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    def __init__(self,name,mode='construct',profile='Otto',alias='load',**kwargs):
+    def __init__(self,name,mode='construct',profile=COUPLING['profile'],alias='load',**kwargs):
         if mode=='construct':
             try:
                 # load TG data
