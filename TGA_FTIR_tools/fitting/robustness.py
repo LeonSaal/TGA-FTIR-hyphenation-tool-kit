@@ -74,13 +74,14 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
         
     # sort and summarize results for each sample
     samples=results['init'].index.levels[0]
+    
+    # labels and units for plots
+    labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
+    units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
     print('{0}\n{0}\nResults:\n{0}'.format('_'*30)) 
     for sample in samples:
         print(sample)
-        # labels and units for plots
-        labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
-        units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
-        
+
         # exclude 'mean' and 'sum' columns from plots
         drop_cols=[gas for gas in gases]+[col for col in results['init'].columns if ('_sum' in col) or ('_mean' in col)]
         x=results['init'].columns.drop(drop_cols)
@@ -113,8 +114,9 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
                 plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
                 
                 # collect mean as well as individual results for further statistical evalutaion
-                data['mean']=data['mean'].append(y)
-                data['all']=data['all'].append(yall)
+                if run != 'init' or param == params[0]:
+                    data['mean']=data['mean'].append(y)
+                    data['all']=data['all'].append(yall)
                 
             # draw and save plot
             plt.ylim(ylim)
