@@ -59,6 +59,16 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
     
     # cycling through gases
     for gas in gases:
+        
+        # load threshold of noise from settings.ini or determine it from baseline 
+        if gas.lower() in IR_NOISE:
+            thresh=IR_NOISE.getfloat(gas.lower())
+        else:
+            try: 
+                thresh=np.median(baseline[gas]-min(baseline[gas]))
+            except:
+                thresh=0        
+        
         # special CO2 correction due to periodic fluctuations in signal
         if gas=='CO2':
             try:
@@ -103,23 +113,16 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
             
                 co2_baseline=co2_baseline[x_shift+x_offs:len(FTIR)+x_shift+x_offs]
                 corr_data[gas]=co2_baseline
+                # in this case the corrected data has to be provided to const_baseline() to average the noise threshold
+                corr_data[gas]+=const_baseline(FTIR[gas].subtract(co2_baseline)-min(FTIR[gas]),thresh)+min(FTIR[gas].subtract(co2_baseline))
                 
             except:
                 print('Unable to align CO2 baseline with measurement.')
                 corr_data[gas]=np.zeros(len(FTIR))
+                corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
         else:
-            corr_data[gas]=np.zeros(len(FTIR))
-        
-        # load threshold of noise from settings.ini or determine it from baseline 
-        if gas.lower() in IR_NOISE:
-            thresh=IR_NOISE.getfloat(gas.lower())
-        else:
-            try: 
-                thresh=np.median(baseline[gas]-min(baseline[gas]))
-            except:
-                thresh=0
-            
-        corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
+            corr_data[gas]=np.zeros(len(FTIR))            
+            corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
 
         # plotting of baseline, data and the corrected data
         if plot:
