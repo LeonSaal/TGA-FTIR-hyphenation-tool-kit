@@ -13,7 +13,7 @@ WINDOW_LENGTH=SAVGOL.getint('window_length')
 POLYORDER=SAVGOL.getint('POLYORDER')
 
 def read_profiles(profile):
-    profiles=pd.read_excel('Profiles.xlsx',index_col=0)
+    profiles=pd.read_excel(os.path.join(PATHS['dir_home'],'TGA_import_profiles.xlsx'),index_col=0)
     
     return profiles.loc[profile,:].to_dict() 
     
@@ -195,8 +195,8 @@ def dry_weight(TG_IR,how_dry='H2O',plot=False,ref_mass='dry_mass',save=False,xli
         plt.plot(x,y,label='TGA')
         
         for i in range(len(times)-1):
-            plt.annotate(text='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
-            plt.text(x[times[i]]+20,y[times[i]],'{:.2f} mg @ {:.2f} °C'.format(weights[i],x[times[i]]))
+            plt.annotate(s='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
+            #plt.text(x[times[i]]+20,y[times[i]],'{:.2f} mg @ {:.2f} °C'.format(weights[i],x[times[i]]))
             plt.text(x[times[i]]+20,(y[times[i]]+ y[times[i+1]])/2,'$ML$ {}: {:.2f} mg ({:.1f} %)'.format(get_label(names[i]),mass_loss[i],mass_loss[i]/TG_IR.info[TG_IR.info['reference_mass']]*100))
         
         plt.scatter(x[times],y[times],c='r')
