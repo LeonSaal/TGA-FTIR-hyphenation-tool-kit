@@ -355,4 +355,6 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
         path_plots=PATHS['dir_plots']
         if os.path.exists(path_plots)==False:
             os.makedirs(path_plots)
+        if (gas == None):
+            gas = ''
         fig.savefig(os.path.join(path_plots,'_'.join([time(),plot,gas,y_axis]))+'.png', bbox_inches='tight',dpi=DPI)
