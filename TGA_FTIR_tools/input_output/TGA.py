@@ -53,7 +53,7 @@ def read_TGA(file,profile=COUPLING['profile']):
 
 def TGA_info(file,TGA,profile='Otto'):
     "extract TG info e.g. measurement time, initial mass... from TG file"
-    #open file from TGA in given directory and make a DataFrame from it
+    # open file from TGA in given directory and make a DataFrame from it
     path=find_files(file,'.txt',PATHS['dir_data'])[0]
     
     if profile=='Otto':
@@ -62,18 +62,18 @@ def TGA_info(file,TGA,profile='Otto'):
     if profile=='Falk':
         skipheader=6
 
-    #extract information on the measurement from the header and footer of the TGA file
-    footer=pd.read_table(path,encoding='ansi',skipfooter=2,index_col=False,names=[0],engine='python').tail(3)
-    header=str(pd.read_table(path,encoding='ansi',skiprows=skipheader,nrows=1,index_col=False,names=[0],engine='python').iloc[0,0])
+    # extract information on the measurement from the header and footer of the TGA file
+    footer = pd.read_table(path, encoding='ansi', skipfooter=2, index_col=False, names=[0], engine='python').tail(3)
+    header = str(pd.read_table(path, encoding='ansi', skiprows=skipheader, nrows=1, index_col=False, names=[0], engine='python').iloc[0,0])
     info={}
     info['name']=file
     info['date']=re.search('\d{2}\.\d{2}\.\d{2}',header).group()
     info['time']=re.search('\d{2}:\d{2}:\d{2}',header).group()
     method=str(footer.iloc[2,0]).strip()
-    info['method']=method
+    info['method'] = method
     info['initial_mass']=pd.to_numeric(re.search('(?<=\s)\S+(?=\smg)',footer.iloc[0,0]).group().replace(',','.'))#str(footer).strip()
     
-    #if the sample wasn't weighed in automatically, the mass at t=0 is used instead
+    # if the sample wasn't weighed in automatically, the mass at t=0 is used instead
     if info['initial_mass']==0:
         info['initial_mass']=TGA['sample_mass'][0]
     info['reference_mass']='initial_mass'
@@ -124,18 +124,30 @@ def TGA_info(file,TGA,profile='Otto'):
     
     return info
 
-def dry_weight(TG_IR,how_dry='H2O',plot=False,ref_mass='dry_mass',save=False,xlim=[None,None],ylim=[None,None]):
+def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False, xlim=[None,None], ylim=[None,None]):
     "determine dry point and mass from TG data"
+    # make h2o to H2O
     if how_dry=='h2o':
         how_dry=how_dry.upper()
         
     # if how_dry is None, no dry point is determined
-    if type(how_dry)==type(None):
-        dry_point=0
+    if how_dry==None:
+        dry_point = 1
     
     # if how_dry is a number, the dry point is set to that temperature
     elif type(how_dry)!=str:
-        dry_point=TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how_dry].values[0]
+        # check if value is within the temperature range
+        if (how_dry > max(TG_IR.tga['sample_temp'])) or (how_dry <= min(TG_IR.tga['sample_temp'])):
+            how_dry = None
+            dry_point = 1
+            print('Supplied value is out of range. \'how_dry\' is set to None. Be aware that \'reference_mass\' is also set to \'initial_mass\'.')
+        else:
+            dry_point = TG_IR.tga['time'][TG_IR.tga['sample_temp']>=how_dry].values[0]
+            # check if how_dry value could not be found (very scarce, but possible..)
+            if (dry_point == 0):
+                how_dry = None
+                dry_point = 1
+                print('Supplied value is out of range. \'how_dry\' is set to None. Be aware that \'reference_mass\' is also set to \'initial_mass\'.')
         
     # if how_dry is 'H2O' or 'sample_mass', the dry point is determined from the respective data
     else :
@@ -162,19 +174,21 @@ def dry_weight(TG_IR,how_dry='H2O',plot=False,ref_mass='dry_mass',save=False,xli
     # getting the dry_mass at the dry_point as well as the final weight and calculating the relative
     # mass-loss and the water content from it
     dry_temp=TG_IR.tga['sample_temp'][dry_point]
-    names=['dry']+TG_IR.info['method_gases']
     info={}
-    if (how_dry=='H2O') or (how_dry=='sample_mass') or (type(how_dry)!=str):
+    
+    if how_dry == None:
+        info['reference_mass']='initial_mass'
+        times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
+        names=TG_IR.info['method_gases']
+        
+    elif (how_dry == 'H2O') or (how_dry == 'sample_mass') or (type(how_dry) != str):   # turns to be true everytime
         times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
         names=['dry']+TG_IR.info['method_gases']
         info['dry_mass']=TG_IR.tga['sample_mass'][dry_point]
         info['reference_mass']='dry_mass'
         info['dry_temp']=dry_temp
         info['dry_time']=dry_point
-    elif how_dry==None:
-        info['reference_mass']='initial_mass'
-        times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
-        names=TG_IR.info['method_gases']   
+        
     if ref_mass!='dry_mass':
         info['reference_mass']=ref_mass
     weights=TG_IR.tga['sample_mass'][TG_IR.tga.index.isin(times)].values
@@ -209,7 +223,7 @@ def dry_weight(TG_IR,how_dry='H2O',plot=False,ref_mass='dry_mass',save=False,xli
             ax2.plot(ref['sample_temp'],ref[how_dry],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
         plt.xlim(xlim)
-        plt.title('Dry mass determination')
+        plt.title('Dry mass and mass steps determination')
         plt.legend()
         plt.show()   
                 
