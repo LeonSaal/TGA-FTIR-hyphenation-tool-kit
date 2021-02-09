@@ -6,8 +6,7 @@ import os
 
 import pickle
 from .config import SAVGOL, PATHS, COUPLING
-from .input_output import corrections, TGA, FTIR, general
-from .input_output import samplelog
+from .input_output import corrections, TGA, FTIR, general, samplelog
 from .calibration import calibrate
 from .plotting import plot_FTIR, plot_TGA, FTIR_to_DTG
 from .fitting import fitting, get_presets 
@@ -17,7 +16,7 @@ POLYORDER=SAVGOL.getint('POLYORDER')
 
 
 class TG_IR:
-    def __init__(self,name,mode='construct',profile=COUPLING['profile'],alias='load',**kwargs):
+    def __init__(self, name, mode='construct', profile=COUPLING['profile'], alias='load',**kwargs):
         if mode=='construct':
             try:
                 # load TG data
@@ -72,13 +71,13 @@ class TG_IR:
             if 'ir' not in self.__dict__ and 'tga' not in self.__dict__:
                 return
             else:
-                print('>> \'{}\' successfully initialiazed.\n'.format(name))
+                print('>> \'{}\' successfully initialiazed.'.format(name))
             
             # assigning alias
             if alias=='load':
                 try:
                     # from samplelog
-                    alias=samplelog().loc[name,'alias']
+                    alias=samplelog(create=False).loc[name,'alias']
                 except:
                     alias=np.nan
                 if type(alias)!=str:
@@ -108,9 +107,9 @@ class TG_IR:
             return
         
         if reference=='load':
-            # try to load reference from samplelig if none is supplied
+            # try to load reference from samplelog if none is supplied
             try:
-                reference=samplelog().loc[self.info['name'],'reference']
+                reference=samplelog(create=False).loc[self.info['name'],'reference']
             except:
                 print('No reference found in Samplelog. Please supply \'reference = \'')
                 return
@@ -122,26 +121,28 @@ class TG_IR:
             self.tga['dtg']=-savgol_filter(self.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
         except:
             print('Failed to correct TG data.')
-            
-        try:
-            self.ir.update(corrections.corr_FTIR(self.ir,reference,plot=plot))
-        except:
-            print('Failed to correct IR data.')
+        
+        if hasattr(self, 'ir'):
+            try:
+                self.ir.update(corrections.corr_FTIR(self.ir,reference,plot=plot))
+            except:
+                print('Failed to correct IR data.')
             
         # filling TG_IR.info
         try:
             TGA.dry_weight(self,plot=plot,**kwargs)
-            print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+            print('\'TG_IR.info\' of {} was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\''.format(self.info['name']))
             success=True
         except:
             print('Failed to derive TG info.')
 
-        try:
-            self.info.update(FTIR.FTIR_info(self))
-            if not success:
-                print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
-        except:
-            print('Failed to derive IR info.')
+        if hasattr(self, 'ir'):
+            try:
+                self.info.update(FTIR.FTIR_info(self))
+                if not success:
+                    print('\'TG_IR.info\' was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\'')
+            except:
+                print('Failed to derive IR info.')
             
     def get_value(self,*values, which='sample_mass', at='sample_temp'):
         "extract values from TG data at e.g. certain temperatures"
@@ -219,20 +220,20 @@ class TG_IR:
             print('T_max exceeds maximum temperature of data')
             T_max=max(self.tga['sample_temp'])
         
-        #load presets for deconvolution
+        # load presets for deconvolution
         if presets==None:
             presets=get_presets(PATHS['dir_home'], reference)
             
         for gas in presets:
             presets[gas]=presets[gas].drop(presets[gas].index[presets[gas].loc[:,'center_0']>T_max+T_max_tol])
         
-        #setting up output directory
+        # setting up output directory
         if save:
             path=os.path.join(PATHS['dir_fitting'],general.time()+reference+'_'+self.info['name']).replace(os.sep,os.altsep)
             os.makedirs(path)
             os.chdir(path)
         
-        #fitting
+        # fitting
         print('Fitting according to \'{}\' in Fitting_parameters.xlsx is in progress ...'.format(reference))
         temp=copy.deepcopy(self)
         temp.tga=temp.tga[temp.tga['sample_temp']<T_max]
@@ -247,15 +248,15 @@ class TG_IR:
     def save(self,how='samplelog',**kwargs):
         "save object or its contents as pickle file or excel"
         
-        #update samplelog
-        samplelog(self.info,**kwargs)
+        # update samplelog
+        samplelog(self.info, create=True, **kwargs)
         path_output=PATHS['dir_output']
         if how=='samplelog':
             return
         
         if os.path.exists(path_output)==False:
             os.makedirs(path_output)
-        #save object
+        # save object
         if how=='pickle':
 
             with open(os.path.join(path_output,self.info['name']+'.pkl'),'wb') as output:
