@@ -144,7 +144,7 @@ class TG_IR:
             except:
                 print('Failed to derive IR info.')
             
-    def get_value(self,*values, which='sample_mass', at='sample_temp'):
+    def get_value(self, *values, which='sample_mass', at='sample_temp'):
         "extract values from TG data at e.g. certain temperatures"
         
         out = pd.DataFrame(index=[which],columns=pd.Index(values,name=at))
@@ -153,7 +153,7 @@ class TG_IR:
     
         return out
     
-    def dry_weight(self,**kwargs):
+    def dry_weight(self, **kwargs):
         "determine dry point and mass of sample"
         
         try:
@@ -163,46 +163,46 @@ class TG_IR:
         except:
             print('Failed to derive TG info.')
                 
-    def plot(self,which,**kwargs):
+    def plot(self, plot, **kwargs):
         "plotting TG and or IR data"
         
         options=['TG', 'heat_flow', 'IR', 'DIR', 'cumsum', 'IR_to_DTG']
-        if which not in options:
-            print('\'TG_IR.plot\' supports {} as input for \'which\' figure to plot.'.format(', '.join(['\''+option+'\'' for option in options])))
+        if plot not in options:
+            print('\'TG_IR.plot\' supports {} as input to plot a respective figure.'.format(', '.join(['\''+option+'\'' for option in options])))
             
-        if ('ir' not in self.__dict__) and (which in ['IR','DIR','cumsum','IR_to_DTG']):
+        if ('ir' not in self.__dict__) and (plot in ['IR','DIR','cumsum','IR_to_DTG']):
             print('Option unavailable without IR data.')
             return
         else:
-            if which=='IR':
+            if plot == 'IR':
                 plot_FTIR(self,**kwargs)
             
-            if which=='DIR':
+            if plot == 'DIR':
                 temp=copy.deepcopy(self)
                 temp.ir.update(self.ir.filter(self.info['gases'],axis=1).diff().ewm(span = 10).mean())
                 plot_FTIR(temp,**kwargs)
                 
-            if which=='cumsum':
+            if plot == 'cumsum':
                 temp=copy.deepcopy(self)
                 temp.ir.update(self.ir.filter(self.info['gases'],axis=1).cumsum())
                 plot_FTIR(temp,**kwargs)
                 
-        if ('tga' not in self.__dict__) and (which in ['TG','heat_flow','IR_to_DTG']):
+        if ('tga' not in self.__dict__) and (plot in ['TG','heat_flow','IR_to_DTG']):
             print('Option unavailable without TGA data.')
             return
         else:            
-            if which=='TG':
+            if plot == 'TG':
                 plot_TGA(self,'sample_mass',**kwargs)
             
-            if which=='heat_flow':
+            if plot == 'heat_flow':
                 if 'heat_flow' in self.tga.columns:
-                    plot_TGA(self,which,**kwargs)
+                    plot_TGA(self, plot, **kwargs)
                 else:
                     print('No heat flow data available!')
         
-        if ('linreg' in self.__dict__) and (which == 'IR_to_DTG'):
+        if ('linreg' in self.__dict__) and (plot == 'IR_to_DTG'):
             FTIR_to_DTG(self,**kwargs)
-        elif ('linreg' not in self.__dict__) and (which == 'IR_to_DTG'):
+        elif ('linreg' not in self.__dict__) and (plot == 'IR_to_DTG'):
             print('Option unavailable without calibration!')
             return
         
