@@ -1,11 +1,12 @@
 import os
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import scipy as sp
 import copy
 
-from .config import PATHS, DPI,LABELS, SEP, UNITS, PARAMS, MOLAR_MASS, SAVGOL
+from .config import PATHS, DPI, LABELS, SEP, UNITS, PARAMS, MOLAR_MASS, SAVGOL
 from .input_output.general import time
 
 WINDOW_LENGTH=SAVGOL.getint('window_length')
@@ -21,7 +22,7 @@ def get_label(key):
     except:
         return str(key)
 
-def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],legend=True):
+def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], legend=True):
     "plot TG data"
     
     #setting up plot
@@ -51,7 +52,7 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
 
     TGA.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
     
-    # adjusting x data if x_axis == time  and constructing y-axis for temperature
+    # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis=='time':
         x=x/60
         temp=TGA.twinx()
@@ -73,6 +74,10 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
     TGA.yaxis.label.set_color(gTGA.get_color())
     DTG.yaxis.label.set_color(gDTG.get_color())
     
+    TGA.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+    TGA.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+    DTG.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+    
     TGA.set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     plt.show()
     
@@ -83,7 +88,7 @@ def plot_TGA(TG_IR,plot,save=False,x_axis='sample_temp',y_axis='orig',ylim=[None
             os.makedirs(path_plots_tga)
         fig.savefig(os.path.join(path_plots_tga,'{}_TG_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
 
-def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=[None,None],legend=True):
+def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', xlim=[None,None], legend=True):
     "plot IR data"
     gases=set([gas.upper() for gas in gases])
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -92,22 +97,23 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
     
     # catching possible input errors
     try:
-        calibrated=set(TG_IR.linreg.index)
+        calibrated = set(TG_IR.linreg.index)
     except:
-        calibrated=set()
-    on_axis=set(TG_IR.info['gases'])
+        calibrated = set()
+    on_axis = set(TG_IR.info['gases'])
     if len(gases) == 0:
         if y_axis=='rel':
-            intersection=calibrated &  on_axis
+            intersection = calibrated & on_axis
             if len(on_axis - calibrated)!=0:
-                print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),' and '.join([gas for gas in intersection])))
-            gases=intersection
+                print('{} not calibrated. Proceeding with {}.'.format(' and '.join([gas for gas in list(on_axis - calibrated)]),
+                                                                      ' and '.join([gas for gas in intersection])))
+            gases = intersection
         elif y_axis=='orig':
             gases=on_axis
     else:
         if y_axis=='rel':
             gases=set(gases)
-            intersection=calibrated &  on_axis & gases
+            intersection = calibrated & on_axis & gases
             if len(gases - calibrated)!=0:
                 print('{} not calibrated.'.format(' and '.join([gas for gas in (gases - calibrated)])))
             if len(intersection)!=0:
@@ -155,6 +161,7 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             graphs[i].plot(x,y, color=colors[i])
             graphs[i].set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['ir']))
             graphs[i].yaxis.label.set_color(colors[i])
+            graphs[i].yaxis.set_minor_locator(ticker.AutoMinorLocator())      # switch on minor ticks on each axis
             
         elif y_axis=='rel':
             tot_area=np.sum(TG_IR.ir[gas])
@@ -164,7 +171,10 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
 
     if legend:
         fig.legend()
-            
+    
+    graphs[0].xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+    graphs[0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        
     graphs[0].set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
     plt.show()
@@ -175,15 +185,15 @@ def plot_FTIR(TG_IR,save=False,gases=[],x_axis='sample_temp',y_axis='orig',xlim=
             os.makedirs(path_plots_ir)
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
-def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axis=None,xlim=[None,None]):
+def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, y_axis=None, xlim=[None,None]):
     "reconstructing DTG from calibrated IR data"
     gases_temp=set([gas.upper() for gas in gases])
     
     # catching possible input errors
     try:
-        calibrated=set(TG_IR.linreg.index)
+        calibrated = set(TG_IR.linreg.index)
     except:
-        calibrated=set()
+        calibrated = set()
     on_axis=set(TG_IR.info['gases'])
     if len(gases) == 0:
         intersection=calibrated &  on_axis
@@ -223,7 +233,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out[gas]=y[i][:]
         cumul+=y[i][:]
    
-    #setup figure
+    # setup figure
     fig=plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(8, 1)
     stack= fig.add_subplot(gs[:-1, 0])
@@ -246,6 +256,9 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
     stack.plot(x,DTG,label=PARAMS['dtg'])
     stack.set_ylabel('{}, {} {} ${}\,{}^{{-1}}$'.format(PARAMS['dtg'],', '.join([get_label(gas) for gas in gases]),SEP,UNITS['sample_mass'],UNITS['time']))
     
+    stack.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+    stack.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+    
     if legend:
         stack.legend()
     
@@ -264,7 +277,7 @@ def FTIR_to_DTG(TG_IR,x_axis='sample_temp',save=False,gases=[],legend=True,y_axi
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[None,None],gas=None,save=False,legend=True,reference_mass='reference_mass'):
+def plots(TG_IR, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
     "overlay plots from different objects"
     
     # setting up axis-labels and catching possible input errors
@@ -273,6 +286,13 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
     else:
         ylabel=plot.lower()
     if plot=='IR':
+        
+        # just to see if supplied gas is calibrated or not
+        try:
+            calibrated = set(TG_IR.linreg.index)
+        except:
+            calibrated = set()  
+
         if gas==None:
             print('Supply \'gas = \'')
             return
@@ -282,8 +302,8 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
                 print('{} was not found in IR data.'.format(gas))
                 return
         if y_axis=='rel':
-            if gas not in TG_IR[0].linreg.index:
-                print('{} is not calibrated.'.format(gas))
+            if (calibrated == set()):
+                print('{} is not calibrated. Change y_axis to \'orig\' and rerun the command.'.format(gas))
                 return
     fig,ax=plt.subplots()
     ax.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
@@ -349,6 +369,10 @@ def plots(TG_IR,plot,x_axis='sample_temp',y_axis='orig',ylim=[None,None],xlim=[N
     ax.set_xlim(xlim)
     if legend:
         ax.legend()
+        
+    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+
     plt.show()
     
     if save:
