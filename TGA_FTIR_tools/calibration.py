@@ -42,34 +42,34 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
     if plot==True:
         #plotting of rel. TG
         x=TGA_data['sample_temp']
-        plt.figure()
+        fig, ax = plt.subplots()
         rel_steps=steps/steps[0]*100
-        plt.hlines(rel_steps[:-1],np.zeros(len(rel_steps)-1),x[step_end],linestyle='dashed')
-        plt.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
+        ax.hlines(rel_steps[:-1],np.zeros(len(rel_steps)-1),x[step_end],linestyle='dashed')
+        ax.vlines(x[step_end],rel_steps[1:],rel_steps[:-1],linestyle='dashed')
         for i in range(len(step_end)):
-            plt.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
-        plt.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
-        plt.text(0.85*max(TGA_data['sample_temp']),100,'sample mass: {:.2f} {}'.format(TGA_data['sample_mass'][0],UNITS['sample_mass']), horizontalalignment='center')
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} %'.format(PARAMS['sample_mass'],SEP))
-        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
-        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        plt.title('TG')
+            ax.text(x[step_end[i]]+5,rel_steps[i+1]+rel_step_height[i]/2,str(round(rel_step_height[i],2))+' %')
+        ax.plot(x,TGA_data['sample_mass']/TGA_data['sample_mass'][0]*100)
+        ax.text(0.85*max(TGA_data['sample_temp']),100,'sample mass: {:.2f} {}'.format(TGA_data['sample_mass'][0],UNITS['sample_mass']), horizontalalignment='center')
+        ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        ax.set_ylabel('{} {} %'.format(PARAMS['sample_mass'],SEP))
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.set(title = 'TG')
         plt.show()
         
         #plotting of DTG
-        plt.figure()
+        fig, ax = plt.subplots()
         y=-DTG
-        plt.plot(x,y)
-        plt.vlines(x[step_end],0,max(y),linestyle='dashed')
-        plt.vlines(x[step_start],0,max(y),linestyle='dashed')
-        plt.vlines(x[peaks],y[peaks]-properties['peak_heights'],y[peaks])
-        plt.hlines(y[peaks]-properties['peak_heights'],x[step_end],x[step_start])
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'],UNITS['time']))
-        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
-        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        plt.title('DTG')
+        ax.plot(x,y)
+        ax.vlines(x[step_end],0,max(y),linestyle='dashed')
+        ax.vlines(x[step_start],0,max(y),linestyle='dashed')
+        ax.vlines(x[peaks],y[peaks]-properties['peak_heights'],y[peaks])
+        ax.hlines(y[peaks]-properties['peak_heights'],x[step_end],x[step_start])
+        ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        ax.set_ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'],UNITS['time']))
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.set(title = 'DTG')
         plt.show()
         
     return step_height,rel_step_height,step_start,step_end
@@ -96,6 +96,7 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
         graph[0].set_ylabel('{} {} {}'.format(get_label(gases[0]),SEP,UNITS['ir']))
         graph[0].yaxis.label.set_color(colors[0])
         graph[0].plot(x,FTIR_data[gases[0]])
+        graph[0].set_ylim(0 - (max(FTIR_data[gases[0]]) / 20), max(FTIR_data[gases[0]]))
         
         #append secondary, third... y-axis on right side
         for i,gas in enumerate(gases[1:]):
@@ -104,10 +105,11 @@ def integrate_peaks(FTIR_data,step_start,step_end,corr_baseline=None,plot=False,
             graph.append(graph[0].twinx())
             graph[i+1].spines['right'].set_position(('axes',1+i*.1))
             graph[i+1].plot(x,y, color=colors[i+1])
-            graph[i+1].vlines(step_start/60,0,max(y),linestyle='dashed')
-            graph[i+1].vlines(step_end/60,0,max(y),linestyle='dashed')
+            graph[i+1].vlines(step_start/60,0,max(y), linestyle='dashed')
+            graph[i+1].vlines(step_end/60,0,max(y), linestyle='dashed')
             graph[i+1].set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['ir']))
             graph[i+1].yaxis.label.set_color(colors[i+1])
+            graph[i+1].set_ylim(0 - (max(y) / 20), max(y))
     
     #integration
     for gas in gases:
