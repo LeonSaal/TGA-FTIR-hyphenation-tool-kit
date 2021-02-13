@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from .general import find_files
 from ..config import PATHS, PARAMS, UNITS, SEP, IR_NOISE
@@ -38,6 +39,8 @@ def corr_TGA(TGA,file_baseline,plot=False):
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
         plt.legend()
+        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
         plt.title('TGA baseline correction')
         plt.show()
         
@@ -141,6 +144,8 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
             elif x.name=='sample_temp':    
                 plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
             plt.ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['IR']))
+            plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+            plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
             plt.title('{} baseline correction'.format(get_label(gas)))
             plt.show()
                  
