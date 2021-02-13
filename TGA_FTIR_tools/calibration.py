@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import os
 
 from .plotting import get_label
@@ -51,6 +52,8 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.text(0.85*max(TGA_data['sample_temp']),100,'sample mass: {:.2f} {}'.format(TGA_data['sample_mass'][0],UNITS['sample_mass']), horizontalalignment='center')
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         plt.ylabel('{} {} %'.format(PARAMS['sample_mass'],SEP))
+        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
         plt.title('TG')
         plt.show()
         
@@ -64,6 +67,8 @@ def mass_step(TGA_data,rel_height=.98,plot=False): #rel_height=.963
         plt.hlines(y[peaks]-properties['peak_heights'],x[step_end],x[step_start])
         plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         plt.ylabel('{} {} {} ${}^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'],UNITS['time']))
+        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
         plt.title('DTG')
         plt.show()
         
@@ -307,7 +312,15 @@ def calibrate(plot=False,mode='load',method='max'):
             y=y_cali['CO'].dropna(axis=0).astype(float)
             regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
             linreg.loc[['CO']]=regression
-        
+            
+        if method=='co_oxi_iter':
+            x_cali['CO'].update(x_cali['CO']-((data.loc[(slice(None),1),'CO2']-linreg.loc['CO2','intercept'])/linreg.loc['CO2','slope']).values)
+            
+            x=x_cali['CO'].dropna(axis=0).astype(float)
+            y=y_cali['CO'].dropna(axis=0).astype(float)
+            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
+            linreg.loc[['CO']]=regression
+            
         if method=='mlr':
             Y_cali=data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]
             X_cali=data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1)
