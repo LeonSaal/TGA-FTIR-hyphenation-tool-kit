@@ -234,9 +234,9 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
         cumul+=y[i][:]
    
     # setup figure
-    fig=plt.figure(constrained_layout=True)
+    fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(8, 1)
-    stack= fig.add_subplot(gs[:-1, 0])
+    stack = fig.add_subplot(gs[:-1, 0])
     stack.set_title('{}, {:.2f} {}'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
     error = fig.add_subplot(gs[-1,0],sharex=stack)
 
