@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from .general import find_files
 from ..config import PATHS, COUPLING, DPI, PARAMS, UNITS, SEP, SAVGOL
@@ -35,7 +36,8 @@ def read_TGA(file,profile=COUPLING['profile']):
     drop=list(profiles['drop'])
         
     try:
-        data=pd.read_csv(path, delim_whitespace=True,decimal=sep ,names=names,skiprows=skiprows, skipfooter=skipfooter,converters={'sample_mass':lambda x: float(x.replace(sep,'.'))},engine='python').drop(columns=drop,errors='ignore')
+        data=pd.read_csv(path, delim_whitespace=True,decimal=sep ,names=names,skiprows=skiprows, skipfooter=skipfooter,
+                         converters={'sample_mass':lambda x: float(x.replace(sep,'.'))},engine='python').drop(columns=drop,errors='ignore')
         
     except:
         print('Failed to read TG-data from {}'.format(file))
@@ -67,7 +69,7 @@ def TGA_info(file,TGA,profile='Otto'):
     header = str(pd.read_table(path, encoding='ansi', skiprows=skipheader, nrows=1, index_col=False, names=[0], engine='python').iloc[0,0])
     info={}
     info['name']=file
-    info['date']=re.search('\d{2}\.\d{2}\.\d{2}',header).group()
+    info['date']=re.search('\d{2}\.\d{2}\.\d{4}',header).group()
     info['time']=re.search('\d{2}:\d{2}:\d{2}',header).group()
     method=str(footer.iloc[2,0]).strip()
     info['method'] = method
@@ -209,7 +211,7 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
         plt.plot(x,y,label='TGA')
         
         for i in range(len(times)-1):
-            plt.annotate(s='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
+            plt.annotate(text='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
             #plt.text(x[times[i]]+20,y[times[i]],'{:.2f} mg @ {:.2f} °C'.format(weights[i],x[times[i]]))
             plt.text(x[times[i]]+20,(y[times[i]]+ y[times[i+1]])/2,'$ML$ {}: {:.2f} mg ({:.1f} %)'.format(get_label(names[i]),mass_loss[i],mass_loss[i]/TG_IR.info[TG_IR.info['reference_mass']]*100))
         
@@ -223,6 +225,10 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
             ax2.plot(ref['sample_temp'],ref[how_dry],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
         plt.xlim(xlim)
+        
+        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        
         plt.title('Dry mass and mass steps determination')
         plt.legend()
         plt.show()   
