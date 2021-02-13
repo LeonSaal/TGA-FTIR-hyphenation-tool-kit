@@ -205,32 +205,32 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
     
     # plotting
     if plot:
-        fig=plt.figure()
+        fig, ax = plt.subplots()
         x=TG_IR.tga['sample_temp']
         y=TG_IR.tga['sample_mass']
-        plt.plot(x,y,label='TGA')
+        ax.plot(x,y,label='TGA')
         
         for i in range(len(times)-1):
-            plt.annotate(text='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
+            ax.annotate(text='', xy=(x[times[i]],y[times[i]]), xytext=(x[times[i]],y[times[i+1]]), arrowprops=dict(arrowstyle='<->'))
             #plt.text(x[times[i]]+20,y[times[i]],'{:.2f} mg @ {:.2f} °C'.format(weights[i],x[times[i]]))
-            plt.text(x[times[i]]+20,(y[times[i]]+ y[times[i+1]])/2,'$ML$ {}: {:.2f} mg ({:.1f} %)'.format(get_label(names[i]),mass_loss[i],mass_loss[i]/TG_IR.info[TG_IR.info['reference_mass']]*100))
+            ax.text(x[times[i]]+20,(y[times[i]]+ y[times[i+1]])/2,'$ML$ {}: {:.2f} mg ({:.1f} %)'.format(get_label(names[i]),mass_loss[i],mass_loss[i]/TG_IR.info[TG_IR.info['reference_mass']]*100))
         
-        plt.scatter(x[times],y[times],c='r')
-        plt.hlines(weights[1:],x[times[:-1]],x[times[1:]],linestyle='dashed')
-        plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylim(ylim)
+        ax.scatter(x[times],y[times],c='r')
+        ax.hlines(weights[1:],x[times[:-1]],x[times[1:]],linestyle='dashed')
+        ax.set_ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
+        ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        ax.set_ylim(ylim)
         if type(how_dry)==str:
             ax2=plt.twinx()
             ax2.plot(ref['sample_temp'],ref[how_dry],linestyle='dashed',label=ylabel)
             ax2.set_ylabel(ylabel)
-        plt.xlim(xlim)
+        ax.set_xlim(xlim)
         
-        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
-        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         
-        plt.title('Dry mass and mass steps determination')
-        plt.legend()
+        ax.set(title = 'Dry mass and mass steps determination')
+        ax.legend()
         plt.show()   
                 
         if save:

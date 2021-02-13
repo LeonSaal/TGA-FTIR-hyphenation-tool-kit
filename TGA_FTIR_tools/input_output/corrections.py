@@ -30,18 +30,18 @@ def corr_TGA(TGA,file_baseline,plot=False):
     
     #plotting of data, baseline and corrected value
     if plot==True:
-        plt.figure()
+        fig, ax = plt.subplots()
         x=TGA['sample_temp']
         y=TGA['sample_mass']
-        plt.plot(x,y,label='data')
-        plt.plot(x,reference_mass['sample_mass'][:len(TGA)],label='baseline')
-        plt.plot(x,corr_data['sample_mass'],label='corrected')
-        plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-        plt.ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
-        plt.legend()
-        plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
-        plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        plt.title('TGA baseline correction')
+        ax.plot(x,y,label='data')
+        ax.plot(x,reference_mass['sample_mass'][:len(TGA)],label='baseline')
+        ax.plot(x,corr_data['sample_mass'],label='corrected')
+        ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+        ax.set_ylabel('{} {} {}'.format(PARAMS['sample_mass'],SEP,UNITS['sample_mass']))
+        ax.legend()
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.set(title = 'TGA baseline correction')
         plt.show()
         
         
@@ -133,20 +133,21 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
                 x=FTIR['sample_temp']
             except:
                 x=FTIR['time']
+            
+            fig, ax = plt.subplots()
+            ax.plot(x,FTIR[gas],label='data')
+            ax.plot(x,corr_data[gas], label='baseline')
+            ax.plot(x,FTIR[gas].subtract(corr_data[gas]),label='corr. data')
     
-            plt.plot(x,FTIR[gas],label='data')
-            plt.plot(x,corr_data[gas], label='baseline')
-            plt.plot(x,FTIR[gas].subtract(corr_data[gas]),label='corr. data')
-    
-            plt.legend()
+            ax.legend()
             if x.name=='time':    
-                plt.xlabel(x.name+' /min')
+                ax.set_xlabel(x.name+' /min')
             elif x.name=='sample_temp':    
-                plt.xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
-            plt.ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['IR']))
-            plt.axes().xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
-            plt.axes().yaxis.set_minor_locator(ticker.AutoMinorLocator())
-            plt.title('{} baseline correction'.format(get_label(gas)))
+                ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
+            ax.set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['IR']))
+            ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+            ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            ax.set(title = '{} baseline correction'.format(get_label(gas)))
             plt.show()
                  
     return FTIR[gases].subtract(corr_data)
