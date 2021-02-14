@@ -202,11 +202,11 @@ def calibrate(plot=False,mode='load',method='max'):
         os.chdir(PATHS['dir_calibration'])
         
         #setting up output DataFrames
-        x_cali=pd.DataFrame()
-        y_cali=pd.DataFrame()
-        linreg=pd.DataFrame()
-        stats=pd.DataFrame()
-        data=pd.DataFrame()
+        x_cali = pd.DataFrame()
+        y_cali = pd.DataFrame()
+        linreg = pd.DataFrame()
+        stats = pd.DataFrame()
+        data = pd.DataFrame()
         
         #imporitng sample list for calibration
         try:
@@ -241,7 +241,7 @@ def calibrate(plot=False,mode='load',method='max'):
             integrals=integrate_peaks(FTIR_data,stepstart,stepend,plot=plot,corr_baseline=None,gases=gases)
             
             integrals.insert(loc=0,column='mass loss in {}'.format(UNITS['sample_mass']),value=steps)
-            data=data.append(pd.concat({sample: integrals}, names=['samples','step']))
+            data = data.append(pd.concat({sample: integrals}, names=['samples','step']))
         
         #assigning gases to mass steps
         for sample in data.index.levels[0]:
@@ -261,12 +261,13 @@ def calibrate(plot=False,mode='load',method='max'):
                 y_cali[gas][sample]=integrals.loc[i,gas]
         
         cols=['slope','intercept','r_value','p_value','std_error']
+        
         if method=='iter':
             for gas in gases:
-                #slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
-                x=x_cali[gas].dropna(axis=0).astype(float)
-                y=y_cali[gas].dropna(axis=0).astype(float)
-                regression=pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
+               #slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
+                x = x_cali[gas].dropna(axis=0).astype(float)
+                y = y_cali[gas].dropna(axis=0).astype(float)
+                regression = pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
     
                 if gas not in linreg.index:
                     linreg=linreg.append(regression,verify_integrity=True)
@@ -274,8 +275,8 @@ def calibrate(plot=False,mode='load',method='max'):
                     linreg.loc[[gas]]=regression
                 
             n_iter=10
-            X_cali=pd.DataFrame()
-            temp_linreg=pd.DataFrame(index=release_steps,columns=cols)
+            X_cali = pd.DataFrame()   # attention: X_cali is not x_cali
+            temp_linreg = pd.DataFrame(index=release_steps,columns=cols)
             for i in range(n_iter):
                 for step in data.index.levels[1]:
                     gas=release_steps[step]
@@ -295,44 +296,70 @@ def calibrate(plot=False,mode='load',method='max'):
                     for other in set(release_steps) - set([gas]):
                         x_cali[gas]=x_cali[gas].subtract((data.loc[(slice(None),step),other].droplevel(1)-linreg['intercept'][other])/linreg['slope'][other])
             
-        #regression
+        # regression (method 'max')
         for gas in gases:
             x_cali.update(x_cali[gas]/(MOLAR_MASS.getfloat(gas)))
-            x=x_cali[gas].dropna(axis=0).astype(float)
-            y=y_cali[gas].dropna(axis=0).astype(float)
-            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
+            x = x_cali[gas].dropna(axis=0).astype(float)
+            y = y_cali[gas].dropna(axis=0).astype(float)
+            regression = pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
 
             if gas not in linreg.index:
-                linreg=linreg.append(regression,verify_integrity=True)
+                linreg = linreg.append(regression,verify_integrity=True)
             else:
-                linreg.loc[[gas]]=regression
+                linreg.loc[[gas]] = regression
 
         if method=='co_oxi':
-            x_cali['CO'].update(x_cali['CO']-((data.loc[(slice(None),1),'CO2']-linreg.loc['CO2','intercept'])/linreg.loc['CO2','slope']).values)
+            co_corr = ((data.loc[(slice(None),1),'CO2']-linreg.loc['CO2','intercept'])/linreg.loc['CO2','slope']).values
+            for i in range(len(co_corr)):   # apply correction step wise to check each value
+                j = x_cali.index[i]
+                if (co_corr[i] > 0.0):  # if the correction would be negative, this is due to the intercept and should not be applied!
+                    x_cali.loc[j,'CO'] = x_cali.loc[j,'CO'] - co_corr[i]
             
-            x=x_cali['CO'].dropna(axis=0).astype(float)
-            y=y_cali['CO'].dropna(axis=0).astype(float)
-            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
-            linreg.loc[['CO']]=regression
+            x = x_cali['CO'].dropna(axis=0).astype(float)
+            y = y_cali['CO'].dropna(axis=0).astype(float)
+            regression = pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
+            linreg.loc[['CO']] = regression
             
         if method=='co_oxi_iter':
-            x_cali['CO'].update(x_cali['CO']-((data.loc[(slice(None),1),'CO2']-linreg.loc['CO2','intercept'])/linreg.loc['CO2','slope']).values)
-            
-            x=x_cali['CO'].dropna(axis=0).astype(float)
-            y=y_cali['CO'].dropna(axis=0).astype(float)
-            regression=pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
-            linreg.loc[['CO']]=regression
+            n_iter=10
+            X_cali = x_cali.copy(deep = True)   # attention: X_cali is not x_cali
+            for i in range(n_iter):
+                co_corr = ((data.loc[(slice(None),1),'CO2'] - linreg.loc['CO2','intercept']) / linreg.loc['CO2','slope']).values
+                for j in range(len(co_corr)):   # apply correction step wise to check each value
+                    k = X_cali.index[j]
+                    if (co_corr[j] > 0.0):  # if the correction would be negative, this is due to the intercept and should not be applied!
+                        X_cali.loc[k,'CO'] = x_cali.loc[k,'CO'] - co_corr[j]
+                x = X_cali['CO'].dropna(axis=0).astype(float)
+                y = y_cali['CO'].dropna(axis=0).astype(float)
+                regression = pd.DataFrame([sp.stats.linregress(x,y)],index=['CO'],columns=cols)
+                linreg.loc[['CO']] = regression
+                
+                co2_corr = ((data.loc[(slice(None),2),'CO'] - linreg.loc['CO','intercept']) / linreg.loc['CO','slope']).values
+                for j in range(len(co2_corr)):  # apply correction step wise to check each value
+                    k = X_cali.index[j]
+                    if (co2_corr[j] > 0.0): # if the correction would be negative, this is due to the intercept and should not be applied!
+                        X_cali.loc[k,'CO2'] = x_cali.loc[k,'CO2'] - co2_corr[j]
+                x = X_cali['CO2'].dropna(axis=0).astype(float)
+                y = y_cali['CO2'].dropna(axis=0).astype(float)
+                regression = pd.DataFrame([sp.stats.linregress(x,y)],index=['CO2'],columns=cols)
+                linreg.loc[['CO2']] = regression
+                
+            x_cali = X_cali.copy(deep = True)
             
         if method=='mlr':
-            Y_cali=data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]
-            X_cali=data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1)
+            # Y_cali and X_cali is different to methods above, here it is more like the whole data dataframe
+            # For better perfomance, a kind of x_cali and y_cali should be reconstructed, not to show confusing calibrations plots,
+            # because the result ist quite good. But not needed for now... 
+            data = data.clip(lower=0)   # this is not necessary? (but reasonable)
+            Y_cali = data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]   # attention: Y_cali is not y_cali
+            X_cali = data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1).dropna(axis=1)  # attention: X_cali is not x_cali, dropna() to exclude gases not available for every measurement
             mlr=linear_model.LinearRegression()#RANSACRegressor()#fit_intercept=0.0)
             mlr.fit(X_cali,Y_cali)
             
             for i, gas in enumerate(X_cali.columns):
                 linreg.loc[[gas]]=pd.DataFrame([[1/mlr.coef_[i]*MOLAR_MASS.getfloat(gas),0,np.nan,np.nan,np.nan]],index=[gas],columns=cols)
         
-        stats=calibration_stats(x_cali,y_cali,linreg)
+        stats = calibration_stats(x_cali,y_cali,linreg)
         
         #saving of 
         try:
