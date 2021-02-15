@@ -277,7 +277,7 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(TG_IR, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
+def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
     "overlay plots from different objects"
     
     # setting up axis-labels and catching possible input errors
@@ -286,24 +286,27 @@ def plots(TG_IR, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xl
     else:
         ylabel=plot.lower()
     if plot=='IR':
-        
-        # just to see if supplied gas is calibrated or not
-        try:
-            calibrated = set(TG_IR.linreg.index)
-        except:
-            calibrated = set()  
-
         if gas==None:
             print('Supply \'gas = \'')
             return
         else:
             gas=gas.upper()
-            if gas not in TG_IR[0].ir.columns:
+            if gas not in TG_IR_objs[0].ir.columns:
                 print('{} was not found in IR data.'.format(gas))
                 return
+
+        # just to see if supplied gas is calibrated or not
+        calibrated = set()
+        for TG_IR in TG_IR_objs:
+            try:
+                calibrated.update(set(TG_IR.linreg.index))
+            except:
+                if y_axis=='rel':
+                    print('{} is not calibrated for {}'.format(gas, TG_IR.info["name"]))
+          
         if y_axis=='rel':
             if (calibrated == set()):
-                print('{} is not calibrated. Change y_axis to \'orig\' and rerun the command.'.format(gas))
+                print('{} is not calibrated. Change y_axis to \'orig\' and rerun command.'.format(gas))
                 return
     fig,ax=plt.subplots()
     ax.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
@@ -317,10 +320,9 @@ def plots(TG_IR, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xl
             ax.set_ylabel('{} {} ${}$'.format(get_label(gas),SEP,UNITS[ylabel]))
         elif y_axis=='rel':
             ax.set_ylabel('{} {} ${}\,{}^{{-1}}$'.format(get_label(gas),SEP,UNITS['molar_amount'],UNITS['sample_mass']))     
-        ax.set_ylabel('{} {} {} ${}^{{-1}}\,{}^{{-1}}$'.format(PARAMS[ylabel],SEP,UNITS[ylabel],UNITS['sample_mass'],UNITS['time']))
             
     # actual plotting       
-    for obj in TG_IR:
+    for obj in TG_IR_objs:
         if reference_mass=='reference_mass':
             ref_mass=obj.info[obj.info[reference_mass]]
         else:
@@ -358,10 +360,10 @@ def plots(TG_IR, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xl
             if x_axis=='time':
                 x/=60
             if y_axis=='orig':
-                y=obj.ir[gas]
+                y = obj.ir[gas]
                 ax.plot(x,y,label=obj.info['alias'])
             elif y_axis=='rel':
-                y=obj.ir[gas]/obj.linreg['slope'][gas]/ref_mass
+                y = obj.ir[gas] / obj.linreg['slope'][gas] / ref_mass
                 ax.plot(x,y,label='{}, {:.2f} {}'.format(obj.info['alias'],obj.info['initial_mass'],UNITS['sample_mass']))
             
         
