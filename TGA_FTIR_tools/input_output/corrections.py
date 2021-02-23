@@ -133,6 +133,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
                 x=FTIR['sample_temp']
             except:
                 x=FTIR['time']
+                x/=60
             
             fig, ax = plt.subplots()
             ax.plot(x,FTIR[gas],label='data')
@@ -141,7 +142,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
     
             ax.legend()
             if x.name=='time':    
-                ax.set_xlabel(x.name+' /min')
+                ax.set_xlabel('{} {} {}'.format(PARAMS['time'],SEP,UNITS['time']))
             elif x.name=='sample_temp':    
                 ax.set_xlabel('{} {} {}'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
             ax.set_ylabel('{} {} {}'.format(get_label(gas),SEP,UNITS['IR']))
