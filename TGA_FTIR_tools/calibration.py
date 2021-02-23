@@ -351,13 +351,38 @@ def calibrate(plot=False,mode='load',method='max'):
             # For better perfomance, a kind of x_cali and y_cali should be reconstructed, not to show confusing calibrations plots,
             # because the result ist quite good. But not needed for now... 
             data = data.clip(lower=0)   # this is not necessary? (but reasonable)
-            Y_cali = data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]   # attention: Y_cali is not y_cali
-            X_cali = data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1).dropna(axis=1)  # attention: X_cali is not x_cali, dropna() to exclude gases not available for every measurement
+            X_cali = data.loc[(slice(None),slice(None)),'mass loss in {}'.format(UNITS['sample_mass'])]   # attention: Y_cali is not y_cali
+            Y_cali = data.drop(['mass loss in {}'.format(UNITS['sample_mass'])],axis=1).dropna(axis=1)  # attention: X_cali is not x_cali, dropna() to exclude gases not available for every measurement
             mlr=linear_model.LinearRegression()#RANSACRegressor()#fit_intercept=0.0)
-            mlr.fit(X_cali,Y_cali)
+            mlr.fit(Y_cali,X_cali)
             
-            for i, gas in enumerate(X_cali.columns):
+            # fill linreg manually
+            for i, gas in enumerate(Y_cali.columns):
                 linreg.loc[[gas]]=pd.DataFrame([[1/mlr.coef_[i]*MOLAR_MASS.getfloat(gas),0,np.nan,np.nan,np.nan]],index=[gas],columns=cols)
+            
+            # create new x_cali and y_cali
+            gases=linreg.index
+            x_cali = Y_cali.copy()
+            for step in data.index.levels[1]:
+                step_sums = [0] * len(data.index.levels[0])
+                for gas in gases:
+                    step_sums += Y_cali.loc[(slice(None),step),gas].values / ( linreg.loc[gas,'slope'] * MOLAR_MASS.getfloat(gas) )
+                for gas in gases:
+                    step_gas = Y_cali.loc[(slice(None),step),gas].values / ( linreg.loc[gas,'slope'] * MOLAR_MASS.getfloat(gas) )
+                    x_cali.loc[(slice(None),step),gas] = ( X_cali[(slice(None),step)].values * step_gas / step_sums ) / MOLAR_MASS.getfloat(gas)
+            y_cali = Y_cali
+            
+            # from new x_cali and y_cali a linear regression is calculated
+            # comment this lines out to get the result of mlr only
+            for gas in gases:
+                x = x_cali[gas].dropna(axis=0).astype(float)
+                y = y_cali[gas].dropna(axis=0).astype(float)
+                regression = pd.DataFrame([sp.stats.linregress(x,y)],index=[gas],columns=cols)
+
+                if gas not in linreg.index:
+                    linreg = linreg.append(regression,verify_integrity=True)
+                else:
+                    linreg.loc[[gas]] = regression
         
         stats = calibration_stats(x_cali,y_cali,linreg)
         
