@@ -310,7 +310,7 @@ def get_presets(path,reference):
     references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
     
-    # organizing data in dict, sorted by gases and filling in missing values
+    # organizing data in dict, sorted by gases and filling in missing values with [fitting] parameters of settings.ini
     for gas in gases:
         index=[references['center_0'].loc['group',i] for i in references['center_0'].columns if (references['center_0'].loc['gas',i].upper()==gas)]
         data=pd.DataFrame(index=index)
@@ -327,8 +327,8 @@ def get_presets(path,reference):
             'hwhm_max', 
             'height_max',
             'link']
-        vals=[pd.Series(presets[gas].loc[:,'height_max']).fillna(BOUNDS.getfloat('height_0')),
-              pd.Series(presets[gas].loc[:,'hwhm_max']).fillna(BOUNDS.getfloat('hwhm_max'))*BOUNDS.getfloat('hwhm_0'),
+        vals=[BOUNDS.getfloat('height_0'),
+              BOUNDS.getfloat('hwhm_0'), 
               pd.Series(presets[gas].loc[:,'center_0']-BOUNDS.getfloat('tol_center')), 
               BOUNDS.getfloat('hwhm_min'),
               BOUNDS.getfloat('height_min'), 
@@ -340,4 +340,5 @@ def get_presets(path,reference):
         presets[gas]=presets[gas].fillna(infill).dropna()
         if presets[gas].empty:
             del presets[gas]
+    
     return presets
