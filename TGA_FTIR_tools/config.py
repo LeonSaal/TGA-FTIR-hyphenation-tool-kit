@@ -23,7 +23,7 @@ with open(file, 'w') as configfile:
 
 UNITS=config['units']
 keys=['sample_mass','time','sample_temp','molar_amount','heat_flow','dtg']
-units=['mg','min','°C','mmol','mW','mg\,/\,min']
+units=['mg','min','°C','mmol','mW','mg\,min^{{-1}}']
 for key, val in zip(keys,units):
     UNITS[key]=val
     

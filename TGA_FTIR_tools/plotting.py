@@ -37,7 +37,7 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
     # adjusting y data and setting axis labels according to y_axis
     if y_axis=='rel':
         y=(TG_IR.tga[plot]/TG_IR.info[TG_IR.info['reference_mass']])*100
-        yDTG=TG_IR.tga['dtg']*60/TG_IR.info[TG_IR.info['reference_mass']]
+        yDTG=TG_IR.tga['dtg']*60/TG_IR.info[TG_IR.info['reference_mass']]*100
         ylabelDTG=r'{} {} $ \%\,min^{{-1}}$'.format(PARAMS['dtg'],SEP)
         if plot=='sample_mass':
             ylabel='{} {} $\%$'.format(PARAMS['sample_mass'],SEP)
@@ -314,7 +314,10 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
         if y_axis=='orig':
             ax.set_ylabel('{} {} ${}$'.format(PARAMS[ylabel],SEP,UNITS[ylabel]))
         elif y_axis=='rel':
-            ax.set_ylabel('{} {} $\%$'.format(PARAMS[ylabel],SEP))
+            if plot == 'DTG':
+                ax.set_ylabel('{} {} $\%\,min^{{-1}}$'.format(PARAMS[ylabel],SEP))
+            else:
+                ax.set_ylabel('{} {} $\%$'.format(PARAMS[ylabel],SEP))
     elif plot=='IR':
         if y_axis=='orig':
             ax.set_ylabel('{} {} ${}$'.format(get_label(gas),SEP,UNITS[ylabel]))
@@ -342,9 +345,9 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
             if x_axis=='time':
                 x/=60
             if y_axis=='orig':
-                y=-60*sp.signal.savgol_filter(obj.tga['sample_mass'],WINDOW_LENGTH,POLYORDER,deriv=1)
+                y = obj.tga['dtg']*60
             elif y_axis=='rel':
-                y=-60*sp.signal.savgol_filter(100*obj.tga['sample_mass']/ref_mass,WINDOW_LENGTH,POLYORDER,deriv=1)
+                y = obj.tga['dtg']*60 / ref_mass * 100
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='heat flow':
             x=copy.deepcopy(obj.tga[x_axis])
