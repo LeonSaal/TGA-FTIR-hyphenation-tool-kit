@@ -39,7 +39,7 @@ class TG_IR:
                     TGA.dry_weight(self,**kwargs)
                 except:
                     pass
-                print('TGA data was found.')
+                print('TGA data found.')
         
             except:
                 del self.tga
@@ -66,7 +66,7 @@ class TG_IR:
                     pass
             except:
                 del self.ir
-                print('No IR data was found.')
+                print('No IR data found.')
             
             if 'ir' not in self.__dict__ and 'tga' not in self.__dict__:
                 return
