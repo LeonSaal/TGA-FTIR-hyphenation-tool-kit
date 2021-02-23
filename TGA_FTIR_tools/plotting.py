@@ -36,8 +36,8 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
     
     # adjusting y data and setting axis labels according to y_axis
     if y_axis=='rel':
-        y=(TG_IR.tga[plot]/TG_IR.tga['sample_mass'][0])*100
-        yDTG=TG_IR.tga['dtg']*60/TG_IR.tga['sample_mass'][0]
+        y=(TG_IR.tga[plot]/TG_IR.info[TG_IR.info['reference_mass']])*100
+        yDTG=TG_IR.tga['dtg']*60/TG_IR.info[TG_IR.info['reference_mass']]
         ylabelDTG=r'{} {} $ \%\,min^{{-1}}$'.format(PARAMS['dtg'],SEP)
         if plot=='sample_mass':
             ylabel='{} {} $\%$'.format(PARAMS['sample_mass'],SEP)
@@ -46,7 +46,7 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
         
     elif y_axis=='orig':
         y=TG_IR.tga[plot]
-        yDTG=TG_IR.tga['dtg']*60
+        yDTG=TG_IR.tga['dtg']*60   # turning dtg from mg/s in mg/min
         ylabelDTG='{} {} ${}\,min^{{-1}}$'.format(PARAMS['dtg'],SEP,UNITS['sample_mass'])
         ylabel='{} {} ${}$'.format(PARAMS[plot],SEP,UNITS[plot])
 
@@ -78,7 +78,7 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
     TGA.yaxis.set_minor_locator(ticker.AutoMinorLocator())
     DTG.yaxis.set_minor_locator(ticker.AutoMinorLocator())
     
-    TGA.set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
+    TGA.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
     plt.show()
     
     
@@ -169,13 +169,13 @@ def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', 
             y=TG_IR.ir[gas]/tot_area*tot_mol
             graphs[0].plot(x,y,label=get_label(gas))
 
-    if legend:
+    if legend and y_axis == 'rel':
         fig.legend()
     
     graphs[0].xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
     graphs[0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
         
-    graphs[0].set_title('{}, {:.2f} ${}$'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
+    graphs[0].set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
     plt.show()
     
@@ -237,7 +237,7 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(8, 1)
     stack = fig.add_subplot(gs[:-1, 0])
-    stack.set_title('{}, {:.2f} {}'.format(TG_IR.info['alias'],TG_IR.info['initial_mass'],UNITS['sample_mass']))
+    stack.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
     error = fig.add_subplot(gs[-1,0],sharex=stack)
 
     stack.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
