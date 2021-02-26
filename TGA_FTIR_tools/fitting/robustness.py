@@ -9,18 +9,18 @@ from ..config import PATHS, BOUNDS, UNITS, DPI
 import copy
 import time as tm
 
-def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,None],**kwargs):
+def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, ylim=[0,None], **kwargs):
     "perform robustness test on multiple TG_IR objects"
     
     # load default presets
-    presets_rob=get_presets(PATHS['dir_home'], reference)
+    presets_rob = get_presets(PATHS['dir_home'], reference)
     
     # setting up output DataFrames and lists of parameters to test
-    params=['center_0','tolerance_center','hwhm_max','height_0','hwhm_0']
+    params = ['center_0', 'tolerance_center', 'hwhm_max', 'height_0', 'hwhm_0']
     results=dict()
     results['summary']=pd.DataFrame()
-    variance=dict(zip(params,[var_T,var_T,var_T,var_rel,var_rel]))
-    default=dict(zip(params,[0,BOUNDS.getfloat('tol_center'),BOUNDS.getfloat('hwhm_max'),BOUNDS.getfloat('height_0'),BOUNDS.getfloat('hwhm_0')]))
+    variance = dict(zip(params,[var_T, var_T, var_T, var_rel, var_rel]))
+    default = dict(zip(params,[0,BOUNDS.getfloat('tol_center'),BOUNDS.getfloat('hwhm_max'),BOUNDS.getfloat('height_0'),BOUNDS.getfloat('hwhm_0')]))
     
     # Calculating initial results and timing initial fit for estimation of remaining time
     print('Initial results:')
@@ -54,13 +54,18 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
                         del res
             else:
                 for gas in gases:
-                    cols=temp_presets[gas].drop('link',axis=1).columns
-                    if key=='hwhm_max':
-                        temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0, 0, 0, 0, 0,variance[key], 0])
-                    elif key=='tolerance_center':
-                        temp_presets[gas].loc[:,cols]+=i*np.array([0, 0, 0,-variance[key], 0, 0,variance[key], 0, 0])
-                    elif key in ['height_0','hwhm_0']:
-                        temp_presets[gas][key]=temp_presets[gas][key[:key.rfind('_')]+'_max']*(default[key]+i*variance[key])
+                    cols = temp_presets[gas].drop('link',axis=1).columns
+                    if key == 'hwhm_max':
+                        temp_presets[gas].loc[:,cols] += i*np.array([0, 0, 0, 0, 0, 0, 0,variance[key], 0])
+                    elif key == 'tolerance_center':
+                        temp_presets[gas].loc[:,cols] += i*np.array([0, 0, 0,-variance[key], 0, 0,variance[key], 0, 0])
+                    elif key == 'height_0':
+                        temp_presets[gas][key] = temp_presets[gas][key[:key.rfind('_')]+'_max'] * (default[key]+i*variance[key])
+                    elif key == 'hwhm_0':
+                        temp_presets[gas][key] += i * temp_presets[gas][key] * variance[key]
+                        
+                        #temp_presets[gas][key[:key.rfind('_')]+'_max'] * (default[key]+i*variance[key])
+                        #temp_presets[gas][key] = temp_presets[gas][key[:key.rfind('_')]+'_max'] * (default[key]+i*variance[key])
                 
                 res=fits(objs,reference=reference,plot=False, save=False, T_max=T_max,presets=temp_presets, **kwargs)
                 results[key+suffix]=res['mmol_per_mg']
@@ -68,7 +73,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
 
     # make subdirectory to save data
     if save:
-        path=os.path.join(PATHS['dir_home'],'Robustness',time()+reference+'_{}_{}'.format(var_T,var_rel))
+        path=os.path.join(PATHS['dir_robustness'],time()+reference+'_{}_{}'.format(var_T,var_rel))
         os.makedirs(path)
         os.chdir(path)
         
@@ -77,7 +82,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
     
     # labels and units for plots
     labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
-    units=['°C','°C','°C','$height_{max}$','$HWHM_{max}$']
+    units=['°C','°C','°C','$height_{max}$','°C']
     print('{0}\n{0}\nResults:\n{0}'.format('_'*30)) 
     for sample in samples:
         print(sample)
@@ -111,7 +116,11 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
                 
                 # plot errorbar
                 xticks=['{} {}'.format(group[:group.rfind('_')].capitalize() if group.rfind('_')!=-1 else '',get_label(group[group.rfind('_')+1:].lower())) for group in x]
-                plt.errorbar(xticks,y.values[0],yerr=yerr.values[0],label='{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit),marker='x',capsize=10,ls='none')
+                if param == 'hwhm_0':   # exception for correct hwhm_0 labeling
+                    label = '{} {}'.format(default[param] + i*default[param]*variance[param], unit)
+                else:
+                    label = '{} {}'.format(default[param]+i*variance[param] if param !='center_0' else '{:+}'.format(default[param]+i*variance[param]),unit)
+                plt.errorbar(xticks, y.values[0], yerr=yerr.values[0], label=label, marker='x', capsize=10, ls='none')
                 
                 # collect mean as well as individual results for further statistical evalutaion
                 if run != 'init' or param == params[0]:
@@ -136,7 +145,7 @@ def robustness(objs,reference,T_max=None,save=True,var_T=10,var_rel=0.3,ylim=[0,
      
     # save results to excel file
     if save:
-        with pd.ExcelWriter('robustness.xlsx') as writer:
+        with pd.ExcelWriter('robustness_in_mmol_per_mg.xlsx') as writer:
             for key in results:  
                 results[key].drop(drop_cols,axis=1,errors='ignore').to_excel(writer,sheet_name=key)
     os.chdir(PATHS['dir_home'])
