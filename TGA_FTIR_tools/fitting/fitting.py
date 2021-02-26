@@ -37,7 +37,7 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
         w = p * (y > z) + (1-p) * (y < z)
     return z
 
-def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,predef_tol=0.01):
+def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=True, predef_tol=0.01, check_LOQ_LOD = True):
     "deconvolve IR data of TG_IR with func and multiple presets"
     temp_presets=copy.deepcopy(presets)
     data=[]
@@ -74,8 +74,12 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
         tot_area=np.sum(TG_IR.ir[gas])
     
         if gas == 'H2O':
-            # total area of water is calculated above dry-point
-            tot_area=np.sum(TG_IR.ir[gas][TG_IR.ir['sample_temp']>TG_IR.info['dry_temp']])
+            # total area of water is calculated above dry-point, if this exists (therefore, try)
+            try:
+                minimum_temp = TG_IR.info['dry_temp']
+            except:
+                minimum_temp = TG_IR.ir[gas].min()
+            tot_area=np.sum(TG_IR.ir[gas][TG_IR.ir['sample_temp']>minimum_temp])
         
         if 'linreg' in TG_IR.__dict__:
             tot_mol=(tot_area-TG_IR.linreg['intercept'][gas])/TG_IR.linreg['slope'][gas]
@@ -134,8 +138,8 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             peaks['hwhm'][group]=popt[i+2*num_curves]
             if y_axis=='orig':
                 peaks['area'][group]=np.sum(gaussian(x,popt[i],popt[i+num_curves],popt[i+2*num_curves]))
-                peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol
-                peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
+                peaks['mmol'][group] = peaks['area'][group]/tot_area*tot_mol
+                peaks['mmol_per_mg'][group] = peaks['mmol'][group]/TG_IR.info[ref_mass]
             elif y_axis=='rel':
                 peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol
                 peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
@@ -157,7 +161,7 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             fig=plt.figure(constrained_layout=True)
             gs = fig.add_gridspec(8, 1)
             fitting = fig.add_subplot(gs[:-1, 0])
-            fitting.set_title('{}, {:.2f} mg'.format(TG_IR.info['alias'],TG_IR.info[ref_mass]))
+            fitting.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
             error = fig.add_subplot(gs[-1,0],sharex=fitting)
             #fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
             
@@ -192,6 +196,17 @@ def fitting(TG_IR,presets,func=multi_gauss,y_axis='orig',plot=False,save=True,pr
             error.set_ylim(-abs_max,abs_max)
             plt.show()
             fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
+        
+        # remove values concerning LOQ and LOD
+        #if (check_LOQ_LOD == True):
+        #    print('check')
+                
+        #        if (peaks['mmol'][group] < TG_IR.stats.loc[gas,'x_LOQ']):
+        #            print('LOQ')
+        #            peaks['mmol_per_mg'][group] = '< LOQ'
+        #        if (peaks['mmol'][group] < TG_IR.stats.loc[gas,'x_LOD']):
+        #            print('LOD')
+        #            peaks['mmol_per_mg'][group] = '< LOD'
         
         # save results to excel
         if save:
@@ -241,7 +256,7 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
     sample_re='^.+(?=_\d{1,3})'
     num_re='(?<=_)\d{1,3}$'
     # cycling through samples
-    for obj in objs:
+    for i, obj in enumerate(objs):
         # fitting of the sample and calculating the amount of functional groups
         name=obj.info['alias']
         sample=re.search(sample_re,name)
@@ -253,9 +268,9 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
         if num!=None:
             num=num.group()
         else:
-            num=0
+            num = i
 
-        peaks, sumsqerr=obj.fit(reference,presets=presets,**kwargs,save=False)
+        peaks, sumsqerr = obj.fit(reference, presets=presets, **kwargs, save=False)
 
         #writing data to output DataFrames
         for key in res:
@@ -263,35 +278,35 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
         err=err.append(pd.concat({sample:sumsqerr.rename({name:num})}, names=['samples','run']))
         
     # calculate statistical values
-    dm=COUPLING.getfloat('mass_resolution')*1e-3
+    dm = COUPLING.getfloat('mass_resolution')*1e-3
     for key in res:
-        samples=res[key].index.levels[0]
+        samples = res[key].index.levels[0]
         for sample in samples:
             
             if key=='mmol_per_mg':
-                drop_cols=[col for col in res[key].columns if ('_sum' in col) or ('_mean' in col)]
-                columns=res[key].columns.drop(drop_cols)
-                group_gas=[column[column.rfind('_')+1:] for column in columns]
+                drop_cols = [col for col in res[key].columns if ('_sum' in col) or ('_mean' in col)]
+                columns = res[key].columns.drop(drop_cols)
+                group_gas = [column[column.rfind('_')+1:] for column in columns]
 
-                lod=[objs[0].stats['x_LOD'][gas] for gas in group_gas]
-                subset=res['mmol_per_mg'].loc[sample,columns]
-                mmol=res['mmol'].loc[sample,columns]
-                g=mmol/subset
+                lod = [objs[0].stats['x_LOD'][gas] for gas in group_gas]
+                subset = res['mmol_per_mg'].loc[sample,columns]
+                mmol = res['mmol'].loc[sample,columns]
+                g = mmol / subset
                 
-                dmmolg_i=np.power(np.power(lod/mmol,2)+np.power(dm/g,2),0.5)*subset
-                dmmol=np.power(np.sum(np.power(dmmolg_i,2)),0.5)
+                dmmolg_i = np.power(np.power(lod/mmol,2) + np.power(dm/g,2),0.5) * subset
+                dmmol = np.power(np.sum(np.power(dmmolg_i,2)),0.5)
             
-                stddev=pd.concat([pd.DataFrame(dmmol.rename('dev')).T,pd.DataFrame(res[key].loc[sample,drop_cols].std().rename('dev')).T],axis=1)
+                stddev = pd.concat([pd.DataFrame(dmmol.rename('dev')).T,pd.DataFrame(res[key].loc[sample,drop_cols].std().rename('dev')).T],axis=1)
 
             else:
-                stddev=pd.DataFrame(res[key].loc[sample].std().rename('stddev')).T
-            mean=pd.DataFrame(res[key].loc[sample].mean().rename('mean')).T
+                stddev = pd.DataFrame(res[key].loc[sample].std().rename('stddev')).T
+            mean = pd.DataFrame(res[key].loc[sample].mean().rename('mean')).T
 
-            res[key]=res[key].append(pd.concat({sample:mean}, names=['samples','run']))
-            res[key]=res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
-                    
-        res[key].sort_index(inplace=True)
-        res[key].sort_index(axis=1,inplace=True)        
+            res[key] = res[key].append(pd.concat({sample:mean}, names=['samples','run']))
+            res[key] = res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
+        
+        #res[key].sort_index(inplace=True)   # sorting by rows would effect the order of mean and stddev or dev and mean, respectively.
+        res[key].sort_index(axis=1,inplace=True)   # sorting by columns    
     
     # exporting data
     if save:
