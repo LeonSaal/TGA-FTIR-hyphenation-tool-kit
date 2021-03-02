@@ -78,7 +78,7 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
         os.chdir(path)
         
     # sort and summarize results for each sample
-    samples=results['init'].index.levels[0]
+    samples = results['init'].index.levels[0]
     
     # labels and units for plots
     labels=['$center$','$tolerance\,center$','$HWHM_{max}$','$height_0$','$HWHM_0$']
@@ -142,11 +142,45 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
         results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].std(axis=0).rename('stddev')).T}, names=['samples',' ']))
         results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].min(axis=0).rename('min')).T}, names=['samples',' ']))
         results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['all'].max(axis=0).rename('max')).T}, names=['samples',' ']))
-     
+    
+    # check results for LOD and LOQ and add columns 'rel_stddev', 'rel_meanstddev', limits
+    # for now only do it, when an single sample is provided
+    # in future this test should be an own function used in fits() and robustness()
+    if len(samples) == 1:
+        LODQ_test = results['summary'].T
+        LODQ_test.columns = LODQ_test.columns.droplevel(0)
+        #print(LODQ_test)
+        # calculate the mean of objects reference masses to be able to check for limits
+        ref_mass_mean = 0
+        for obj in objs:
+            ref_mass_mean += obj.info[obj.info['reference_mass']]
+        ref_mass_mean = ref_mass_mean / len(objs)
+
+        # add column 'rel_stddev'
+        LODQ_test['rel_stddev'] = LODQ_test.loc[:,'stddev'] / LODQ_test.loc[:,'mean']
+        LODQ_test['rel_meanstddev'] = LODQ_test.loc[:,'meanstddev'] / LODQ_test.loc[:,'mean']
+
+        # add column 'limits' and check mean for LOQ and LOD
+        LODQ_test['limits'] = ''
+        for limit in ['LOQ', 'LOD']:
+            for gas in gases:
+                if (gas == 'CO'):
+                    list_gas = np.array(list(set(filter(lambda x: gas in x, LODQ_test.index)) - set(filter(lambda x: 'CO2' in x, LODQ_test.index))))
+                    list_gas = list_gas[list(((LODQ_test.loc[list_gas,'mean'] * ref_mass_mean) < objs[0].stats.loc[gas,('x_' + limit)]).values)]
+                    LODQ_test.loc[list_gas,'limits'] = ('< ' + limit)                
+                else:
+                    list_gas = np.array(list(filter(lambda x: gas in x, LODQ_test.index)))
+                    list_gas = list_gas[list(((LODQ_test.loc[list_gas,'mean'] * ref_mass_mean) < objs[0].stats.loc[gas,('x_' + limit)]).values)]
+                    LODQ_test.loc[list_gas,'limits'] = ('< ' + limit)
+    
+        results['summary_T_limits'] = LODQ_test.T    
+    
+    
     # save results to excel file
     if save:
+        print('Fittings finished! Plots and results are saved in \'{}\'.'.format(path))
         with pd.ExcelWriter('robustness_in_mmol_per_mg.xlsx') as writer:
             for key in results:  
                 results[key].drop(drop_cols,axis=1,errors='ignore').to_excel(writer,sheet_name=key)
     os.chdir(PATHS['dir_home'])
-    return 
+    return path

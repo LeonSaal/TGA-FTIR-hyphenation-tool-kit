@@ -37,7 +37,7 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
         w = p * (y > z) + (1-p) * (y < z)
     return z
 
-def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=True, predef_tol=0.01, check_LOQ_LOD = True):
+def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=True, predef_tol=0.01):
     "deconvolve IR data of TG_IR with func and multiple presets"
     temp_presets=copy.deepcopy(presets)
     data=[]
@@ -197,17 +197,6 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             plt.show()
             fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
         
-        # remove values concerning LOQ and LOD
-        #if (check_LOQ_LOD == True):
-        #    print('check')
-                
-        #        if (peaks['mmol'][group] < TG_IR.stats.loc[gas,'x_LOQ']):
-        #            print('LOQ')
-        #            peaks['mmol_per_mg'][group] = '< LOQ'
-        #        if (peaks['mmol'][group] < TG_IR.stats.loc[gas,'x_LOD']):
-        #            print('LOD')
-        #            peaks['mmol_per_mg'][group] = '< LOD'
-        
         # save results to excel
         if save:
             f_name=TG_IR.info['name']+'_'+y_axis+'.xlsx'
@@ -255,6 +244,7 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
     
     sample_re='^.+(?=_\d{1,3})'
     num_re='(?<=_)\d{1,3}$'
+    sample_remember = ''
     # cycling through samples
     for i, obj in enumerate(objs):
         # fitting of the sample and calculating the amount of functional groups
@@ -265,10 +255,17 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
             sample=sample.group()
         else:
             sample=name
+        
+        if sample != sample_remember: 
+            j = 1
+        else: 
+            j += 1
+        sample_remember = sample
+        
         if num!=None:
             num=num.group()
         else:
-            num = i
+            num = j
 
         peaks, sumsqerr = obj.fit(reference, presets=presets, **kwargs, save=False)
 
@@ -307,6 +304,8 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
         
         #res[key].sort_index(inplace=True)   # sorting by rows would effect the order of mean and stddev or dev and mean, respectively.
         res[key].sort_index(axis=1,inplace=True)   # sorting by columns    
+    
+    # insert LOD and LOQ check, like in robustness()? see planed function their
     
     # exporting data
     if save:
