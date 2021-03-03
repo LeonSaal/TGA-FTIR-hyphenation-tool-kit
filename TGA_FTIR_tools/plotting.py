@@ -21,8 +21,20 @@ def get_label(key):
             return LABELS[int(key)]
     except:
         return str(key)
+    
+def ylim_auto(x, y, xlim):
+    "truncate x and y according to xlim"
+    x_min = xlim[0]
+    x_max = xlim[1]
+    if pd.isnull(xlim[0]): x_min = x.min() 
+    if pd.isnull(xlim[1]): x_max = x.max() 
+    x = x[(x >= x_min) & (x <= x_max)]  
+    y = y[x.index]
+    ylim = [None, None]   # reset ylim
+    
+    return x, y, ylim
 
-def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], legend=True):
+def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], legend=True):
     "plot TG data"
     
     #setting up plot
@@ -32,7 +44,10 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
     
     DTG=TGA.twinx()
     
-    x=copy.deepcopy(TG_IR.tga[x_axis])
+    x = copy.deepcopy(TG_IR.tga[x_axis])
+    
+    #if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+
     
     # adjusting y data and setting axis labels according to y_axis
     if y_axis=='rel':
@@ -61,6 +76,10 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim=
         temp.set_ylabel('{} {} ${}$'.format(PARAMS['sample_temp'],SEP,UNITS['sample_temp']))
         if legend:
             temp.legend(loc=1)
+    
+    if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+        x, y, ylim = ylim_auto(x, y, xlim)    
+        x, yDTG, ylim = ylim_auto(x, yDTG, xlim)    
     
     # actual plotting    
     gTGA,=TGA.plot(x,y,'r-',label=ylabel)
@@ -277,7 +296,7 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None], xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
+def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
     "overlay plots from different objects"
     
     # setting up axis-labels and catching possible input errors
@@ -339,6 +358,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
                 y=obj.tga['sample_mass']
             elif y_axis=='rel':
                 y=100*obj.tga['sample_mass']/ref_mass
+            if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+                x, y, ylim_temp = ylim_auto(x, y, xlim)
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='DTG':
             x=copy.deepcopy(obj.tga[x_axis])
@@ -348,6 +369,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
                 y = obj.tga['dtg']*60
             elif y_axis=='rel':
                 y = obj.tga['dtg']*60 / ref_mass * 100
+            if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+                x, y, ylim_temp = ylim_auto(x, y, xlim)
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='heat flow':
             x=copy.deepcopy(obj.tga[x_axis])
@@ -357,6 +380,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
                 y=obj.tga['heat_flow']
             elif y_axis=='rel':
                 y=obj.tga['heat_flow']/ref_mass
+            if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+                x, y, ylim_temp = ylim_auto(x, y, xlim)
             ax.plot(x,y,label=obj.info['alias'])
         if plot=='IR':
             x=copy.deepcopy(obj.ir[x_axis])
@@ -364,14 +389,20 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim=[None,None
                 x/=60
             if y_axis=='orig':
                 y = obj.ir[gas]
+                if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+                    x, y, ylim_temp = ylim_auto(x, y, xlim)
                 ax.plot(x,y,label=obj.info['alias'])
             elif y_axis=='rel':
                 y = obj.ir[gas] / obj.linreg['slope'][gas] / ref_mass
+                if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
+                    x, y, ylim_temp = ylim_auto(x, y, xlim)
                 ax.plot(x,y,label='{}, {:.2f} {}'.format(obj.info['alias'],obj.info['initial_mass'],UNITS['sample_mass']))
-            
-        
+    
+    if (ylim == 'auto'):   # reset ylim to [None,None]
+        ylim = ylim_temp
     ax.set_ylim(ylim)
     ax.set_xlim(xlim)
+    
     if legend:
         ax.legend()
         
