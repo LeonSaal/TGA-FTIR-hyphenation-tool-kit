@@ -84,11 +84,17 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         if group_by == 'samples':
             y = df.loc[group, (slice(None), 'mmol_per_mg')]
             y_err = df.loc[group, (slice(None), 'stddev')]
-            y_lab = df.loc[group, (slice(None), 'label')]
+            try:
+                y_lab = df.loc[group, (slice(None), 'label')]
+            except:
+                pass
         elif group_by == 'groups':
             y = df.loc[x, (group, 'mmol_per_mg')]
             y_err = df.loc[x, (group, 'stddev')]
-            y_lab = df.loc[x, (group, 'label')]
+            try:
+                y_lab = df.loc[x, (group, 'label')]
+            except:
+                pass
         
         x_i = (x_num - width*(len(groups)-1)/2 + i*width)
         

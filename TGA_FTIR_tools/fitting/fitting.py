@@ -138,10 +138,12 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             peaks['hwhm'][group]=popt[i+2*num_curves]
             if y_axis=='orig':
                 peaks['area'][group]=np.sum(gaussian(x,popt[i],popt[i+num_curves],popt[i+2*num_curves]))
-                peaks['mmol'][group] = peaks['area'][group]/tot_area*tot_mol
+                #peaks['mmol'][group] = peaks['area'][group]/tot_area*tot_mol   # calculation based relative to total evolved gas
+                peaks['mmol'][group] = (peaks['area'][group] - TG_IR.linreg['intercept'][gas]) / TG_IR.linreg['slope'][gas]   # calculation based on each Gauß fit
                 peaks['mmol_per_mg'][group] = peaks['mmol'][group]/TG_IR.info[ref_mass]
             elif y_axis=='rel':
-                peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol
+                #peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol   # calculation based relative to total evolved gas
+                peaks['mmol'][group] = (peaks['area'][group] - TG_IR.linreg['intercept'][gas]) / TG_IR.linreg['slope'][gas]   # calculation based on each Gauß fit
                 peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
         
         # plotting
