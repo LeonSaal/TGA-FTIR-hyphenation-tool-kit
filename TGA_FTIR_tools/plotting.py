@@ -194,7 +194,7 @@ def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', 
     graphs[0].xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
     graphs[0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
         
-    graphs[0].set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    graphs[0].set_title('{}, {}: {:.2f}$\,{}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
     graphs[0].set_xlim(xlim)
     plt.show()
     
@@ -360,7 +360,7 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y=100*obj.tga['sample_mass']/ref_mass
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label=obj.info['alias'])
+            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='DTG':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
@@ -371,7 +371,7 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y = obj.tga['dtg']*60 / ref_mass * 100
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label=obj.info['alias'])
+            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='heat flow':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
@@ -382,7 +382,7 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y=obj.tga['heat_flow']/ref_mass
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label=obj.info['alias'])
+            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='IR':
             x=copy.deepcopy(obj.ir[x_axis])
             if x_axis=='time':
@@ -391,12 +391,12 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y = obj.ir[gas]
                 if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                     x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(x,y,label=obj.info['alias'])
+                ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
             elif y_axis=='rel':
                 y = obj.ir[gas] / obj.linreg['slope'][gas] / ref_mass
                 if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                     x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(x,y,label='{}, {:.2f} {}'.format(obj.info['alias'],obj.info['initial_mass'],UNITS['sample_mass']))
+                ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
     
     if (ylim == 'auto'):   # reset ylim to [None,None]
         ylim = ylim_temp
