@@ -120,7 +120,7 @@ def corr_FTIR(FTIR,file_baseline,plot=False):
                 corr_data[gas]+=const_baseline(FTIR[gas].subtract(co2_baseline)-min(FTIR[gas]),thresh)+min(FTIR[gas].subtract(co2_baseline))
                 
             except:
-                print('Unable to align CO2 baseline with measurement.')
+                print('WARNING: Unable to align CO2 baseline with measurement.')
                 corr_data[gas]=np.zeros(len(FTIR))
                 corr_data[gas]+=const_baseline(FTIR[gas]-min(FTIR[gas]),thresh)+min(FTIR[gas])
         else:
