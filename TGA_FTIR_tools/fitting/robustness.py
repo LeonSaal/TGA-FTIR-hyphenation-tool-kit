@@ -99,7 +99,8 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
         for param,label,unit in zip(params,labels,units):
             
             # setup figure
-            fig=plt.figure()
+            fig, ax = plt.subplots()
+            #fig=plt.figure()
             plt.title('{}: {}'.format(sample,label))
             
             # cycle through upper, initial and lower bound of parameter
@@ -131,7 +132,8 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
             plt.ylim(ylim)
             plt.ylabel('${}\,{}^{{-1}}$'.format(UNITS['molar_amount'],UNITS['sample_mass']))
             plt.legend()
-            plt.xticks(rotation=45)
+            plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels
+            #plt.xticks(rotation=45)
             plt.tight_layout()
             plt.show()
             fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
