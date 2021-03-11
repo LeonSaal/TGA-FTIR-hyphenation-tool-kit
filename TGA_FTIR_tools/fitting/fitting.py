@@ -234,9 +234,9 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
     # initializing of output DataFrames
     err=pd.DataFrame()
     names=['center','height','hwhm','area','mmol','mmol_per_mg']
-    res=dict()
+    results=dict()
     for name in names:
-        res[name]=pd.DataFrame()
+        results[name]=pd.DataFrame()
     
     # make subdirectory to save data
     if save:
@@ -272,52 +272,54 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
         peaks, sumsqerr = obj.fit(reference, presets=presets, **kwargs, save=False)
 
         #writing data to output DataFrames
-        for key in res:
-            res[key]=res[key].append(pd.concat({sample:pd.DataFrame(peaks[key].rename(num)).T}, names=['samples','run']))  
+        for key in results:
+            results[key]=results[key].append(pd.concat({sample:pd.DataFrame(peaks[key].rename(num)).T}, names=['samples','run']))  
         err=err.append(pd.concat({sample:sumsqerr.rename({name:num})}, names=['samples','run']))
         
     # calculate statistical values
     dm = COUPLING.getfloat('mass_resolution')*1e-3
-    for key in res:
-        samples = res[key].index.levels[0]
+    for key in results:
+        samples = results[key].index.levels[0]
         for sample in samples:
             
             if key=='mmol_per_mg':
-                drop_cols = [col for col in res[key].columns if ('_sum' in col) or ('_mean' in col)]
-                columns = res[key].columns.drop(drop_cols)
+                drop_cols = [col for col in results[key].columns if ('_sum' in col) or ('_mean' in col)]
+                columns = results[key].columns.drop(drop_cols)
                 group_gas = [column[column.rfind('_')+1:] for column in columns]
 
                 lod = [objs[0].stats['x_LOD'][gas] for gas in group_gas]
-                subset = res['mmol_per_mg'].loc[sample,columns]
-                mmol = res['mmol'].loc[sample,columns]
+                subset = results['mmol_per_mg'].loc[sample,columns]
+                mmol = results['mmol'].loc[sample,columns]
                 g = mmol / subset
                 
                 dmmolg_i = np.power(np.power(lod/mmol,2) + np.power(dm/g,2),0.5) * subset
                 dmmol = np.power(np.sum(np.power(dmmolg_i,2)),0.5)
             
-                stddev = pd.concat([pd.DataFrame(dmmol.rename('dev')).T,pd.DataFrame(res[key].loc[sample,drop_cols].std().rename('dev')).T],axis=1)
+                stddev = pd.concat([pd.DataFrame(dmmol.rename('dev')).T,pd.DataFrame(results[key].loc[sample,drop_cols].std().rename('dev')).T],axis=1)
 
             else:
-                stddev = pd.DataFrame(res[key].loc[sample].std().rename('stddev')).T
-            mean = pd.DataFrame(res[key].loc[sample].mean().rename('mean')).T
+                stddev = pd.DataFrame(results[key].loc[sample].std().rename('stddev')).T
+            mean = pd.DataFrame(results[key].loc[sample].mean().rename('mean')).T
 
-            res[key] = res[key].append(pd.concat({sample:mean}, names=['samples','run']))
-            res[key] = res[key].append(pd.concat({sample:stddev}, names=['samples','run']))
+            results[key] = results[key].append(pd.concat({sample:mean}, names=['samples','run']))
+            results[key] = results[key].append(pd.concat({sample:stddev}, names=['samples','run']))
         
-        #res[key].sort_index(inplace=True)   # sorting by rows would effect the order of mean and stddev or dev and mean, respectively.
-        res[key].sort_index(axis=1,inplace=True)   # sorting by columns    
+        #results[key].sort_index(inplace=True)   # sorting by rows would effect the order of mean and stddev or dev and mean, respectively.
+        results[key].sort_index(axis=1,inplace=True)   # sorting by columns    
     
-    # insert LOD and LOQ check, like in robustness()? see planed function their
+    # check results for LOD and LOQ and add columns 'rel_dev', limits
+    gases=[key for key in presets]
+    results['mmol_per_mg'] = check_LODQ(results['mmol_per_mg'], samples, gases, objs, mean = 'mean', dev = 'dev')
     
     # exporting data
     if save:
         print('Fitting finished! Plots and results are saved in \'{}\'.'.format(path))
         with pd.ExcelWriter('summary.xlsx') as writer:
-            for key in res:
-                res[key].dropna(axis=1,thresh=1).to_excel(writer,sheet_name=key)
+            for key in results:
+                results[key].dropna(axis=1,thresh=1).to_excel(writer,sheet_name=key)
             err.to_excel(writer,sheet_name='sum_squerr')
         os.chdir(PATHS['dir_home'])
-    return res
+    return results
 
 def get_presets(path,reference):
     "load deconvolution presets from excel file"
@@ -358,3 +360,38 @@ def get_presets(path,reference):
             del presets[gas]
     
     return presets
+
+
+def check_LODQ(results_table, samples, gases, objs, mean = 'mean', dev = 'stddev', meandev = 'meanstddev'):
+    # check results for LOD and LOQ and add columns 'rel_stddev', 'rel_meanstddev', limits
+    for sample in samples:
+        LODQ_test = results_table.T
+        # calculate the mean of objects reference masses to be able to check for limits
+        ref_mass_mean = 0
+        for obj in objs:
+            ref_mass_mean += obj.info[obj.info['reference_mass']]
+        ref_mass_mean = ref_mass_mean / len(objs)
+
+        # add column 'rel_stddev'
+        LODQ_test[(sample, ('rel_'+dev))] = LODQ_test.loc[:,(sample, dev)] / LODQ_test.loc[:,(sample, mean)]
+        try:   # for robustness() only
+            LODQ_test[(sample, ('rel_'+meandev))] = LODQ_test.loc[:,(sample, meandev)] / LODQ_test.loc[:,(sample, mean)]
+        except:
+            pass
+
+        # add column 'limits' and check mean for LOQ and LOD
+        LODQ_test[(sample, 'limits')] = ''
+        for limit in ['LOQ', 'LOD']:
+            for gas in gases:
+                if (gas == 'CO'):
+                    list_gas = np.array(list(set(filter(lambda x: gas in x, LODQ_test.index)) - set(filter(lambda x: 'CO2' in x, LODQ_test.index))))
+                    list_gas = list_gas[list(((LODQ_test.loc[list_gas,(sample, mean)] * ref_mass_mean) < objs[0].stats.loc[gas,('x_' + limit)]).values)]
+                    LODQ_test.loc[list_gas,(sample, 'limits')] = ('< ' + limit)                
+                else:
+                    list_gas = np.array(list(filter(lambda x: gas in x, LODQ_test.index)))
+                    list_gas = list_gas[list(((LODQ_test.loc[list_gas,(sample, mean)] * ref_mass_mean) < objs[0].stats.loc[gas,('x_' + limit)]).values)]
+                    LODQ_test.loc[list_gas,(sample,'limits')] = ('< ' + limit)
+    
+        results_table = LODQ_test.T
+    
+    return results_table

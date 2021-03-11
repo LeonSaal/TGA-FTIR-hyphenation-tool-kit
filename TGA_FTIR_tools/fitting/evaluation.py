@@ -38,6 +38,15 @@ def summarize(path, select_groups = [], condense_results = True):
         summarized = pd.DataFrame(index = groups, columns = columns)
         for group in groups:
             group_set = df.loc[df.index.map(lambda x: x.startswith(group))].copy()
+            
+            # set values < LOD or < LOQ to 0.0
+            for sample in samples:
+                try:
+                    mask = pd.notnull(group_set.loc[:,(sample, 'label')])
+                    group_set.loc[mask,(sample, ['mmol_per_mg', 'stddev'])] = 0.0   
+                except:
+                    pass
+            
             if (group == 'anhydrides'):    
                 summarized.loc[group,(slice(None), 'mmol_per_mg')] = group_set.loc[:,(slice(None), 'mmol_per_mg')].mean(axis=0)
                 # error propagation for the mean of stddev
@@ -48,13 +57,46 @@ def summarize(path, select_groups = [], condense_results = True):
                 # error propagation for the sum of stddev
                 group_set.loc[:,(slice(None), 'stddev')] = group_set.loc[:,(slice(None), 'stddev')]**2
                 summarized.loc[group,(slice(None), 'stddev')] = group_set.loc[:,(slice(None), 'stddev')].sum(axis=0)**0.5
+           
+            # create label for condensed group
+            for sample in samples:
+                if (summarized.loc[group,(sample, 'mmol_per_mg')] == 0.0):
+                    try:
+                        mask = pd.notnull(group_set.loc[:,(sample, 'label')])   # select rows with labels in group_set
+                        label_set = set(group_set.loc[mask,(sample, 'label')])  # create a set of these labels
+                        if (len(label_set) == 2):   # if there are two items in the set
+                            label_text = '< LOQ'
+                        elif (len(label_set) == 1): # if there is only one item
+                            label_text = str(label_set)
+                        summarized.loc[group,(sample, 'label')] = label_text   # set the label according to label_text
+                    except:
+                        pass
     else:
+        # Values are not manipulated to preserve details including the labels
         summarized = df
     
     if (len(select_groups) > 0):
         summarized = summarized.loc[select_groups,:]
         
     return summarized
+
+
+def concatenate(*dfs):
+    df = pd.concat(list(dfs), axis=1, sort=False)
+    
+    # extract samples from column level
+    samples = df.columns.get_level_values('samples')
+    seen = set()
+    samples = [x for x in samples if not (x in seen or seen.add(x))]
+    # set NaN in 'mmol_per_mg' to n.d. in 'label'
+    for sample in samples:
+        try:
+            df.loc[df.loc[:,(sample, 'mmol_per_mg')].isnull(), (sample, 'label')] = 'n.d.'
+            df.loc[df.loc[:,(sample, 'label')].isnull(), (sample, 'label')] = ''
+        except:
+            pass
+    
+    return df
 
 
 def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
@@ -74,6 +116,7 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
     elif group_by == 'groups':
         x = df.index   # groups as x-ticks
         groups = samples   # samples for each group
+        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels
     
     x_num = np.arange(len(x))   # define x-ticks nummerically
     width = 1 / (len(groups)+1)   # calculate width of a bar; +1 is the gap to bars of the next sample
