@@ -112,7 +112,7 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
                 
                 # make list of mean value and deviation
                 y=results[index].loc[sample,'mean',:].drop(drop_cols,axis=1)
-                yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev'],errors='ignore'),:].drop(drop_cols,axis=1)
+                yall=results[index].loc[sample,results[index].index.levels[1].drop(['mean','stddev','dev','rel_dev', 'rel_stddev', 'limits'],errors='ignore'),:].drop(drop_cols,axis=1)
                 yerr=results[index].loc[sample,'dev',:].drop(drop_cols,axis=1)
                 
                 # plot errorbar

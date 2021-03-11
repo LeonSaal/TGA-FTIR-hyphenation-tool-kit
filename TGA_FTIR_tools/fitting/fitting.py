@@ -309,6 +309,7 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
     
     # check results for LOD and LOQ and add columns 'rel_dev', limits
     gases=[key for key in presets]
+    results['mmol'] = check_LODQ(results['mmol'], samples, gases, objs, mean = 'mean', dev = 'stddev', ref_mass = False)
     results['mmol_per_mg'] = check_LODQ(results['mmol_per_mg'], samples, gases, objs, mean = 'mean', dev = 'dev')
     
     # exporting data
@@ -362,18 +363,26 @@ def get_presets(path,reference):
     return presets
 
 
-def check_LODQ(results_table, samples, gases, objs, mean = 'mean', dev = 'stddev', meandev = 'meanstddev'):
+def check_LODQ(results_table, samples, gases, objs, mean = 'mean', dev = 'stddev', meandev = 'meanstddev', ref_mass = True):
     # check results for LOD and LOQ and add columns 'rel_stddev', 'rel_meanstddev', limits
     for sample in samples:
         LODQ_test = results_table.T
+        
         # calculate the mean of objects reference masses to be able to check for limits
-        ref_mass_mean = 0
-        for obj in objs:
-            ref_mass_mean += obj.info[obj.info['reference_mass']]
-        ref_mass_mean = ref_mass_mean / len(objs)
+        # This makes the function limited to measurments with comparable samples masses
+        if (ref_mass == True):   # results table in mmol_per_mg
+            ref_mass_mean = 0
+            for obj in objs:
+                ref_mass_mean += obj.info[obj.info['reference_mass']]
+            ref_mass_mean = ref_mass_mean / len(objs)
+        else:
+            ref_mass_mean = 1   # results table in mmol
 
         # add column 'rel_stddev'
-        LODQ_test[(sample, ('rel_'+dev))] = LODQ_test.loc[:,(sample, dev)] / LODQ_test.loc[:,(sample, mean)]
+        try:   # for fits() if only one sample is analyzed
+            LODQ_test[(sample, ('rel_'+dev))] = LODQ_test.loc[:,(sample, dev)] / LODQ_test.loc[:,(sample, mean)]
+        except:
+            pass
         try:   # for robustness() only
             LODQ_test[(sample, ('rel_'+meandev))] = LODQ_test.loc[:,(sample, meandev)] / LODQ_test.loc[:,(sample, mean)]
         except:
