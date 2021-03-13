@@ -4,6 +4,7 @@ import os
 import re
 import matplotlib.pyplot as plt
 from ..config import PATHS, DPI
+from ..input_output.general import time
 
 
 def summarize(path, select_groups = [], condense_results = True):
@@ -108,6 +109,11 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
     seen = set()
     samples = [x for x in samples if not (x in seen or seen.add(x))]
     
+    # set labeled values to 0.0
+    for sample in samples:
+        df.loc[df.loc[:, (sample, 'label')] != '', (sample, 'mmol_per_mg')] = 0.0
+        df.loc[df.loc[:, (sample, 'label')] != '', (sample, 'stddev')] = 0.0
+    
     fig, ax = plt.subplots()
     
     if group_by == 'samples':
@@ -116,11 +122,31 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
     elif group_by == 'groups':
         x = df.index   # groups as x-ticks
         groups = samples   # samples for each group
-        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels
     
     x_num = np.arange(len(x))   # define x-ticks nummerically
     width = 1 / (len(groups)+1)   # calculate width of a bar; +1 is the gap to bars of the next sample
     
+    # find maximum y value in the data, for adjusting of labels on bars
+    y_max = 0.0
+    for group in groups:
+        if group_by == 'samples':
+            max_group = df.loc[group, (slice(None), 'mmol_per_mg')].max()
+        elif group_by == 'groups':
+            max_group = df.loc[x, (group, 'mmol_per_mg')].max()
+        
+        if (max_group > y_max): 
+            y_max = max_group
+    
+    # rotate x-axis labels and labels on bars dependent on length of data to plot
+    y_lab_rotation = 'horizontal'
+    y_lab_space = y_max / 100.0
+    if ((2 * len(x) + len(groups)) > 15):
+        y_lab_rotation = 'vertical'
+        y_lab_space = y_max / 50.0
+        
+    if (len(x) > 5):
+        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels
+        
     # loop through the bars (defines as groups)
     for i,group in enumerate(groups):        
         # define y values according to 
@@ -140,17 +166,16 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
                 pass
         
         x_i = (x_num - width*(len(groups)-1)/2 + i*width)
-        
+                
         ax.bar(x_i, y, yerr = y_err, capsize=5,
                width = width*0.9, label = group, zorder=10)   # color = c,
-                
-        #ax.text(x_i, y, y_lab, color='blue', fontweight='bold')
-        #for sample in samples:
-        #    ax.annotate('{}'.format(df.loc[group, (sample, 'label')]),
-        #                xy = ((x_num - width*(len(groups)-1)/2 + i*width), y),
-        #                xytext=(0, 3),  # 3 points vertical offset
-        #                textcoords="offset points",
-        #                ha='center', va='bottom')
+        
+        # add labels to bars
+        for j in range(len(x_i)):
+            x_j = x_i[j]
+            y_j = y.iloc[j] + y_lab_space
+            text = y_lab.iloc[j]
+            ax.text(x_j, y_j, text, horizontalalignment = 'center', rotation = y_lab_rotation)
     
     ax.legend()
     ax.yaxis.grid(True)
@@ -167,6 +192,6 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         path_plots_eval = os.path.join(PATHS['dir_plots'],'EVALUATION')
         if os.path.exists(path_plots_eval)==False:
             os.makedirs(path_plots_eval)
-        fig.savefig(os.path.join(path_plots_eval,'{}_of_{}.png'.format(list(set(df.index)), samples)), bbox_inches='tight',dpi=DPI)
+        fig.savefig(os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), samples, group_by)), bbox_inches='tight',dpi=DPI)
     
     return
