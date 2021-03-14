@@ -372,7 +372,7 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
             ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
-        if plot=='heat flow':
+        if plot=='heat_flow':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
                 x/=60
