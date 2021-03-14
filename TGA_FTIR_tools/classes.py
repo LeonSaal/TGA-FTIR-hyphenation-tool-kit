@@ -33,8 +33,8 @@ class TG_IR:
                     self.info['initial_mass']=self.tga.loc[0,'sample_mass']
                     self.info['reference_mass']='initial_mass'
                     self.info['background_delay']=COUPLING.getint('background_delay')
-                    self.info['switch_temp']=[max(self.tga['reference_temp'])]
-                    self.info['method_gases']=['? method_gas ?']
+                    self.info['step_temp']=[max(self.tga['reference_temp'])]
+                    self.info['mass_steps']=['? mass_step ?']
                 try:
                     TGA.dry_weight(self,**kwargs)
                 except:
