@@ -121,8 +121,8 @@ def TGA_info(file,TGA,profile='Otto'):
     except:
         info['background_delay']=COUPLING.getint('background_delay')
 
-    info['method_gases']=[values[index].upper() for index in range(len(parameters)) if parameters[index]=='method_gas']
-    info['switch_temp']=[values[index] for index in range(len(parameters)) if parameters[index]=='high_temp']
+    info['mass_steps']=[values[index].upper() for index in range(len(parameters)) if parameters[index]=='method_gas']
+    info['step_temp']=[values[index] for index in range(len(parameters)) if parameters[index]=='high_temp']
     
     return info
 
@@ -180,12 +180,12 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
     
     if how_dry == None:
         info['reference_mass']='initial_mass'
-        times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
-        names=TG_IR.info['method_gases']
+        times=[0]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['step_temp'])])
+        names=TG_IR.info['mass_steps']
         
     elif (how_dry == 'H2O') or (how_dry == 'sample_mass') or (type(how_dry) != str):   # turns to be true everytime
-        times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['switch_temp'])])
-        names=['dry']+TG_IR.info['method_gases']
+        times=[0,dry_point]+list(TG_IR.tga.index[TG_IR.tga['reference_temp'].isin(TG_IR.info['step_temp'])])
+        names=['dry']+TG_IR.info['mass_steps']
         info['dry_mass']=TG_IR.tga['sample_mass'][dry_point]
         info['reference_mass']='dry_mass'
         info['dry_temp']=dry_temp
