@@ -136,7 +136,8 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
             #plt.xticks(rotation=45)
             plt.tight_layout()
             plt.show()
-            fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
+            if save:
+                fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
             
         # make further statistical summary
         results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].mean(axis=0).rename('mean')).T}, names=['samples',' ']))

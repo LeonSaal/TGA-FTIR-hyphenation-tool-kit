@@ -197,7 +197,8 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             error.set_ylabel('error {} ${}$'.format(SEP, UNITS['ir']))
             error.set_ylim(-abs_max,abs_max)
             plt.show()
-            fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
+            if save:
+                fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
         
         # save results to excel
         if save:
@@ -326,6 +327,8 @@ def get_presets(path,reference):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets=dict()
+    print(path)
+    print(os.path.join(path,'Fitting_parameter.xlsx'))
     references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
     
