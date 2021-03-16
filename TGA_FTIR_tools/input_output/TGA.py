@@ -28,16 +28,16 @@ def read_TGA(file,profile=COUPLING['profile']):
         return
     
     profiles=read_profiles(profile)
-    names=profiles['names'].split(',')
-    names_heatflow=profiles['names_heatflow']
+    names = profiles['names'].split(',')
+    names_heatflow = profiles['names_heatflow'].split(',')
     skipfooter=profiles['skipfooter']
     skiprows=profiles['skiprows']
     sep=profiles['sep']
     drop=list(profiles['drop'])
         
     try:
-        data=pd.read_csv(path, delim_whitespace=True,decimal=sep ,names=names,skiprows=skiprows, skipfooter=skipfooter,
-                         converters={'sample_mass':lambda x: float(x.replace(sep,'.'))},engine='python').drop(columns=drop,errors='ignore')
+        data = pd.read_csv(path, delim_whitespace=True,decimal=sep ,names=names,skiprows=skiprows, skipfooter=skipfooter,
+                           converters={'sample_mass':lambda x: float(x.replace(sep,'.'))},engine='python').drop(columns=drop,errors='ignore')
         
     except:
         print('Failed to read TG-data from {}'.format(file))
@@ -46,7 +46,8 @@ def read_TGA(file,profile=COUPLING['profile']):
     #check if there is heat flow information and append it 
     try:
         path_mW=find_files(file,'_mW.txt',PATHS['dir_data'])[0]
-        data['heat_flow']=pd.read_csv(path_mW, delim_whitespace=True,decimal=sep ,names=names_heatflow,skiprows=skiprows, skipfooter=skipfooter, converters={'sample_mass': lambda x: float(x.replace(sep,'.'))}, usecols=['heat_flow'],engine='python')
+        data['heat_flow'] = pd.read_csv(path_mW, delim_whitespace=True,decimal=sep ,names=names_heatflow,skiprows=skiprows, skipfooter=skipfooter, 
+                                        converters={'sample_mass': lambda x: float(x.replace(sep,'.'))}, usecols=['heat_flow'],engine='python')
     except:
         pass
     
@@ -199,8 +200,8 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
     info['final_mass']=TG_IR.tga['sample_mass'][len(TG_IR.tga)-1]
     TG_IR.info.update(info)
     for name,ml in zip(names,mass_loss):
-        info['ml_'+name]=ml
-        info['rel_ml_'+name]=ml/TG_IR.info[TG_IR.info['reference_mass']]
+        info['ML_'+name] = ml
+        info['rel_ML_'+name] = ml / TG_IR.info[TG_IR.info['reference_mass']]
     TG_IR.info.update(info)
     
     # plotting
