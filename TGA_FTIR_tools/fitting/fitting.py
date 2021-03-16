@@ -333,7 +333,10 @@ def get_presets(path,reference):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets=dict()
-    references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
+    try:
+        references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
+    except:
+        print('The Fitting_parameter.xlsx file could not be loaded, please supply it in', PATHS['dir_home'])
     gases=list(set(references['center_0'].loc['gas']))
     
     # organizing data in dict, sorted by gases and filling in missing values with [fitting] parameters of settings.ini
