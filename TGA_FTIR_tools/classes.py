@@ -99,7 +99,7 @@ class TG_IR:
                 self.__dict__[key]=obj.__dict__[key]
                
         
-    def corr(self,reference='load',plot=False,**kwargs):
+    def corr(self,reference='load', plot=False,**kwargs):
         "correction of TG and IR data"
         
         if 'reference' in self.info:
@@ -130,7 +130,12 @@ class TG_IR:
             
         # filling TG_IR.info
         try:
-            TGA.dry_weight(self,plot=plot,**kwargs)
+            if (self.info['reference_mass'] == 'initial_mass'):
+                # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
+                kwargs = dict(kwargs, how_dry = None)
+                # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
+                
+            TGA.dry_weight(self, plot=plot, **kwargs)
             print('\'TG_IR.info\' of {} was updated. To store these in Samplelog.xlsx run \'TG_IR.save()\''.format(self.info['name']))
             success=True
         except:
