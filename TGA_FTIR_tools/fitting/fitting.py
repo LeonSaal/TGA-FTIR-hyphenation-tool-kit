@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from ..plotting import get_label
 from ..config import UNITS, SEP, DPI, BOUNDS, PATHS, COUPLING
 from ..input_output.general import time
@@ -196,6 +197,11 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             error.set_xlabel('{} {} ${}$'.format(UNITS['sample_temp'], SEP, UNITS['sample_temp']))
             error.set_ylabel('error {} ${}$'.format(SEP, UNITS['ir']))
             error.set_ylim(-abs_max,abs_max)
+            
+            fitting.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
+            fitting.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            error.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+            
             plt.show()
             if save:
                 fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
@@ -327,8 +333,6 @@ def get_presets(path,reference):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets=dict()
-    print(path)
-    print(os.path.join(path,'Fitting_parameter.xlsx'))
     references=pd.read_excel(os.path.join(path,'Fitting_parameter.xlsx'),index_col=0,header=None,sheet_name=None)
     gases=list(set(references['center_0'].loc['gas']))
     
