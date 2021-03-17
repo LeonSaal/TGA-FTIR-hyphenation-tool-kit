@@ -6,7 +6,7 @@ from .input_output import overview
 from .plotting import plots
 from .fitting import fits
 from .fitting import robustness
-from .fitting import summarize, bar_plot_results
+from .fitting import summarize, concatenate, bar_plot_results
 
 
 # plot settings
