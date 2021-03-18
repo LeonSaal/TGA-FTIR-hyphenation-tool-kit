@@ -137,7 +137,9 @@ def robustness(objs, reference, T_max=None, save=True, var_T=10, var_rel=0.3, yl
             plt.tight_layout()
             plt.show()
             if save:
-                fig.savefig(sample+'_'+param+'.png', bbox_inches='tight', dpi=DPI)
+                #sample_name = "".join( x for x in sample if (x.isalnum() or x in "._- "))
+                sample_name = "".join([x if (x.isalnum() or x in "._- ") else "_" for x in sample]) # to catch invalide sample names
+                fig.savefig(sample_name + '_' + param + '.png', bbox_inches='tight', dpi=DPI)
             
         # make further statistical summary
         results['summary']=results['summary'].append(pd.concat({sample:pd.DataFrame(data['mean'].mean(axis=0).rename('mean')).T}, names=['samples',' ']))

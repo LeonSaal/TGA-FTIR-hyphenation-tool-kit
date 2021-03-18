@@ -203,8 +203,7 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             error.xaxis.set_minor_locator(ticker.AutoMinorLocator())
             
             plt.show()
-            if save:
-                fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
+            fig.savefig(TG_IR.info['name']+'_'+gas+'.png', bbox_inches='tight', dpi=DPI)
         
         # save results to excel
         if save:
@@ -412,5 +411,8 @@ def check_LODQ(results_table, samples, gases, objs, mean = 'mean', dev = 'stddev
                     LODQ_test.loc[list_gas,(sample,'limits')] = ('< ' + limit)
     
         results_table = LODQ_test.T
+    
+    # sort at sample level to keep new rows together with other rows of the samples
+    #results_table.sortlevel(level = 'samples', ascending = samples, sort_remaining = False)
     
     return results_table

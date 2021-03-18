@@ -140,7 +140,7 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
     # rotate x-axis labels and labels on bars dependent on length of data to plot
     y_lab_rotation = 'horizontal'
     y_lab_space = y_max / 100.0
-    if ((2 * len(x) + len(groups)) > 15):
+    if ((2 * len(x) + len(groups)) > 14):
         y_lab_rotation = 'vertical'
         y_lab_space = y_max / 50.0
         
@@ -192,6 +192,7 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         path_plots_eval = os.path.join(PATHS['dir_plots'],'EVALUATION')
         if os.path.exists(path_plots_eval)==False:
             os.makedirs(path_plots_eval)
-        fig.savefig(os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), samples, group_by)), bbox_inches='tight',dpi=DPI)
+        sample_names = "".join([x if (x.isalnum() or x in "._- ") else "_" for x in str(samples)]) # to catch invalide sample names
+        fig.savefig(os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), sample_names, group_by)), bbox_inches='tight',dpi=DPI)
     
     return
