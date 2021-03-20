@@ -68,7 +68,7 @@ def summarize(path, select_groups = [], condense_results = True):
                         if (len(label_set) == 2):   # if there are two items in the set
                             label_text = '< LOQ'
                         elif (len(label_set) == 1): # if there is only one item
-                            label_text = str(label_set)
+                            label_text = "".join(str(e) for e in label_set)   # interesting syntax, but neseccary not to get "{...}"
                         summarized.loc[group,(sample, 'label')] = label_text   # set the label according to label_text
                     except:
                         pass
@@ -204,10 +204,14 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol
     plt.show()
     
     if save:
-        path_plots_eval = os.path.join(PATHS['dir_plots'],'EVALUATION')
+        path_plots_eval = os.path.join(PATHS['dir_plots'],'Evaluation')
         if os.path.exists(path_plots_eval)==False:
             os.makedirs(path_plots_eval)
         sample_names = "".join([x if (x.isalnum() or x in "._- ") else "" for x in str(samples)]) # to catch invalide sample names
+        # check path length and if necessary shorten file name by list of samples
+        path_save = os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), sample_names, group_by))
+        if (len(path_save) > 260):
+            sample_names = sample_names[:(len(sample_names)-(len(path_save)-259))]
         fig.savefig(os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), sample_names, group_by)), bbox_inches='tight',dpi=DPI)
     
     return
