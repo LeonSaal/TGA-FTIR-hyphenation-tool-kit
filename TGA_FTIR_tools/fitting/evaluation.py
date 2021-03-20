@@ -82,8 +82,8 @@ def summarize(path, select_groups = [], condense_results = True):
     return summarized
 
 
-def concatenate(*dfs):
-    df = pd.concat(list(dfs), axis=1, sort=False)
+def concatenate(dfs):
+    df = pd.concat(dfs, axis=1, sort=False)
     
     # extract samples from column level
     samples = df.columns.get_level_values('samples')
@@ -100,7 +100,7 @@ def concatenate(*dfs):
     return df
 
 
-def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
+def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol_per_g', x_gap = 1, save = False):
     if (len(show_groups) > 0):
         df = df.reindex(index = show_groups)   # select and order df index/groups
     
@@ -124,7 +124,7 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         groups = samples   # samples for each group
     
     x_num = np.arange(len(x))   # define x-ticks nummerically
-    width = 1 / (len(groups)+1)   # calculate width of a bar; +1 is the gap to bars of the next sample
+    width = 1 / (len(groups) + x_gap)   # calculate width of a bar; +1 is the gap to bars of the next sample
     
     # find maximum y value in the data, for adjusting of labels on bars
     y_max = 0.0
@@ -144,8 +144,14 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         y_lab_rotation = 'vertical'
         y_lab_space = y_max / 50.0
         
+    if (y_unit == 'mymol_per_g'):
+        y_lab_space = y_lab_space * 1000000
+        
     if (len(x) > 5):
-        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels
+            if (len(groups) > 4):
+                plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='center')   # rotate x-axis labels, positioning 'center'
+            else:
+                plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')   # rotate x-axis labels, positioning 'right'
         
     # loop through the bars (defines as groups)
     for i,group in enumerate(groups):        
@@ -165,7 +171,13 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
             except:
                 pass
         
-        x_i = (x_num - width*(len(groups)-1)/2 + i*width)
+        x_i = (x_num - width*(len(groups) - 1)/2 + i*width)
+        
+        if (y_unit == 'mymol_per_g'):
+            y = y * 1000000
+            y_err = y_err * 1000000
+        else:
+            pass
                 
         ax.bar(x_i, y, yerr = y_err, capsize=5,
                width = width*0.9, label = group, zorder=10)   # color = c,
@@ -181,7 +193,10 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
     ax.yaxis.grid(True)
     
     ax.set(title = 'summary plot with errors from robustness testing')
-    ax.set_ylabel('surface oxygen groups in $mmol\,mg^{-1}$')
+    if (y_unit == 'mymol_per_g'):
+        ax.set_ylabel('surface oxygen groups in $\mu mol\,g^{-1}$')
+    else:
+        ax.set_ylabel('surface oxygen groups in $mmol\,mg^{-1}$')
     ax.set_xticks(np.arange(len(x)))
     ax.set_xticklabels(x)
     
@@ -192,7 +207,7 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', save = False):
         path_plots_eval = os.path.join(PATHS['dir_plots'],'EVALUATION')
         if os.path.exists(path_plots_eval)==False:
             os.makedirs(path_plots_eval)
-        sample_names = "".join([x if (x.isalnum() or x in "._- ") else "_" for x in str(samples)]) # to catch invalide sample names
+        sample_names = "".join([x if (x.isalnum() or x in "._- ") else "" for x in str(samples)]) # to catch invalide sample names
         fig.savefig(os.path.join(path_plots_eval,'{}_{}_by_{}.png'.format(time(), sample_names, group_by)), bbox_inches='tight',dpi=DPI)
     
     return
