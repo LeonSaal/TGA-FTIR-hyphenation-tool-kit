@@ -250,13 +250,13 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
         sample_names = "".join([x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]) # to catch invalide sample names
         path = os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'+sample_names).replace(os.sep,os.altsep)
         # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
-        if (len(path) > 248):
-            longest_name_length = 0
-            for obj in objs:
-                obj_name_length = len(obj.info['name'])
-                if (obj_name_length > longest_name_length):
-                    longest_name_length = obj_name_length
-            sample_names = sample_names[:(len(sample_names)-(len(path)-(248 - longest_name_length - 8)))]   # -8 for _gas and .png
+        longest_name_length = 0
+        for obj in objs:
+            obj_name_length = len(obj.info['name'])
+            if (obj_name_length > longest_name_length):
+                longest_name_length = obj_name_length
+        if ( (len(path)+longest_name_length) > 259):
+            sample_names = sample_names[:(len(sample_names)-((len(path)+longest_name_length)-(259 - 8)))]   # -8 for _gas and .png
             path = os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'+sample_names).replace(os.sep,os.altsep)
         os.makedirs(path)
         os.chdir(path)
