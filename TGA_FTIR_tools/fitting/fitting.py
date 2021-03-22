@@ -255,8 +255,8 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
             obj_name_length = len(obj.info['name'])
             if (obj_name_length > longest_name_length):
                 longest_name_length = obj_name_length
-        if ( (len(path)+longest_name_length) > 259):
-            sample_names = sample_names[:(len(sample_names)-((len(path)+longest_name_length)-(259 - 8)))]   # -8 for _gas and .png
+        if ( (len(path)+longest_name_length) > 258):
+            sample_names = sample_names[:(len(sample_names)-((len(path)+longest_name_length)-(258 - 8)))]   # -8 for _gas and .png
             path = os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'+sample_names).replace(os.sep,os.altsep)
         os.makedirs(path)
         os.chdir(path)
