@@ -4,7 +4,7 @@ import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from ..plotting import get_label
-from ..config import UNITS, SEP, DPI, BOUNDS, PATHS, COUPLING
+from ..config import UNITS, PARAMS, SEP, DPI, BOUNDS, PATHS, COUPLING
 from ..input_output.general import time
 import os
 import copy
@@ -142,10 +142,12 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
                 #peaks['mmol'][group] = peaks['area'][group]/tot_area*tot_mol   # calculation based relative to total evolved gas
                 peaks['mmol'][group] = (peaks['area'][group] - TG_IR.linreg['intercept'][gas]) / TG_IR.linreg['slope'][gas]   # calculation based on each Gauß fit
                 peaks['mmol_per_mg'][group] = peaks['mmol'][group]/TG_IR.info[ref_mass]
+                ir_values = 'area'
             elif y_axis=='rel':
                 #peaks['mmol'][group]=peaks['area'][group]/tot_area*tot_mol   # calculation based relative to total evolved gas
                 peaks['mmol'][group] = (peaks['area'][group] - TG_IR.linreg['intercept'][gas]) / TG_IR.linreg['slope'][gas]   # calculation based on each Gauß fit
                 peaks['mmol_per_mg'][group]=peaks['mmol'][group]/TG_IR.info[ref_mass]
+                ir_values = 'mmol_per_mg'
         
         # plotting
         profiles=pd.DataFrame()
@@ -179,7 +181,7 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
                 fitting.plot(x,y,linestyle='dashed',zorder=i)
         if plot:
             fitting.legend()
-            fitting.set_xlabel('{} {} ${}$'.format(UNITS['sample_temp'], SEP, UNITS['sample_temp']))
+            fitting.set_xlabel('{} {} ${}$'.format(PARAMS['sample_temp'], SEP, UNITS['sample_temp']))
             if y_axis=='orig':
                 fitting.set_ylabel('{} {} ${}$'.format(get_label(gas), SEP, UNITS['ir']))
             elif y_axis=='rel':
@@ -191,11 +193,12 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             # plotting of absolute difference
             abs_max=0.05*max(data)
             
-            error.text(0,abs_max,'SQERR: {:.2e}'.format(sumsqerr[gas][TG_IR.info['name']]))#,'SQERR: '+'%.2E'% Decimal(sumsqerr[gas][TG_IR.info['name']]),va='bottom')
+            error.text(0,abs_max,'        SQERR: {:.2e} ({:.2f}%)'.format(sumsqerr[gas][TG_IR.info['name']],   #,'SQERR: '+'%.2E'% Decimal(sumsqerr[gas][TG_IR.info['name']]),va='bottom')
+                                                                          100 * sumsqerr[gas][TG_IR.info['name']] / peaks[ir_values][gas] ))   # percentage SQERR
             error.plot(x,diff)
             error.hlines(0,min(x),max(x),ls='dashed')
-            error.set_xlabel('{} {} ${}$'.format(UNITS['sample_temp'], SEP, UNITS['sample_temp']))
-            error.set_ylabel('error {} ${}$'.format(SEP, UNITS['ir']))
+            error.set_xlabel('{} {} ${}$'.format(PARAMS['sample_temp'], SEP, UNITS['sample_temp']))
+            error.set_ylabel('error') # {} ${}$'.format(SEP, UNITS['ir']))
             error.set_ylim(-abs_max,abs_max)
             
             fitting.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
