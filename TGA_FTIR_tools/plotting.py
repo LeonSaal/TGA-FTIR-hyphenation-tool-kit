@@ -34,7 +34,7 @@ def ylim_auto(x, y, xlim):
     
     return x, y, ylim
 
-def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], legend=True):
+def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], legend=True, title=True):
     "plot TG data"
     
     #setting up plot
@@ -97,7 +97,9 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim 
     TGA.yaxis.set_minor_locator(ticker.AutoMinorLocator())
     DTG.yaxis.set_minor_locator(ticker.AutoMinorLocator())
     
-    TGA.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    if (title == True):
+        TGA.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    
     plt.show()
     
     
@@ -107,7 +109,7 @@ def plot_TGA(TG_IR, plot, save=False, x_axis='sample_temp', y_axis='orig', ylim 
             os.makedirs(path_plots_tga)
         fig.savefig(os.path.join(path_plots_tga,'{}_TG_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
 
-def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', xlim=[None,None], legend=True):
+def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', xlim=[None,None], legend=True, title=True):
     "plot IR data"
     gases=set([gas.upper() for gas in gases])
     colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -193,8 +195,10 @@ def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', 
     
     graphs[0].xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
     graphs[0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        
-    graphs[0].set_title('{}, {}: {:.2f}$\,{}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    
+    if (title == True):    
+        graphs[0].set_title('{}, {}: {:.2f}$\,{}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    
     graphs[0].set_xlim(xlim)
     plt.show()
     
@@ -204,7 +208,7 @@ def plot_FTIR(TG_IR, save=False, gases=[], x_axis='sample_temp', y_axis='orig', 
             os.makedirs(path_plots_ir)
         fig.savefig(os.path.join(path_plots_ir,'{}_IR_{}.png'.format(TG_IR.info['name'],y_axis)), bbox_inches='tight',dpi=DPI)
         
-def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, y_axis=None, xlim=[None,None]):
+def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, y_axis=None, xlim=[None,None], title=True):
     "reconstructing DTG from calibrated IR data"
     gases_temp=set([gas.upper() for gas in gases])
     
@@ -256,7 +260,10 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(8, 1)
     stack = fig.add_subplot(gs[:-1, 0])
-    stack.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    
+    if (title == True):
+        stack.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+    
     error = fig.add_subplot(gs[-1,0],sharex=stack)
 
     stack.set_xlabel('{} {} ${}$'.format(PARAMS[x_axis.lower()],SEP,UNITS[x_axis.lower()]))
