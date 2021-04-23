@@ -127,7 +127,7 @@ def TGA_info(file,TGA,profile='Otto'):
     
     return info
 
-def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False, xlim=[None,None], ylim=[None,None]):
+def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False, xlim=[None,None], ylim=[None,None], title=True):
     "determine dry point and mass from TG data"
     # make h2o to H2O
     if how_dry=='h2o':
@@ -230,7 +230,9 @@ def dry_weight(TG_IR, how_dry='H2O', plot=False, ref_mass='dry_mass', save=False
         ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  # switch on minor ticks on each axis
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         
-        ax.set(title = 'Dry mass and mass steps determination')
+        if (title == True):
+            ax.set(title = 'Dry mass and mass steps determination')
+            
         ax.legend()
         plt.show()   
                 
