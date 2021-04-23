@@ -38,7 +38,7 @@ def baseline_als(y, lam=1e6, p=0.01, niter=10): #https://stackoverflow.com/quest
         w = p * (y > z) + (1-p) * (y < z)
     return z
 
-def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=True, predef_tol=0.01):
+def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=True, predef_tol=0.01, title = True):
     "deconvolve IR data of TG_IR with func and multiple presets"
     temp_presets=copy.deepcopy(presets)
     data=[]
@@ -166,7 +166,8 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
             fig=plt.figure(constrained_layout=True)
             gs = fig.add_gridspec(8, 1)
             fitting = fig.add_subplot(gs[:-1, 0])
-            fitting.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
+            if (title == True):
+                fitting.set_title('{}, {} = {:.2f} ${}$'.format(TG_IR.info['alias'], TG_IR.info['reference_mass'], TG_IR.info[TG_IR.info['reference_mass']],UNITS['sample_mass']))
             error = fig.add_subplot(gs[-1,0],sharex=fitting)
             #fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
             
@@ -221,7 +222,8 @@ def fitting(TG_IR, presets, func=multi_gauss, y_axis='orig', plot=False, save=Tr
                     temp_presets[gas].to_excel(writer,sheet_name=gas+'_param')
                     
     # calculate summarized groups
-    groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
+    #groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
+    groups=list(set([re.split('_',group)[0] for group in peaks.index if group not in gases]))
     for group in groups:
         group_set=peaks[['mmol','mmol_per_mg']].loc[peaks.index.map(lambda x: x.startswith(group))]
         if len(group_set)>1:
@@ -258,8 +260,8 @@ def fits(objs,reference,save=True,presets=None,**kwargs):
             obj_name_length = len(obj.info['name'])
             if (obj_name_length > longest_name_length):
                 longest_name_length = obj_name_length
-        if ( (len(path) + longest_name_length + 8) > 259):
-            sample_names = sample_names[:(len(sample_names)-((len(path)+longest_name_length)-(259 - 9)))]   # -9 for _gas and .png and slicing
+        if ( (len(path)+longest_name_length) > 258):
+            sample_names = sample_names[:(len(sample_names)-((len(path)+longest_name_length)-(258 - 8)))]   # -8 for _gas and .png
             path = os.path.join(PATHS['dir_fitting'],time()+reference+'_'+'_'+sample_names).replace(os.sep,os.altsep)
         os.makedirs(path)
         os.chdir(path)

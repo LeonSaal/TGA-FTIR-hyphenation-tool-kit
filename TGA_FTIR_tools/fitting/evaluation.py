@@ -29,7 +29,8 @@ def summarize(path, select_groups = [], condense_results = True):
     if condense_results == True:
         # extract gases and groups from index
         gases = list(set([re.split('_| ',group)[-1] for group in df.index]))
-        groups = list(set([re.split('_| ',group)[0] for group in df.index if group not in gases]))
+        # groups = list(set([re.split('_| ',group)[0] for group in df.index if group not in gases]))
+        groups = list(set([re.split('_',group)[0] for group in df.index if group not in gases]))
         # select samples from df, keeping their sequence
         samples = df.columns.get_level_values('samples')
         seen = set()
@@ -100,7 +101,7 @@ def concatenate(dfs):
     return df
 
 
-def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol_per_g', x_gap = 1, save = False):
+def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol_per_g', x_gap = 1, save = False, title = True):
     if (len(show_groups) > 0):
         df = df.reindex(index = show_groups)   # select and order df index/groups
     
@@ -192,7 +193,9 @@ def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol
     ax.legend()
     ax.yaxis.grid(True)
     
-    ax.set(title = 'summary plot with errors from robustness testing')
+    if (title == True):
+        ax.set(title = 'summary plot with errors from robustness testing')
+        
     if (y_unit == 'mymol_per_g'):
         ax.set_ylabel('surface oxygen groups in $\mu mol\,g^{-1}$')
     else:
