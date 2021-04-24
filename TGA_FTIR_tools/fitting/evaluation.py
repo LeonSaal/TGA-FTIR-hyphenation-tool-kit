@@ -7,7 +7,19 @@ from ..config import PATHS, DPI
 from ..input_output.general import time
 
 
-def summarize(path, select_groups = [], condense_results = True):
+
+def get_samples(df, level = 0):
+    "Return samples from multiindex-columns (default level 0) keeping their order."
+    
+    samples = df.columns.get_level_values(level)
+    seen = set()
+    samples = [x for x in samples if not (x in seen or seen.add(x))]    
+    
+    return samples
+
+
+def summarize(path, select_groups = [], condense_results = True, sort_samples = False):
+    "Import results from supplied path to robustness_in_mmol_per_mg.xlsx and allows for grouping (condense) the results, returning a dataframe."
 # import robustness results from robustness_in_mmol_per_mg.xlsx in 'path'
     robustness_summary = pd.read_excel(path + '/robustness_in_mmol_per_mg.xlsx', 
                                        sheet_name = 'summary',
@@ -79,17 +91,26 @@ def summarize(path, select_groups = [], condense_results = True):
     
     if (len(select_groups) > 0):
         summarized = summarized.loc[select_groups,:]
+
+# re order columns on multiindex level 0, to rearrange the level 1 entries, e.g. the lable, together with the others
+    if (sort_samples == True):
+        col_order = summarized.columns.levels[0]
+    else:
+        col_order = get_samples(summarized, level = 'samples')
+        
+    summarized = summarized.reindex(col_order, axis=1, level=0)
         
     return summarized
 
 
-def concatenate(dfs):
-    df = pd.concat(dfs, axis=1, sort=False)
+
+def concatenate(dfs, sample_order = []):
+    "Concatenate dataframes and/or select included samples as well as changeing their order."
+    df = pd.concat(dfs, axis=1, sort=False, )
     
     # extract samples from column level
-    samples = df.columns.get_level_values('samples')
-    seen = set()
-    samples = [x for x in samples if not (x in seen or seen.add(x))]
+    samples = get_samples(df, level = 'samples')
+
     # set NaN in 'mmol_per_mg' to n.d. in 'label'
     for sample in samples:
         try:
@@ -98,10 +119,15 @@ def concatenate(dfs):
         except:
             pass
     
+    # select samples and change their order (column index level 0) if specified
+    if (len(sample_order) > 0):
+        df = df.reindex(sample_order, axis=1, level=0)   
+    
     return df
 
 
 def bar_plot_results(df, show_groups = [], group_by = 'samples', y_unit = 'mymol_per_g', x_gap = 1, save = False, title = True):
+    "Returns a bar plot of the robustness tested results with units conversion and two group_by options."
     if (len(show_groups) > 0):
         df = df.reindex(index = show_groups)   # select and order df index/groups
     
