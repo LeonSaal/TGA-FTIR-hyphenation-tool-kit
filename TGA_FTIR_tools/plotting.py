@@ -303,7 +303,7 @@ def FTIR_to_DTG(TG_IR, x_axis='sample_temp', save=False, gases=[], legend=True, 
         out['dtg']=DTG
         out.to_excel(os.path.join(PATHS['dir_output'],TG_IR.info['name']+'_IRDTG.xlsx'))
         
-def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass'):
+def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', xlim=[None,None], gas=None, save=False, legend=True, reference_mass='reference_mass', linewidth=1):
     "overlay plots from different objects"
     
     # setting up axis-labels and catching possible input errors
@@ -367,7 +367,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y=100*obj.tga['sample_mass']/ref_mass
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
+            ax.plot(x, y, linewidth = linewidth,
+                    label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='DTG':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
@@ -378,7 +379,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y = obj.tga['dtg']*60 / ref_mass * 100
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
+            ax.plot(x, y, linewidth = linewidth,
+                    label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='heat_flow':
             x=copy.deepcopy(obj.tga[x_axis])
             if x_axis=='time':
@@ -389,7 +391,8 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y=obj.tga['heat_flow']/ref_mass
             if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
-            ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
+            ax.plot(x, y, linewidth = linewidth,
+                    label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
         if plot=='IR':
             x=copy.deepcopy(obj.ir[x_axis])
             if x_axis=='time':
@@ -398,12 +401,14 @@ def plots(TG_IR_objs, plot, x_axis='sample_temp', y_axis='orig', ylim = 'auto', 
                 y = obj.ir[gas]
                 if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                     x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
+                ax.plot(x, y, linewidth = linewidth,
+                        label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
             elif y_axis=='rel':
                 y = obj.ir[gas] / obj.linreg['slope'][gas] / ref_mass
                 if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
                     x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(x,y,label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
+                ax.plot(x, y, linewidth = linewidth,
+                        label = '{}, {}: {:.2f}$\,{}$'.format(obj.info['alias'], obj.info['reference_mass'], obj.info[obj.info['reference_mass']],UNITS['sample_mass']))
     
     if (ylim == 'auto'):   # reset ylim to [None,None]
         ylim = ylim_temp
