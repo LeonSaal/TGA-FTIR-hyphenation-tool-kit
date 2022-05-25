@@ -2,49 +2,57 @@
 
 import configparser
 import os
-file='settings.ini'
+
+file = "settings.ini"
 config = configparser.ConfigParser()
 config.read(file)
 
-PATHS=config['paths']
+PATHS = config["paths"]
 
-if PATHS['dir_home']=='':
-    cwd=os.getcwd().replace(os.sep,os.altsep)
-    print('No dir_home path was supplied in {}. dir_home was set to \'{}\''.format(file,cwd))
-    config['paths']['dir_home']=cwd
-if PATHS['dir_data']=='' or os.path.exists(PATHS['dir_data'])==False:
-    print('\nNo valid dir_data path was supplied in \'{}\'.'.format(file))
-    config['paths']['dir_data']=input('Supply directory of Data:').replace(os.sep,os.altsep)
-    if os.path.exists(config['paths']['dir_data'])==False:
-        print('\n!!! Supplied directory does not exist. Revise path in \'settings.ini\' prior to continue. !!!\n')
+if PATHS["dir_home"] == "":
+    cwd = os.getcwd().replace(os.sep, os.altsep)
+    print(
+        "No dir_home path was supplied in {}. dir_home was set to '{}'".format(
+            file, cwd
+        )
+    )
+    config["paths"]["dir_home"] = cwd
+if PATHS["dir_data"] == "" or os.path.exists(PATHS["dir_data"]) == False:
+    print("\nNo valid dir_data path was supplied in '{}'.".format(file))
+    config["paths"]["dir_data"] = input("Supply directory of Data:").replace(
+        os.sep, os.altsep
+    )
+    if os.path.exists(config["paths"]["dir_data"]) == False:
+        print(
+            "\n!!! Supplied directory does not exist. Revise path in 'settings.ini' prior to continue. !!!\n"
+        )
 
-with open(file, 'w') as configfile:
+with open(file, "w") as configfile:
     config.write(configfile)
 
-UNITS=config['units']
-keys=['sample_mass','time','sample_temp','molar_amount','heat_flow','dtg']
-units=['mg','min','°C','mmol','mW','mg\,min^{{-1}}']
-for key, val in zip(keys,units):
-    UNITS[key]=val
-    
-SEP=UNITS['sep']
+UNITS = config["units"]
+keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
+units = ["mg", "min", "°C", "mmol", "mW", "mg\,min^{{-1}}"]
+for key, val in zip(keys, units):
+    UNITS[key] = val
 
-PARAMS=config['parameters']
+SEP = UNITS["sep"]
 
-MOLAR_MASS=config['molar_mass']
+PARAMS = config["parameters"]
 
-PLOTTING=config['plotting']
+MOLAR_MASS = config["molar_mass"]
 
-DPI=PLOTTING.getint('dpi')
+PLOTTING = config["plotting"]
 
-LABELS=config['labels']
+DPI = PLOTTING.getint("dpi")
 
-COUPLING=config['coupling']
+LABELS = config["labels"]
 
-SAVGOL=config['savgol']
+COUPLING = config["coupling"]
 
-BOUNDS=config['fitting']
+SAVGOL = config["savgol"]
 
-IR_NOISE=config['ir_noise']
+BOUNDS = config["fitting"]
 
+IR_NOISE = config["ir_noise"]
 
