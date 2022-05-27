@@ -16,7 +16,7 @@ POLYORDER = SAVGOL.getint("POLYORDER")
 
 def read_profiles(profile):
     profiles = pd.read_excel(
-        os.path.join(PATHS["dir_home"], "TGA_import_profiles.xlsx"), index_col=0
+        os.path.join(PATHS['import_profiles']), index_col=0
     )
 
     return profiles.loc[profile, :].to_dict()

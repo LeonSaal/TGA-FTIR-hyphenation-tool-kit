@@ -4,12 +4,12 @@ import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from ..plotting import get_label
-from ..config import UNITS, PARAMS, SEP, DPI, BOUNDS, PATHS, COUPLING
+from ..config import UNITS, PARAMS, SEP, DPI, BOUNDS, PATHS, COUPLING, cfg
 from ..input_output.general import time
 import os
 import copy
 import re
-import requests
+import shutil as sh
 
 url_fitting_param = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/9382aaea97048e507bdc56715f971a9dec25be6d/Fitting_parameter.xlsx"
 
@@ -514,17 +514,13 @@ def get_presets(path, reference):
     # load raw data from file
     presets = dict()
 
-    fname= "Fitting_parameter.xlsx"
-    full_path = os.path.join(path, fname)
-    if not os.path.exists(full_path):
-            resp=requests.get(url_fitting_param)
-            if resp.ok:
-                with open(full_path, 'wb') as file:
-                    file.write(resp.content)
+    if not os.path.exists(cfg['fitting_params']):
+            if os.path.exists(PATHS['fitting_params']):
+                sh.copy(PATHS['fitting_params'], cfg['fitting_params'])
             else:
                 print('Unable to get default settings.')
     
-    references = pd.read_excel(full_path,
+    references = pd.read_excel(cfg['fitting_params'],
             index_col=0,
             header=[0,1],
             sheet_name=None,

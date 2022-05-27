@@ -2,34 +2,38 @@
 
 import configparser
 import os
-import requests
+import shutil as sh
 
-url_config = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/9382aaea97048e507bdc56715f971a9dec25be6d/settings.ini"
+names=['ini','import_profiles','fitting_params']
+cfg_files=["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
+cfg = dict(zip(names, cfg_files))
 
-file = "settings.ini"
-if not os.path.exists(file):
-    resp=requests.get(url_config)
-    if resp.ok:
-        with open("settings.ini", 'wb') as file:
-            file.write(resp.content)
+PATH_DIR = os.path.realpath(os.path.dirname(__file__))
+PATH_SET = os.path.join(PATH_DIR, "settings")
+
+PATHS ={name: os.path.join(PATH_SET, file) for name, file in cfg.items()}
+
+if not os.path.exists(cfg['ini']):
+    if os.path.exists(PATHS['ini']):
+        sh.copy(PATHS['ini'], cfg['ini'])
     else:
-        print('Unable to get default settings.')
+        print('Unable to find default settings.')
 
 config = configparser.ConfigParser()
-config.read(file)
+config.read(cfg['ini'])
 
-PATHS = config["paths"]
+PATHS.update(config["paths"])
 
 if PATHS["dir_home"] == "":
     cwd = os.getcwd().replace(os.sep, os.altsep)
     print(
         "No dir_home path was supplied in {}. dir_home was set to '{}'".format(
-            file, cwd
+            cfg['ini'], cwd
         )
     )
     config["paths"]["dir_home"] = cwd
 if PATHS["dir_data"] == "" or os.path.exists(PATHS["dir_data"]) == False:
-    print("\nNo valid dir_data path was supplied in '{}'.".format(file))
+    print("\nNo valid dir_data path was supplied in '{}'.".format(cfg['ini']))
     config["paths"]["dir_data"] = input("Supply directory of Data:").replace(
         os.sep, os.altsep
     )
@@ -38,7 +42,7 @@ if PATHS["dir_data"] == "" or os.path.exists(PATHS["dir_data"]) == False:
             "\n!!! Supplied directory does not exist. Revise path in 'settings.ini' prior to continue. !!!\n"
         )
 
-with open(file, "w") as configfile:
+with open(cfg['ini'], "w") as configfile:
     config.write(configfile)
 
 UNITS = config["units"]
