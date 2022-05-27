@@ -21,5 +21,5 @@ plt.rcParams["figure.figsize"] = (
 # try loading calibration data
 try:
     linreg, stats = calibrate()
-except OSError:
+except TypeError:
     pass

@@ -252,7 +252,7 @@ def calibrate(plot=False, mode="load", method="max"):
             stats = cali["stats"]
             data = pd.read_excel("cali.xlsx", sheet_name="data", index_col=[0, 1])
             gases = linreg.index
-        except OSError:
+        except:
             print(
                 "No calibration data found. To obtain quantitative IR data supply an 'Calibration' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode='recalibrate')!"
             )

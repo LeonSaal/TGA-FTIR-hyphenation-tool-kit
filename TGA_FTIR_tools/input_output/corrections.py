@@ -31,7 +31,7 @@ def corr_TGA(TGA, file_baseline, plot=False):
         corr_data["sample_mass"] = corr_data["sample_mass"].subtract(
             reference_mass["sample_mass"]
         )
-    except OSError:
+    except:
         print(">", path_baseline, " was not found.")
         return None
     try:

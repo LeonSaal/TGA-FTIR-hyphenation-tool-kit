@@ -18,6 +18,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    install_requires=["scipy", "pandas", "matplotlib", "sklearn", "openpyxl"],
+    install_requires=["scipy", "pandas", "matplotlib", "sklearn", "openpyxl", "requests"],
     python_requires=">=3.8",
 )

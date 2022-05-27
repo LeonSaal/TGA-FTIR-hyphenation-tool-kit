@@ -2,8 +2,19 @@
 
 import configparser
 import os
+import requests
+
+url_config = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/9382aaea97048e507bdc56715f971a9dec25be6d/settings.ini"
 
 file = "settings.ini"
+if not os.path.exists(file):
+    resp=requests.get(url_config)
+    if resp.ok:
+        with open("settings.ini", 'wb') as file:
+            file.write(resp.content)
+    else:
+        print('Unable to get default settings.')
+
 config = configparser.ConfigParser()
 config.read(file)
 

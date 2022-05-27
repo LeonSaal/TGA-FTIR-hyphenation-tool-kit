@@ -150,45 +150,46 @@ class TG_IR:
 
         # correction of data
         self.info["reference"] = reference
-        try:
-            self.tga = corrections.corr_TGA(self.tga, reference, plot=plot)
-            self.tga["dtg"] = -savgol_filter(
-                self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
-            )
-        except OSError:
-            print("Failed to correct TG data.")
+        if hasattr(self, 'tga'):
+            try:
+                self.tga = corrections.corr_TGA(self.tga, reference, plot=plot)
+                self.tga["dtg"] = -savgol_filter(
+                    self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
+                )
+            except:
+                print("Failed to correct TG data.")
+
+                    # filling TG_IR.info
+
+            try:
+                if self.info["reference_mass"] == "initial_mass":
+                    # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
+                    kwargs = dict(kwargs, how_dry=None)
+                    # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
+
+                TGA.dry_weight(self, plot=plot, **kwargs)
+                print(
+                    "'TG_IR.info' of {} was updated. To store these in Samplelog.xlsx run 'TG_IR.save()'".format(
+                        self.info["name"]
+                    )
+                )
+                success = True
+            except:
+                print("Failed to derive TG info.")
 
         if hasattr(self, "ir"):
             try:
                 self.ir.update(corrections.corr_FTIR(self, reference, plot=plot))
-            except OSError:
+            except:
                 print("Failed to correct IR data.")
 
-        # filling TG_IR.info
-        try:
-            if self.info["reference_mass"] == "initial_mass":
-                # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
-                kwargs = dict(kwargs, how_dry=None)
-                # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
-
-            TGA.dry_weight(self, plot=plot, **kwargs)
-            print(
-                "'TG_IR.info' of {} was updated. To store these in Samplelog.xlsx run 'TG_IR.save()'".format(
-                    self.info["name"]
-                )
-            )
-            success = True
-        except:
-            print("Failed to derive TG info.")
-
-        if hasattr(self, "ir"):
             try:
                 self.info.update(FTIR.FTIR_info(self))
                 if not success:
                     print(
                         "'TG_IR.info' was updated. To store these in Samplelog.xlsx run 'TG_IR.save()'"
                     )
-            except OSError:
+            except:
                 print("Failed to derive IR info.")
 
     def get_value(self, *values, which="sample_mass", at="sample_temp"):

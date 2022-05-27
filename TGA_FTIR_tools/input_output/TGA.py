@@ -52,7 +52,7 @@ def read_TGA(file, profile=COUPLING["profile"]):
             encoding="latin-1",
         ).drop(columns=drop, errors="ignore")
 
-    except OSError:
+    except:
         print("Failed to read TG-data from {}".format(file))
         return
 

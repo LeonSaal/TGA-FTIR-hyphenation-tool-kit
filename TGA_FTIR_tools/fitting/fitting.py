@@ -9,7 +9,9 @@ from ..input_output.general import time
 import os
 import copy
 import re
+import requests
 
+url_fitting_param = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/9382aaea97048e507bdc56715f971a9dec25be6d/Fitting_parameter.xlsx"
 
 def gaussian(x, height, center, hwhm):
     "evaluate gaussian function with height, center and HWHM at x"
@@ -511,32 +513,39 @@ def get_presets(path, reference):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets = dict()
-    try:
-        references = pd.read_excel(
-            os.path.join(path, "Fitting_parameter.xlsx"),
+
+    fname= "Fitting_parameter.xlsx"
+    full_path = os.path.join(path, fname)
+    if not os.path.exists(full_path):
+            resp=requests.get(url_fitting_param)
+            if resp.ok:
+                with open(full_path, 'wb') as file:
+                    file.write(resp.content)
+            else:
+                print('Unable to get default settings.')
+    
+    references = pd.read_excel(full_path,
             index_col=0,
-            header=None,
+            header=[0,1],
             sheet_name=None,
         )
-    except:
-        print(
-            "The Fitting_parameter.xlsx file could not be loaded, please supply it in",
-            PATHS["dir_home"],
-        )
-    gases = list(set(references["center_0"].loc["gas"]))
 
+    if reference not in (Options := references["center_0"].index.to_list()):
+        print(f'{reference=} is an invalid option. {Options=} ')
+        return
+
+    gases = list(set(references["center_0"].columns.get_level_values(1)))
     # organizing data in dict, sorted by gases and filling in missing values with [fitting] parameters of settings.ini
+
     for gas in gases:
-        index = [
-            references["center_0"].loc["group", i]
-            for i in references["center_0"].columns
-            if (references["center_0"].loc["gas", i].upper() == gas)
-        ]
+        index = [group
+            for group, group_gas in references["center_0"].columns
+            if group_gas == gas]
         data = pd.DataFrame(index=index)
         for key in references:
             data[key] = pd.DataFrame(
                 references[key]
-                .loc[reference, :][references[key].loc["gas", :] == gas]
+                .loc[reference, :][references[key].columns.get_level_values(1) == gas]
                 .T.values,
                 index=index,
                 columns=[key],
