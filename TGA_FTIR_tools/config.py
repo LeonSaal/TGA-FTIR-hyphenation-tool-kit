@@ -3,6 +3,9 @@
 import configparser
 import os
 import shutil as sh
+import requests
+
+url_settings = 'https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/master/TGA_FTIR_tools/settings/'
 
 names=['ini','import_profiles','fitting_params']
 cfg_files=["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
@@ -12,6 +15,16 @@ PATH_DIR = os.path.realpath(os.path.dirname(__file__))
 PATH_SET = os.path.join(PATH_DIR, "settings")
 
 PATHS ={name: os.path.join(PATH_SET, file) for name, file in cfg.items()}
+
+for name, path in PATHS.items():
+    if not os.path.exists(path):
+        resp = requests.get(f'{url_settings}/{cfg[name]}')
+        if resp.ok:
+            dst = os.path.join(PATH_SET, cfg[name])
+            with open(dst, 'wb') as file:
+                file.write(resp.content)
+        else:
+            print('Unable to download default settings.')
 
 if not os.path.exists(cfg['ini']):
     if os.path.exists(PATHS['ini']):
