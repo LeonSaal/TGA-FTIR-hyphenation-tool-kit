@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="TGA-FTIR-hyphenation-tool-kit-LeonSaal",  # Replace with your own username
-    version="2.0",
+    version="v2.2",
     author="Leon Saal",
     author_email="leon.saal@posteo.de",
     description="A package for handling hyphenated TGA and FTIR data. Includes basic plotting as well as as advanced deconvolution of FTIR data.",
