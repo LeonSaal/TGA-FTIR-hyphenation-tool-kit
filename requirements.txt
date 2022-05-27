@@ -1,6 +1,0 @@
-pip
-scipy
-pandas
-matplotlib
-sklearn
-openpyxl
