@@ -17,7 +17,7 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3.0",
         "Operating System :: OS Independent",
     ],
-    setuptools.find_packages(),
+    packages=setuptools.find_packages(),
     install_requires=["scipy", "pandas", "matplotlib", "sklearn", "openpyxl"],
     python_requires=">=3.8",
 )
