@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="TGA-FTIR-hyphenation-tool-kit",  # Replace with your own username
+    name="TGA_FTIR_tools", 
     version="v2.2",
     author="Leon Saal",
     author_email="mail.leon.saal@gmail.com",
