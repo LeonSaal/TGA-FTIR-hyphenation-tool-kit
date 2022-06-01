@@ -19,5 +19,5 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(),
     install_requires=["scipy", "pandas", "matplotlib", "sklearn", "openpyxl", "requests"],
-    python_requires=">=3.8",
+    python_requires="=3.10.4",
 )
