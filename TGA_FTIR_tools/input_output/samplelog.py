@@ -23,7 +23,7 @@ def samplelog(info=None, create=True, overwrite=False):
     if info != None:
         name = info["name"]
         data = pd.DataFrame.from_dict(info, orient="index", columns=[name]).T.drop(
-            ["name"], 1
+            ["name"], axis=1
         )
         data.index.name = "name"
 
