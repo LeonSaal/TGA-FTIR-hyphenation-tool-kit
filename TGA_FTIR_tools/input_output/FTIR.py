@@ -9,7 +9,7 @@ from ..config import PATHS
 def read_FTIR(file_name):
     "read IR data from files"
 
-    files = find_files(file_name, ".csv", PATHS["dir_data"])
+    files = find_files(file_name, ".csv", PATHS["data"])
 
     # find the gases by looking at the suffix of the files
     gases = []
@@ -47,13 +47,13 @@ def FTIR_info(TG_IR):
 
     # calculate total area of each gas
     for gas in TG_IR.info["gases"]:
-        info["area_{}".format(gas)] = np.sum(TG_IR.ir[gas])
+        info[f"area_{gas}"] = np.sum(TG_IR.ir[gas])
 
     if hasattr(TG_IR, "linreg"):
         # calculate molar amount of calibrated gases
         for gas in [gas for gas in TG_IR.info["gases"] if gas in TG_IR.linreg.index]:
-            info["mmol_{}".format(gas)] = (
-                info["area_{}".format(gas)] - TG_IR.linreg["intercept"][gas]
+            info[f"mmol_{gas}"] = (
+                info[f"area_{gas}"] - TG_IR.linreg["intercept"][gas]
             ) / TG_IR.linreg["slope"][gas]
 
         # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters
@@ -75,9 +75,9 @@ def FTIR_info(TG_IR):
                             n = int(re.search("(?<=" + elem + ")\d", gas).group())
                         else:
                             n = 1
-                        temp += n * info["mmol_{}".format(gas)]
+                        temp += n * info[f"mmol_{gas}"]
                 if temp != 0:
-                    info["mmol_{}".format(elem)] = temp
+                    info[f"mmol_{elem}"] = temp
         except:
             pass
 

@@ -1,34 +1,32 @@
 import pandas as pd
 import numpy as np
-from .fitting import fits, get_presets, check_LODQ
+from .fitting import fits, get_presets
 from ..input_output.general import time
-from ..plotting import get_label
 import os
-import matplotlib.pyplot as plt
-from ..config import PATHS, BOUNDS, UNITS, DPI
+from ..config import PATHS, BOUNDS
 import copy
 import time as tm
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def robustness(
-    objs,
-    reference,
-    T_max=None,
-    save=True,
-    var_T=10,
-    var_rel=0.3,
-    ylim=[0, None],
-    **kwargs
+    worklist, reference, T_max=None, save=True, var_T=10, var_rel=0.3, **kwargs,
 ):
     "perform robustness test on multiple TG_IR objects"
 
     # load default presets
-    presets_rob = get_presets(PATHS["dir_home"], reference)
+    presets_rob = get_presets(reference)
+
+    if presets_rob is None:
+        return 
 
     # setting up output DataFrames and lists of parameters to test
     params = ["center_0", "tolerance_center", "hwhm_max", "height_0", "hwhm_0"]
     results = dict()
-    results["summary"] = pd.DataFrame()
+    results["data"] = pd.DataFrame()
     variance = dict(zip(params, [var_T, var_T, var_T, var_rel, var_rel]))
     default = dict(
         zip(
@@ -44,48 +42,49 @@ def robustness(
     )
 
     # Calculating initial results and timing initial fit for estimation of remaining time
-    print("Initial results:")
+    logger.info("Initial results:")
     start = tm.time()
-    res = fits(
-        objs,
+    res = worklist.fit(
         reference=reference,
-        plot=False,
         save=False,
         T_max=T_max,
         presets=presets_rob,
-        **kwargs
-    )
-    length = tm.time() - start
-    results["init"] = res["mmol_per_mg"]
+        plot=False,
+        **kwargs,
+    )["mmol_per_mg"]
+    t_fit = tm.time() - start
+    results["init"] = res.rename("init")
     del res
 
     gases = [key for key in presets_rob]
-    print(
-        "\nVarying fitting parameters...\nApproximate remaining time: {:.1f} min".format(
-            (
-                length
-                * 2
-                * (4 + sum([len(presets_rob[gas]) for gas in presets_rob]))
-                / 60
-            )
-            * 1.1
-        )
-    )
+    n_fits = 2 * (4 + sum([len(presets_rob[gas]) for gas in presets_rob]))
+    t_total = (t_fit * n_fits / 60) * 1.1
+    logger.info(f"Varying fitting parameters...")
+    logger.info(f"Approximate remaining time: {t_total:.1f} min")
 
     # cycling through parameters to vary
+    fin_fits = 1
     for key in params:
-        for i, suffix in zip([-1, 1], ["_minus", "_plus"]):
-            print("{0}\n{0}\n{1} {2:+}:".format("_" * 90, key, variance[key] * i))
+        for i in [-1, 1]:
+            logger.info(
+                f"Fit {fin_fits} of {n_fits}: {key} {variance[key] * i:+}; approx. {t_total*(n_fits-fin_fits)/n_fits:.1f} min remaining"
+            )
             temp_presets = copy.deepcopy(presets_rob)
-
+            run = f"{key}{i*variance[key]:+}"
             if key == "center_0":
-                results[key + suffix] = pd.DataFrame(columns=results["init"].columns)
-                for gas in gases:
+                results[run] = pd.Series(
+                    index=results["init"].index, name=run, dtype=np.float64
+                )
+                for k, gas in enumerate(gases, start=1):
                     # vary center of each group
-                    for group in temp_presets[gas].index:
+                    logger.info(f"Gas {k} of {len(gases)}: {gas}")
+                    for j, group in enumerate(
+                        (groups := temp_presets[gas].index), start=1
+                    ):
+                        fin_fits += 1
                         cols = temp_presets[gas].drop("link", axis=1).columns
                         temp_presets = copy.deepcopy(presets_rob)
-                        print("\n{} {}:".format(group.capitalize(), gas))
+                        logger.info(f"Group {j} of {len(groups)}: {group.capitalize()}")
                         temp_presets[gas].loc[group, cols] = presets_rob[gas].loc[
                             group, cols
                         ] + i * np.array(
@@ -101,16 +100,19 @@ def robustness(
                                 0,
                             ]
                         )
-                        col = group + "_" + gas
-                        res = fits(
-                            objs,
+                        res = worklist.fit(
+                            plot=False,
                             reference=reference,
                             save=False,
-                            plot=False,
                             presets=temp_presets,
-                            **kwargs
+                            mod_sample=False,
+                            **kwargs,
                         )
-                        results[key + suffix][col] = res["mmol_per_mg"][col]
+                        results[run].update(
+                            res.loc[
+                                (slice(None), slice(None), group, gas), "mmol_per_mg"
+                            ]
+                        )
                         del res
             else:
                 for gas in gases:
@@ -134,203 +136,58 @@ def robustness(
 
                         # temp_presets[gas][key[:key.rfind('_')]+'_max'] * (default[key]+i*variance[key])
                         # temp_presets[gas][key] = temp_presets[gas][key[:key.rfind('_')]+'_max'] * (default[key]+i*variance[key])
-
-                res = fits(
-                    objs,
+                fin_fits += 1
+                res = worklist.fit(
                     reference=reference,
-                    plot=False,
                     save=False,
                     T_max=T_max,
+                    plot=False,
                     presets=temp_presets,
-                    **kwargs
-                )
-                results[key + suffix] = res["mmol_per_mg"]
-            results[key + suffix].sort_index().sort_index(axis=1, inplace=True)
+                    mod_sample=False,
+                    **kwargs,
+                )["mmol_per_mg"]
+                results[run] = res.rename(run)
 
+    logger.info("Fittings finished!")
+    logger.info("Calculationg statistic values.")
     # make subdirectory to save data
     if save:
         path = os.path.join(
-            PATHS["dir_robustness"],
-            time() + reference + "_{}_{}".format(var_T, var_rel),
+            PATHS["robustness"], time() + reference + f"_{var_T}_{var_rel}",
         )
         os.makedirs(path)
         os.chdir(path)
 
-    # sort and summarize results for each sample
-    samples = results["init"].index.levels[0]
+    data = pd.concat([df for df in results.values()], axis=1)
+    data.index.rename(names=["sample", "run", "group", "gas"], inplace=True)
 
-    # labels and units for plots
-    labels = [
-        "$center$",
-        "$tolerance\,center$",
-        "$HWHM_{max}$",
-        "$height_0$",
-        "$HWHM_0$",
-    ]
-    units = ["°C", "°C", "°C", "$height_{max}$", "°C"]
-    print("{0}\n{0}\nResults:\n{0}".format("_" * 30))
-    for sample in samples:
-        print(sample)
-
-        # exclude 'mean' and 'sum' columns from plots
-        drop_cols = [gas for gas in gases] + [
-            col
-            for col in results["init"].columns
-            if ("_sum" in col) or ("_mean" in col)
+    # make further statistical data
+    stat_names = ["err_dev", "rel_err_dev", "rel_stddev", "stddev", "mean"]
+    stat_cond = ~data.index.get_level_values(1).isin(stat_names)
+    columns = ["mean", "stddev", "meanstddev", "min", "max"]
+    stats = []
+    for (sample, group, gas), df in data[stat_cond].groupby(["sample", "group", "gas"]):
+        yall = df.dropna(axis=1).values.flatten()
+        ymean = data.loc[sample, "mean", group, gas].dropna().values.flatten()
+        values = [
+            [np.mean(ymean), np.std(yall), np.std(ymean), np.min(yall), np.max(yall),]
         ]
-        x = results["init"].columns.drop(drop_cols)
-
-        data = dict()
-        data["mean"] = pd.DataFrame(columns=x)
-        data["all"] = pd.DataFrame(columns=x)
-
-        # cycle through varied parameters
-        for param, label, unit in zip(params, labels, units):
-
-            # setup figure
-            fig, ax = plt.subplots()
-            # fig=plt.figure()
-            plt.title("{}: {}".format(sample, label))
-
-            # cycle through upper, initial and lower bound of parameter
-            for run, i in zip(["plus", "init", "minus"], [-1, 0, 1]):
-                if run == "init":
-                    index = run
-                else:
-                    index = "_".join([param, run])
-
-                # make list of mean value and deviation
-                y = results[index].loc[sample, "mean", :].drop(drop_cols, axis=1)
-                yall = (
-                    results[index]
-                    .loc[
-                        sample,
-                        results[index]
-                        .index.levels[1]
-                        .drop(
-                            [
-                                "mean",
-                                "stddev",
-                                "dev",
-                                "rel_dev",
-                                "rel_stddev",
-                                "limits",
-                            ],
-                            errors="ignore",
-                        ),
-                        :,
-                    ]
-                    .drop(drop_cols, axis=1)
-                )
-                yerr = results[index].loc[sample, "dev", :].drop(drop_cols, axis=1)
-
-                # plot errorbar
-                xticks = [
-                    "{} {}".format(
-                        group[: group.rfind("_")].capitalize()
-                        if group.rfind("_") != -1
-                        else "",
-                        get_label(group[group.rfind("_") + 1 :].lower()),
-                    )
-                    for group in x
-                ]
-                if param == "hwhm_0":  # exception for correct hwhm_0 labeling
-                    label = "{} {}".format(
-                        default[param] + i * default[param] * variance[param], unit
-                    )
-                else:
-                    label = "{} {}".format(
-                        default[param] + i * variance[param]
-                        if param != "center_0"
-                        else "{:+}".format(default[param] + i * variance[param]),
-                        unit,
-                    )
-                plt.errorbar(
-                    xticks,
-                    y.values[0],
-                    yerr=yerr.values[0],
-                    label=label,
-                    marker="x",
-                    capsize=10,
-                    ls="none",
-                )
-
-                # collect mean as well as individual results for further statistical evalutaion
-                if run != "init" or param == params[0]:
-                    data["mean"] = data["mean"].append(y)
-                    data["all"] = data["all"].append(yall)
-
-            # draw and save plot
-            plt.ylim(ylim)
-            plt.ylabel(
-                "${}\,{}^{{-1}}$".format(UNITS["molar_amount"], UNITS["sample_mass"])
-            )
-            plt.legend()
-            plt.setp(
-                ax.get_xticklabels(), rotation=30, horizontalalignment="right"
-            )  # rotate x-axis labels
-            # plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.show()
-            if save:
-                # sample_name = "".join( x for x in sample if (x.isalnum() or x in "._- "))
-                sample_name = "".join(
-                    [x if (x.isalnum() or x in "._- ") else "_" for x in sample]
-                )  # to catch invalide sample names
-                fig.savefig(
-                    sample_name + "_" + param + ".png", bbox_inches="tight", dpi=DPI
-                )
-
-        # make further statistical summary
-        results["summary"] = results["summary"].append(
-            pd.concat(
-                {sample: pd.DataFrame(data["mean"].mean(axis=0).rename("mean")).T},
-                names=["samples", " "],
-            )
+        index = pd.MultiIndex.from_tuples(
+            [(sample, group, gas)], names=["sample", "group", "gas"]
         )
-        results["summary"] = results["summary"].append(
-            pd.concat(
-                {sample: pd.DataFrame(data["mean"].std(axis=0).rename("meanstddev")).T},
-                names=["samples", " "],
-            )
-        )
-        results["summary"] = results["summary"].append(
-            pd.concat(
-                {sample: pd.DataFrame(data["all"].std(axis=0).rename("stddev")).T},
-                names=["samples", " "],
-            )
-        )
-        results["summary"] = results["summary"].append(
-            pd.concat(
-                {sample: pd.DataFrame(data["all"].min(axis=0).rename("min")).T},
-                names=["samples", " "],
-            )
-        )
-        results["summary"] = results["summary"].append(
-            pd.concat(
-                {sample: pd.DataFrame(data["all"].max(axis=0).rename("max")).T},
-                names=["samples", " "],
-            )
-        )
+        stat_df = pd.DataFrame(values, columns=columns, index=index)
+        stats.append(stat_df)
 
-    # check results for LOD and LOQ and add columns 'rel_stddev', 'rel_meanstddev', limits
-    results["summary"] = check_LODQ(
-        results["summary"],
-        samples,
-        gases,
-        objs,
-        mean="mean",
-        dev="stddev",
-        meandev="meanstddev",
-    )
+    summary = pd.concat(stats)
 
     # save results to excel file
     if save:
-        print("Fittings finished! Plots and results are saved in '{}'.".format(path))
+        logger.info(f"Plots and results are saved.'{path=}'.")
         with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
-            for key in results:
-                results[key].drop(drop_cols, axis=1, errors="ignore").to_excel(
-                    writer, sheet_name=key
-                )
-    os.chdir(PATHS["dir_home"])
-    return path
+            summary.to_excel(writer, sheet_name="summary")
+            data.to_excel(writer, sheet_name="data")
+
+    os.chdir(PATHS["home"])
+    logger.info("Robustness test finished!")
+    data.sort_index(level="group", inplace=True)
+    return data.drop("total", level="group"), summary

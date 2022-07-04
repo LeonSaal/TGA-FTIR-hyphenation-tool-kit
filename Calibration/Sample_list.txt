@@ -1,0 +1,14 @@
+Samples	Baseline
+ls_6.6_18358_012	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_013	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_014	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_015	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_016	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_017	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_018	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_019	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_020	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_021	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_022	ls_6.6_auftriebsblindwert_006_FTIR
+ls_6.6_18358_023	ls_6.6_auftriebsblindwert_006_FTIR
+

@@ -5,60 +5,64 @@ import os
 import shutil as sh
 import requests
 
-url_settings = 'https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/master/TGA_FTIR_tools/settings/'
+import logging
 
-names=['ini','import_profiles','fitting_params']
-cfg_files=["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
-cfg = dict(zip(names, cfg_files))
+fmt = "[{levelname:^7s}] {module:}.{funcName}: {message}"
+logging.basicConfig(level=logging.INFO, format=fmt, style="{")
+
+logger = logging.getLogger(__name__)
+
+
+url_settings = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/master/TGA_FTIR_tools/settings/"
+
+names = ["ini", "import_profiles", "fitting_params"]
+config_files = ["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
+config = dict(zip(names, config_files))
 
 PATH_DIR = os.path.realpath(os.path.dirname(__file__))
 PATH_SET = os.path.join(PATH_DIR, "settings")
 
-PATHS ={name: os.path.join(PATH_SET, file) for name, file in cfg.items()}
+PATHS = {name: os.path.join(PATH_SET, file) for name, file in config.items()}
 
 for name, path in PATHS.items():
     if not os.path.exists(path):
-        resp = requests.get(f'{url_settings}/{cfg[name]}')
+        resp = requests.get(f"{url_settings}/{config[name]}")
         if resp.ok:
-            dst = os.path.join(PATH_SET, cfg[name])
-            with open(dst, 'wb') as file:
+            dst = os.path.join(PATH_SET, config[name])
+            with open(dst, "wb") as file:
                 file.write(resp.content)
         else:
-            print('Unable to download default settings.')
+            logger.err("Unable to download default settings.")
 
-if not os.path.exists(cfg['ini']):
-    if os.path.exists(PATHS['ini']):
-        sh.copy(PATHS['ini'], cfg['ini'])
+if not os.path.exists(config["ini"]):
+    if os.path.exists(PATHS["ini"]):
+        sh.copy(PATHS["ini"], config["ini"])
     else:
-        print('Unable to find default settings.')
+        logger.warn("Unable to find default settings.")
 
-config = configparser.ConfigParser()
-config.read(cfg['ini'])
+cfg = configparser.ConfigParser()
+cfg.read(config["ini"])
 
-PATHS.update(config["paths"])
+PATHS.update(cfg["paths"])
 
-if PATHS["dir_home"] == "":
+if PATHS["home"] == "":
     cwd = os.getcwd().replace(os.sep, os.altsep)
-    print(
-        "No dir_home path was supplied in {}. dir_home was set to '{}'".format(
-            cfg['ini'], cwd
-        )
-    )
-    config["paths"]["dir_home"] = cwd
-if PATHS["dir_data"] == "" or os.path.exists(PATHS["dir_data"]) == False:
-    print("\nNo valid dir_data path was supplied in '{}'.".format(cfg['ini']))
-    config["paths"]["dir_data"] = input("Supply directory of Data:").replace(
+    logger.info(f"No home path was supplied in {config['ini']}. home was set to '{cwd}'")
+    cfg["paths"]["home"] = cwd
+if PATHS["data"] == "" or os.path.exists(PATHS["data"]) == False:
+    logger.warn(f"\nNo valid data path was supplied in '{config['ini']}'.")
+    cfg["paths"]["data"] = input("Supply directory of Data:").replace(
         os.sep, os.altsep
     )
-    if os.path.exists(config["paths"]["dir_data"]) == False:
-        print(
+    if os.path.exists(cfg["paths"]["data"]) == False:
+        logger.error(
             "\n!!! Supplied directory does not exist. Revise path in 'settings.ini' prior to continue. !!!\n"
         )
 
-with open(cfg['ini'], "w") as configfile:
-    config.write(configfile)
+with open(config["ini"], "w") as configfile:
+    cfg.write(configfile)
 
-UNITS = config["units"]
+UNITS = cfg["units"]
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
 units = ["mg", "min", "°C", "mmol", "mW", "mg\,min^{{-1}}"]
 for key, val in zip(keys, units):
@@ -66,21 +70,22 @@ for key, val in zip(keys, units):
 
 SEP = UNITS["sep"]
 
-PARAMS = config["parameters"]
+PARAMS = cfg["parameters"]
 
-MOLAR_MASS = config["molar_mass"]
+MOLAR_MASS = cfg["molar_mass"]
 
-PLOTTING = config["plotting"]
+PLOTTING = cfg["plotting"]
 
-DPI = PLOTTING.getint("dpi")
+STYLE = cfg["plotting"]["mpl-style"]
 
-LABELS = config["labels"]
+LABELS = cfg["labels"]
 
-COUPLING = config["coupling"]
+COUPLING = cfg["coupling"]
 
-SAVGOL = config["savgol"]
+SAVGOL = cfg["savgol"]
 
-BOUNDS = config["fitting"]
+BOUNDS = cfg["fitting"]
 
-IR_NOISE = config["ir_noise"]
+IR_NOISE = cfg["ir_noise"]
+
 

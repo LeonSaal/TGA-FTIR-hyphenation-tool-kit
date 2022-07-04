@@ -42,6 +42,6 @@ def overview(objs):
     out = pd.DataFrame(columns=["name", "alias"])
     out.index.name = "index"
     for attr in ["name", "alias"]:
-        out[attr] = [obj.info[attr] for obj in objs]
+        out[attr] = [obj.__dict__[attr] for obj in objs]
     print(out)
     return

@@ -8,112 +8,18 @@ import os
 from .plotting import get_label
 from sklearn import linear_model
 from .config import SAVGOL, PARAMS, UNITS, SEP, MOLAR_MASS, COUPLING, PATHS
-from .input_output import TGA, FTIR, corrections
+import logging
+from .classes import Sample
 
 
-def mass_step(TGA_data, rel_height=0.98, plot=False):  # rel_height=.963
-    "deriving mass steps via peaks in DTG signal"
-    # calculation and smoothing of DTG
-    TG = TGA_data["sample_mass"] / TGA_data["sample_mass"][0]
-    DTG = sp.signal.savgol_filter(
-        TG, SAVGOL.getint("window_length"), SAVGOL.getint("polyorder"), deriv=1
-    )
-
-    # detect mass steps
-    peaks, properties = sp.signal.find_peaks(
-        -DTG, height=0.00025, width=0, rel_height=rel_height, prominence=0.00025
-    )
-    step_end = properties["right_ips"].astype(np.int, copy=False)
-    step_start = properties["left_ips"].astype(np.int, copy=False)
-
-    # calculate masssteps
-    steps = np.zeros(len(peaks))
-    samples = 20
-    for i in range(len(peaks)):
-        steps[i] = np.mean(TGA_data["sample_mass"][step_end[i] : step_end[i] + samples])
-
-    # calculate step height
-    step_height = np.zeros(len(steps))
-    steps = np.insert(steps, 0, TGA_data["sample_mass"][0])
-
-    step_height = np.zeros(len(step_start))
-    for i in range(len(step_start)):
-        step_height[i] = np.mean(
-            TGA_data["sample_mass"][step_start[i] - samples : step_start[i]]
-        ) - np.mean(TGA_data["sample_mass"][step_end[i] : step_end[i] + samples])
-
-    rel_step_height = step_height / steps[0] * 100
-
-    # plotting
-    if plot == True:
-        # plotting of rel. TG
-        x = TGA_data["sample_temp"]
-        fig, ax = plt.subplots()
-        rel_steps = steps / steps[0] * 100
-        ax.hlines(
-            rel_steps[:-1],
-            np.zeros(len(rel_steps) - 1),
-            x[step_end],
-            linestyle="dashed",
-        )
-        ax.vlines(x[step_end], rel_steps[1:], rel_steps[:-1], linestyle="dashed")
-        for i in range(len(step_end)):
-            ax.text(
-                x[step_end[i]] + 5,
-                rel_steps[i + 1] + rel_step_height[i] / 2,
-                str(round(rel_step_height[i], 2)) + " %",
-            )
-        ax.plot(x, TGA_data["sample_mass"] / TGA_data["sample_mass"][0] * 100)
-        ax.text(
-            0.85 * max(TGA_data["sample_temp"]),
-            100,
-            "sample mass: {:.2f} {}".format(
-                TGA_data["sample_mass"][0], UNITS["sample_mass"]
-            ),
-            horizontalalignment="center",
-        )
-        ax.set_xlabel(
-            "{} {} {}".format(PARAMS["sample_temp"], SEP, UNITS["sample_temp"])
-        )
-        ax.set_ylabel("{} {} %".format(PARAMS["sample_mass"], SEP))
-        ax.xaxis.set_minor_locator(
-            ticker.AutoMinorLocator()
-        )  # switch on minor ticks on each axis
-        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax.set(title="TG")
-        plt.show()
-
-        # plotting of DTG
-        fig, ax = plt.subplots()
-        y = -DTG
-        ax.plot(x, y)
-        ax.vlines(x[step_end], 0, max(y), linestyle="dashed")
-        ax.vlines(x[step_start], 0, max(y), linestyle="dashed")
-        ax.vlines(x[peaks], y[peaks] - properties["peak_heights"], y[peaks])
-        ax.hlines(y[peaks] - properties["peak_heights"], x[step_end], x[step_start])
-        ax.set_xlabel(
-            "{} {} {}".format(PARAMS["sample_temp"], SEP, UNITS["sample_temp"])
-        )
-        ax.set_ylabel(
-            "{} {} {} ${}^{{-1}}$".format(
-                PARAMS["dtg"], SEP, UNITS["sample_mass"], UNITS["time"]
-            )
-        )
-        ax.xaxis.set_minor_locator(
-            ticker.AutoMinorLocator()
-        )  # switch on minor ticks on each axis
-        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax.set(title="DTG")
-        plt.show()
-
-    return step_height, rel_step_height, step_start, step_end
+logger = logging.getLogger(__name__)
 
 
 def integrate_peaks(
     FTIR_data, step_start, step_end, corr_baseline=None, plot=False, gases=None
 ):
     "integrating IR signal in between given bounds"
-
+    gases = list(gases)
     # adsjusting step starts according to coupling delay
     step_start = step_start + int(60 * COUPLING.getfloat("coupling_delay"))
     step_end = step_end + int(60 * COUPLING.getfloat("coupling_delay"))
@@ -125,12 +31,13 @@ def integrate_peaks(
 
         x = FTIR_data["time"] / 60
         # setup figure and plot first gas
-        graph = [None]
-        fig, graph[0] = plt.subplots()
+        graph = []
+        fig, ax = plt.subplots()
         fig.subplots_adjust(right=0.8)
+        graph.append(ax)
 
-        graph[0].set_xlabel("{} {} {}".format(PARAMS["time"], SEP, UNITS["time"]))
-        graph[0].set_ylabel("{} {} {}".format(get_label(gases[0]), SEP, UNITS["ir"]))
+        graph[0].set_xlabel(f'{PARAMS["time"]} {SEP} { UNITS["time"]}')
+        graph[0].set_ylabel(f'{get_label(gases[0])} {SEP} {UNITS["ir"]}')
         graph[0].yaxis.label.set_color(colors[0])
         graph[0].plot(x, FTIR_data[gases[0]])
         graph[0].set_ylim(0 - (max(FTIR_data[gases[0]]) / 20), max(FTIR_data[gases[0]]))
@@ -144,7 +51,7 @@ def integrate_peaks(
             graph[i + 1].plot(x, y, color=colors[i + 1])
             graph[i + 1].vlines(step_start / 60, 0, max(y), linestyle="dashed")
             graph[i + 1].vlines(step_end / 60, 0, max(y), linestyle="dashed")
-            graph[i + 1].set_ylabel("{} {} {}".format(get_label(gas), SEP, UNITS["ir"]))
+            graph[i + 1].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ir']}")
             graph[i + 1].yaxis.label.set_color(colors[i + 1])
             graph[i + 1].set_ylim(0 - (max(y) / 20), max(y))
 
@@ -223,12 +130,15 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
 
         x_BG = k * x_NG
 
-        stats = stats.append(
-            pd.DataFrame(
-                [[s_yx, s_x0, x_NG, x_BG]],
-                index=[gas],
-                columns=["s_yx", "s_x0", "x_LOD", "x_LOQ"],
-            )
+        stats = pd.concat(
+            [
+                stats,
+                pd.DataFrame(
+                    [[s_yx, s_x0, x_NG, x_BG]],
+                    index=[gas],
+                    columns=["s_yx", "s_x0", "x_LOD", "x_LOQ"],
+                ),
+            ]
         )
     return stats
 
@@ -236,36 +146,36 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
 def calibrate(plot=False, mode="load", method="max"):
     if mode == "load":
         # check if calibration folder is present
-        if os.path.exists(PATHS["dir_calibration"]) == False:
-            print(
+        if os.path.exists(PATHS["calibration"]) == False:
+            logger.warn(
                 "No calibration data found. To obtain quantitative IR data supply an 'Calibration' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode='recalibrate')!"
             )
             return
-        os.chdir(PATHS["dir_calibration"])
+        os.chdir(PATHS["calibration"])
 
         # try to load saved calibration
         try:
             cali = pd.read_excel("cali.xlsx", sheet_name=None, index_col=0)
             linreg = cali["linreg"]
-            x_cali = cali["x in {}".format(UNITS["molar_amount"])]
-            y_cali = cali["y in {}".format(UNITS["int_ir"])]
+            x_cali = cali[f"x in {UNITS['molar_amount']}"]
+            y_cali = cali[f"y in {UNITS['int_ir']}"]
             stats = cali["stats"]
             data = pd.read_excel("cali.xlsx", sheet_name="data", index_col=[0, 1])
             gases = linreg.index
         except:
-            print(
+            logger.warn(
                 "No calibration data found. To obtain quantitative IR data supply an 'Calibration' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode='recalibrate')!"
             )
-            os.chdir(PATHS["dir_home"])
-            return
+            os.chdir(PATHS["home"])
+            return None, None
 
     # new calibration
     elif mode == "recalibrate":
         # check if calibration folder is present
-        if os.path.exists(PATHS["dir_calibration"]) == False:
+        if os.path.exists(PATHS["calibration"]) == False:
             # make directory
-            os.makedirs(PATHS["dir_calibration"])
-        os.chdir(PATHS["dir_calibration"])
+            os.makedirs(PATHS["calibration"])
+        os.chdir(PATHS["calibration"])
 
         # setting up output DataFrames
         x_cali = pd.DataFrame()
@@ -275,82 +185,74 @@ def calibrate(plot=False, mode="load", method="max"):
         data = pd.DataFrame()
 
         # imporitng sample list for calibration
-        try:
-            samples = pd.read_csv("Sample_list.txt", delimiter="\t")
-        except:
+        fname_sl = "Sample_list.txt"
+        if os.path.exists(fname_sl):
+            samples = pd.read_csv(fname_sl, delimiter="\t")
+        else:
             with open("Sample_list.txt", "w") as file:
                 file.write("Samples\tBaseline")
-            print(
+            logger.info(
                 "'Sample_list.txt' was created in the 'Calibration' folder, please fill in calibration measurements and rerun this command."
             )
-            os.chdir(PATHS["dir_home"])
+            os.chdir(PATHS["home"])
             return
 
         # calculating mass steps and integrating FTIR_data signals for all samples
-        print("Calibrating...")
+        logger.info("Calibrating...")
         for sample, baseline in zip(samples["Samples"], samples["Baseline"]):
-
-            # reading and correcting data
-            TGA_data = TGA.read_TGA(sample)
-            info = TGA.TGA_info(sample, TGA_data)
-            TGA_data = corrections.corr_TGA(TGA_data, baseline)
-            FTIR_data = FTIR.read_FTIR(sample)
-            info["gases"] = FTIR_data.columns[1:].to_list()
-            gases = info["gases"]
-            FTIR_data.update(corrections.corr_FTIR(FTIR_data, baseline, plot=plot))
-            try:
-                FTIR_data["time"] += 60 * info["background_delay"]
-            except:
-                FTIR_data["time"] += 60 * COUPLING.getfloat("background_delay")
-            print(
-                "----------------------------------------------------\n{}".format(
-                    info["name"]
-                )
-            )
+            sample_data = Sample(sample)
+            sample_data.corr(baseline)
 
             # calculating mass steps and integrating FTIR_data signals
-            [steps, rel_steps, stepstart, stepend] = mass_step(TGA_data, plot=plot)
+            [steps, _, stepstart, stepend] = sample_data.mass_step(
+                plot=plot,
+                height=0.00025,
+                width=50,
+                prominence=0.00025,
+                rel_height=0.98,
+            )
             integrals = integrate_peaks(
-                FTIR_data,
+                sample_data.ir,
                 stepstart,
                 stepend,
                 plot=plot,
                 corr_baseline=None,
-                gases=gases,
+                gases=sample_data.info.gases,
             )
 
             integrals.insert(
-                loc=0,
-                column="mass loss in {}".format(UNITS["sample_mass"]),
-                value=steps,
+                loc=0, column=f"mass loss in {UNITS['sample_mass']}", value=steps,
             )
-            data = data.append(
-                pd.concat({sample: integrals}, names=["samples", "step"])
+            data = pd.concat(
+                [data, pd.concat({sample: integrals}, names=["samples", "step"])]
             )
+        logger.info("Finished reading data.")
 
         # assigning gases to mass steps
         for sample in data.index.levels[0]:
             release_steps = []
             for i, step in enumerate(
-                data.loc[sample, "mass loss in {}".format(UNITS["sample_mass"])]
+                data.loc[sample, f"mass loss in {UNITS['sample_mass']}"]
             ):
                 integrals = data.loc[sample].drop(
-                    ["mass loss in {}".format(UNITS["sample_mass"])], axis=1
+                    [f"mass loss in {UNITS['sample_mass']}"], axis=1
                 )
                 norm = integrals.divide(integrals.max(axis=0).values, axis=1).loc[i]
-                gas = norm.loc[norm == 1].index.values[0]
+                gas = norm.loc[norm == 1].index.values
                 release_steps.append(gas)
-                if gas not in x_cali.columns:
+                if gas not in x_cali.columns.values:
                     x_cali[gas] = np.nan
                     y_cali[gas] = np.nan
                 if sample not in x_cali.index:
-                    x_cali = x_cali.append(pd.DataFrame(index=[sample]))
-                    y_cali = y_cali.append(pd.DataFrame(index=[sample]))
-                x_cali[gas][sample] = step
-                y_cali[gas][sample] = integrals.loc[i, gas]
+                    x_cali = pd.concat([x_cali, pd.DataFrame(index=[sample])])
+                    y_cali = pd.concat([y_cali, pd.DataFrame(index=[sample])])
+                x_cali.loc[sample, gas] = step
+                y_cali.loc[sample, gas] = integrals.loc[i, gas]
 
         cols = ["slope", "intercept", "r_value", "p_value", "std_error"]
+        gases = x_cali.columns
 
+        logger.info(f"Performing calibration based on {method=}")
         if method == "iter":
             for gas in gases:
                 # slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
@@ -361,7 +263,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 )
 
                 if gas not in linreg.index:
-                    linreg = linreg.append(regression, verify_integrity=True)
+                    linreg = pd.concat([linreg, regression], verify_integrity=True)
                 else:
                     linreg.loc[[gas]] = regression
 
@@ -372,8 +274,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 for step in data.index.levels[1]:
                     gas = release_steps[step]
                     X_cali[gas] = data.loc[
-                        (slice(None), step),
-                        "mass loss in {}".format(UNITS["sample_mass"]),
+                        (slice(None), step), f"mass loss in {UNITS['sample_mass']}",
                     ].droplevel(1)
                     for other in set(release_steps) - set([gas]):
                         corr = (
@@ -415,7 +316,7 @@ def calibrate(plot=False, mode="load", method="max"):
             )
 
             if gas not in linreg.index:
-                linreg = linreg.append(regression, verify_integrity=True)
+                linreg = pd.concat([linreg, regression], verify_integrity=True)
             else:
                 linreg.loc[[gas]] = regression
 
@@ -490,12 +391,9 @@ def calibrate(plot=False, mode="load", method="max"):
             # because the result ist quite good. But not needed for now...
             data = data.clip(lower=0)  # this is not necessary? (but reasonable)
             X_cali = data.loc[
-                (slice(None), slice(None)),
-                "mass loss in {}".format(UNITS["sample_mass"]),
+                (slice(None), slice(None)), f"mass loss in {UNITS['sample_mass']}",
             ]  # attention: Y_cali is not y_cali
-            Y_cali = data.drop(
-                ["mass loss in {}".format(UNITS["sample_mass"])], axis=1
-            ).dropna(
+            Y_cali = data.drop([f"mass loss in {UNITS['sample_mass']}"], axis=1).dropna(
                 axis=1
             )  # attention: X_cali is not x_cali, dropna() to exclude gases not available for every measurement
             mlr = (
@@ -547,24 +445,25 @@ def calibrate(plot=False, mode="load", method="max"):
                 )
 
                 if gas not in linreg.index:
-                    linreg = linreg.append(regression, verify_integrity=True)
+                    linreg = pd.concat([linreg, regression], verify_integrity=True)
                 else:
                     linreg.loc[[gas]] = regression
 
         stats = calibration_stats(x_cali, y_cali, linreg)
-
+        logger.info("Calibration finished.")
         # saving of
         try:
-            with pd.ExcelWriter("cali.xlsx") as writer:
+            path = os.path.join(PATHS["calibration"], "cali.xlsx")
+            with pd.ExcelWriter(path) as writer:
                 linreg.to_excel(writer, sheet_name="linreg")
-                x_cali.to_excel(
-                    writer, sheet_name="x in {}".format(UNITS["molar_amount"])
-                )
-                y_cali.to_excel(writer, sheet_name="y in {}".format(UNITS["int_ir"]))
+                x_cali.to_excel(writer, sheet_name=f"x in {UNITS['molar_amount']}")
+                y_cali.to_excel(writer, sheet_name=f"y in {UNITS['int_ir']}")
                 stats.to_excel(writer, sheet_name="stats")
                 data.to_excel(writer, sheet_name="data")
-        except:
-            print("Could not write on cali.xlsx. Close file and rerun command.")
+
+                logger.info(f"Calibration completed, data is stored under {path=}")
+        except PermissionError:
+            logger.error(f"Could not write on {path=}. Close file and rerun command.")
 
     # plotting
     if plot:
@@ -573,7 +472,7 @@ def calibrate(plot=False, mode="load", method="max"):
             x = x_cali[gas]
             y = y_cali[gas]
 
-            plt.scatter(x, y, label="data (N = {})".format(len(x)))
+            plt.scatter(x, y, label=f"data (N = {len(x)})")
 
             x_bounds = np.array((min(x), max(x)))
             plt.plot(
@@ -585,11 +484,7 @@ def calibrate(plot=False, mode="load", method="max"):
             plt.text(
                 max(x),
                 min(y),
-                "y = {:.3f} $\cdot$ x {:+.3f}, $R^2$ = {:.5}".format(
-                    linreg["slope"][gas],
-                    linreg["intercept"][gas],
-                    linreg["r_value"][gas] ** 2,
-                ),
+                f'y = {linreg["slope"][gas]:.3f} $\cdot$ x {linreg["intercept"][gas]:+.3f}, $R^2$ = {linreg["r_value"][gas] ** 2:.5}',
                 horizontalalignment="right",
             )
             plt.xlabel(UNITS["molar_amount"])
@@ -600,11 +495,11 @@ def calibrate(plot=False, mode="load", method="max"):
             plt.show()
 
             Y_cali = x.mul(linreg["slope"][gas]).add(linreg["intercept"][gas])
-            plt.scatter(Y_cali, y - Y_cali, label="data (N = {})".format(len(x)))
+            plt.scatter(Y_cali, y - Y_cali, label=f"data (N = {len(x)})")
             plt.hlines(0, min(Y_cali), max(Y_cali))
-            plt.xlabel("$\hat{{y}}_i$ {} {}".format(SEP, UNITS["int_ir"]))
-            plt.ylabel("$y_i-\hat{{y}}_i$ {} {}".format(SEP, UNITS["int_ir"]))
-            plt.title("Residual plot: {}".format(get_label(gas)))
+            plt.xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ir']}")
+            plt.ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS['int_ir']}")
+            plt.title(f"Residual plot: {get_label(gas)}")
             plt.legend(loc=0)
             plt.show()
 
@@ -613,13 +508,13 @@ def calibrate(plot=False, mode="load", method="max"):
             x = x_cali[gas]
             y = y_cali[gas]
 
-            plt.scatter(x, y, label="data {} (N = {})".format(get_label(gas), len(x)))
+            plt.scatter(x, y, label=f"data {get_label(gas)} (N = {len(x)})")
 
             x = np.array((min(x), max(x)))
             plt.plot(
                 x,
                 x * linreg["slope"][gas] + linreg["intercept"][gas],
-                label="regression {}".format(get_label(gas)),
+                label=f"regression {get_label(gas)}",
                 ls="dashed",
             )
             plt.xlabel(UNITS["molar_amount"])
@@ -627,13 +522,10 @@ def calibrate(plot=False, mode="load", method="max"):
             plt.xlim(0, max(x) + abs(min(x)))
             plt.legend(loc=0)
         plt.show()
-    if mode == "recalibrate":
-        print(
-            "Calibration completed, data is stored under {}/cali.xlsx".format(
-                PATHS["dir_calibration"]
-            )
-        )
 
-    os.chdir(PATHS["dir_home"])
+    os.chdir(PATHS["home"])
     return linreg, stats
 
+
+# try loading calibration data
+linreg, stats = calibrate()

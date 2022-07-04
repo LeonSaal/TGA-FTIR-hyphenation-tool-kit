@@ -3,11 +3,15 @@ import pandas as pd
 import numpy as np
 
 from ..config import PATHS
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def samplelog(info=None, create=True, overwrite=False):
     "load and write samplelog file with obj.info"
-    path = os.path.join(PATHS["dir_home"], "Samplelog.xlsx")
+    path = os.path.join(PATHS["home"], "Samplelog.xlsx")
 
     # try to load samplelog file
     if os.path.exists(path) == False:
@@ -15,7 +19,7 @@ def samplelog(info=None, create=True, overwrite=False):
         samplelog.index.name = "name"
         if create == True:  # create new Samplelox.xlsx file
             samplelog.to_excel(path)
-            print("Empty 'Samplelog.xlsx' created in", path)
+            logger.info("Empty 'Samplelog.xlsx' created in", path)
     else:
         samplelog = pd.read_excel(path, index_col=0)
 
@@ -36,14 +40,14 @@ def samplelog(info=None, create=True, overwrite=False):
             else:
                 samplelog.loc[[name]] = data
         else:
-            samplelog = samplelog.append(data)
+            samplelog = pd.concat([samplelog, data])
 
         try:
             samplelog.to_excel(path)
-            print("> Successfully updated 'Samplelog.xlsx'.")
+            logger.info("Successfully updated 'Samplelog.xlsx'.")
         except:
-            print(
-                "> Unable to write on 'Samplelog.xlsx'. Please close file and try again!"
+            logger.error(
+                "Unable to write on 'Samplelog.xlsx'. Please close file and try again!"
             )
 
     return samplelog

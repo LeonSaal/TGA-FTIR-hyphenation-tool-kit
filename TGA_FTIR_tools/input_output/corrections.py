@@ -7,13 +7,16 @@ import matplotlib.ticker as ticker
 from .general import find_files
 from ..config import PATHS, PARAMS, UNITS, SEP, IR_NOISE
 from .FTIR import read_FTIR
-from ..plotting import get_label
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def corr_TGA(TGA, file_baseline, plot=False):
     "corrects TG data by subtracting buoyancy blank value of crucible"
     corr_data = TGA.copy()
-    path_baseline = find_files(file_baseline, ".txt", PATHS["dir_data"])[0]
+    path_baseline = find_files(file_baseline, ".txt", PATHS["data"])[0]
 
     # opens the buoyancy blank value 'baseline' and substracts them from the original data
     try:
@@ -32,10 +35,10 @@ def corr_TGA(TGA, file_baseline, plot=False):
             reference_mass["sample_mass"]
         )
     except:
-        print(">", path_baseline, " was not found.")
+        logger.error(f'"{path_baseline}" was not found.')
         return None
     try:
-        path_mW = find_files(file_baseline, "_mW.txt", PATHS["dir_data"])[0]
+        path_mW = find_files(file_baseline, "_mW.txt", PATHS["data"])[0]
         reference_heat_flow = pd.read_csv(
             path_mW,
             delim_whitespace=True,
@@ -62,12 +65,8 @@ def corr_TGA(TGA, file_baseline, plot=False):
         ax.plot(x, y, label="data")
         ax.plot(x, reference_mass["sample_mass"][: len(TGA)], label="baseline")
         ax.plot(x, corr_data["sample_mass"], label="corrected")
-        ax.set_xlabel(
-            "{} {} {}".format(PARAMS["sample_temp"], SEP, UNITS["sample_temp"])
-        )
-        ax.set_ylabel(
-            "{} {} {}".format(PARAMS["sample_mass"], SEP, UNITS["sample_mass"])
-        )
+        ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
+        ax.set_ylabel(f"{PARAMS['sample_mass']} {SEP} {UNITS['sample_mass']}")
         ax.legend()
         ax.xaxis.set_minor_locator(
             ticker.AutoMinorLocator()
@@ -80,6 +79,8 @@ def corr_TGA(TGA, file_baseline, plot=False):
 
 
 def corr_FTIR(Sample, file_baseline, plot=False):
+    from ..plotting import get_label
+
     "corrects IR data by setting minimal adsorption to 0 "
     FTIR = Sample.ir
     # setting up output DataFrame
@@ -95,9 +96,9 @@ def corr_FTIR(Sample, file_baseline, plot=False):
         gases = set(baseline.columns.drop(["time"]).values).intersection(
             Sample.info["gases"]
         )
-        print("Baseline found for {}".format(", ".join(gases)))
+        logger.info(f"Baseline found for {', '.join(gases)}")
     except:
-        print("No baseline data found.")
+        logger.error("No baseline data found.")
         baseline = pd.DataFrame(
             index=FTIR.index,
             columns=FTIR.columns.drop(
@@ -189,7 +190,7 @@ def corr_FTIR(Sample, file_baseline, plot=False):
                 ) + min(FTIR[gas].subtract(co2_baseline))
 
             except:
-                print("WARNING: Unable to align CO2 baseline with measurement.")
+                logger.warn("Unable to align CO2 baseline with measurement.")
                 corr_data[gas] = np.zeros(len(FTIR))
                 corr_data[gas] += const_baseline(
                     FTIR[gas] - min(FTIR[gas]), thresh
@@ -215,17 +216,15 @@ def corr_FTIR(Sample, file_baseline, plot=False):
 
             ax.legend()
             if x.name == "time":
-                ax.set_xlabel("{} {} {}".format(PARAMS["time"], SEP, UNITS["time"]))
+                ax.set_xlabel(f"{PARAMS['time']} {SEP} {UNITS['time']}")
             elif x.name == "sample_temp":
-                ax.set_xlabel(
-                    "{} {} {}".format(PARAMS["sample_temp"], SEP, UNITS["sample_temp"])
-                )
-            ax.set_ylabel("{} {} {}".format(get_label(gas), SEP, UNITS["IR"]))
+                ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
+            ax.set_ylabel(f"{get_label(gas)} {SEP} {UNITS['IR']}")
             ax.xaxis.set_minor_locator(
                 ticker.AutoMinorLocator()
             )  # switch on minor ticks on each axis
             ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-            ax.set(title="{} baseline correction".format(get_label(gas)))
+            ax.set(title=f"{get_label(gas)} baseline correction")
             plt.show()
 
     return FTIR[list(gases)].subtract(corr_data)
