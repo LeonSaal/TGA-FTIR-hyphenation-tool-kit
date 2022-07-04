@@ -2,49 +2,85 @@
 
 import configparser
 import os
-file='settings.ini'
+import shutil as sh
+import requests
+
+url_settings = 'https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/master/TGA_FTIR_tools/settings/'
+
+names=['ini','import_profiles','fitting_params']
+cfg_files=["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
+cfg = dict(zip(names, cfg_files))
+
+PATH_DIR = os.path.realpath(os.path.dirname(__file__))
+PATH_SET = os.path.join(PATH_DIR, "settings")
+
+PATHS ={name: os.path.join(PATH_SET, file) for name, file in cfg.items()}
+
+for name, path in PATHS.items():
+    if not os.path.exists(path):
+        resp = requests.get(f'{url_settings}/{cfg[name]}')
+        if resp.ok:
+            dst = os.path.join(PATH_SET, cfg[name])
+            with open(dst, 'wb') as file:
+                file.write(resp.content)
+        else:
+            print('Unable to download default settings.')
+
+if not os.path.exists(cfg['ini']):
+    if os.path.exists(PATHS['ini']):
+        sh.copy(PATHS['ini'], cfg['ini'])
+    else:
+        print('Unable to find default settings.')
+
 config = configparser.ConfigParser()
-config.read(file)
+config.read(cfg['ini'])
 
-PATHS=config['paths']
+PATHS.update(config["paths"])
 
-if PATHS['dir_home']=='':
-    cwd=os.getcwd().replace(os.sep,os.altsep)
-    print('No dir_home path was supplied in {}. dir_home was set to \'{}\''.format(file,cwd))
-    config['paths']['dir_home']=cwd
-if PATHS['dir_data']=='' or os.path.exists(PATHS['dir_data'])==False:
-    print('\nNo valid dir_data path was supplied in \'{}\'.'.format(file))
-    config['paths']['dir_data']=input('Supply directory of Data:').replace(os.sep,os.altsep)
-    if os.path.exists(config['paths']['dir_data'])==False:
-        print('\n!!! Supplied directory does not exist. Revise path in \'settings.ini\' prior to continue. !!!\n')
+if PATHS["dir_home"] == "":
+    cwd = os.getcwd().replace(os.sep, os.altsep)
+    print(
+        "No dir_home path was supplied in {}. dir_home was set to '{}'".format(
+            cfg['ini'], cwd
+        )
+    )
+    config["paths"]["dir_home"] = cwd
+if PATHS["dir_data"] == "" or os.path.exists(PATHS["dir_data"]) == False:
+    print("\nNo valid dir_data path was supplied in '{}'.".format(cfg['ini']))
+    config["paths"]["dir_data"] = input("Supply directory of Data:").replace(
+        os.sep, os.altsep
+    )
+    if os.path.exists(config["paths"]["dir_data"]) == False:
+        print(
+            "\n!!! Supplied directory does not exist. Revise path in 'settings.ini' prior to continue. !!!\n"
+        )
 
-with open(file, 'w') as configfile:
+with open(cfg['ini'], "w") as configfile:
     config.write(configfile)
 
-UNITS=config['units']
-keys=['sample_mass','time','sample_temp','molar_amount','heat_flow','dtg']
-units=['mg','min','°C','mmol','mW','mg\,/\,min']
-for key, val in zip(keys,units):
-    UNITS[key]=val
-    
-SEP=UNITS['sep']
+UNITS = config["units"]
+keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
+units = ["mg", "min", "°C", "mmol", "mW", "mg\,min^{{-1}}"]
+for key, val in zip(keys, units):
+    UNITS[key] = val
 
-PARAMS=config['parameters']
+SEP = UNITS["sep"]
 
-MOLAR_MASS=config['molar_mass']
+PARAMS = config["parameters"]
 
-PLOTTING=config['plotting']
+MOLAR_MASS = config["molar_mass"]
 
-DPI=PLOTTING.getint('dpi')
+PLOTTING = config["plotting"]
 
-LABELS=config['labels']
+DPI = PLOTTING.getint("dpi")
 
-COUPLING=config['coupling']
+LABELS = config["labels"]
 
-SAVGOL=config['savgol']
+COUPLING = config["coupling"]
 
-BOUNDS=config['fitting']
+SAVGOL = config["savgol"]
 
-IR_NOISE=config['ir_noise']
+BOUNDS = config["fitting"]
 
+IR_NOISE = config["ir_noise"]
 

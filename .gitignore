@@ -1,12 +1,7 @@
-*.txt
-*.SPG
-*.CSV
-*.srs
+
 *.png
 *.xlsx
-*.ini
-*.ini
-*.ini
-*.xlsx
 *.ipynb
+settings.ini
+*.ini
 *.ini
