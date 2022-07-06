@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
+
 @dataclass
-class EN():
+class EN:
     sel_conv = "Select files to convert"
     sel_folder = "Select folder"
     incl_sub = "Include subdirectories"
@@ -10,7 +11,7 @@ class EN():
     same_folder = "source folder"
     diff_folder = "different folder"
     keep_sub = "Keep folder structure"
-    settings = "Settings"
+    settings = "settings"
     incl_signal = "Include:"
     corr = "Corrections:"
     lin_corr = "Linear baseline-correction"
@@ -25,7 +26,9 @@ class EN():
     name = "name"
     end = "end"
     out_fname = "Destination file:"
-    input_warning = f"{start} and {end} must be both positive numbers and {start} < {end}!"
+    input_warning = (
+        f"{start} and {end} must be both positive numbers and {start} < {end}!"
+    )
     fopen_warning = "is openened by another program. Please enter new name!"
     prog_name = "TGA-FTIR tools"
     info = "info"
@@ -42,9 +45,7 @@ class EN():
     default_int = "load default"
     bounds_int = "Integration bounds"
     load_int = "load from file"
-    err_int_load = (
-        'Error loading from file. File must contain "start", "end" and "name" in header.'
-    )
+    err_int_load = 'Error loading from file. File must contain "start", "end" and "name" in header.'
     warn = "Warning"
     file = "file"
     wl = "worklist"
@@ -74,4 +75,14 @@ class EN():
     ref = "reference"
     corr = "baseline correction"
     apply = "apply"
-    reset = 'reset'
+    reset = "reset"
+    max = "max"
+    iter = "iter"
+    co_oxi = "co_oxi"
+    co_oxi_iter = "co_oxi_iter"
+    mlr = "mlr"
+    save_wl = "save selection"
+    rename = "rename"
+    from_samplelog = "from samplelog"
+    samplelog = "samplelog"
+    sel_rows = "Select Samples to be added to Worklist."

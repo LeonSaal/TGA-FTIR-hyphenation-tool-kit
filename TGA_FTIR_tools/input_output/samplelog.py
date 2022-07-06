@@ -9,17 +9,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def samplelog(info=None, create=True, overwrite=False):
+def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
     "load and write samplelog file with obj.info"
     path = os.path.join(PATHS["home"], "Samplelog.xlsx")
 
     # try to load samplelog file
-    if os.path.exists(path) == False:
+    if not os.path.exists(path):
         samplelog = pd.DataFrame(columns=["alias", "reference"])
         samplelog.index.name = "name"
-        if create == True:  # create new Samplelox.xlsx file
+        if create:  # create new Samplelox.xlsx file
             samplelog.to_excel(path)
-            logger.info("Empty 'Samplelog.xlsx' created in", path)
+            logger.info(f"Empty 'Samplelog.xlsx' created in {path}")
     else:
         samplelog = pd.read_excel(path, index_col=0)
 

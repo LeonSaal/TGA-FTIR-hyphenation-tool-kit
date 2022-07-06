@@ -128,9 +128,9 @@ def plot_FTIR(
     x = copy.deepcopy(sample.ir[x_axis])
 
     # catching possible input errors
-    try:
+    if sample.linreg is not None:
         calibrated = set(sample.linreg.index)
-    except AttributeError:
+    else:
         calibrated = set()
     on_axis = set(sample.info["gases"])
     if len(gases) == 0:
@@ -206,6 +206,7 @@ def plot_FTIR(
             graphs[i].plot(x, y, color=colors[i])
             graphs[i].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ir']}")
             graphs[i].yaxis.label.set_color(colors[i])
+            graphs[i].set_yticks(np.linspace(graphs[i].get_yticks()[0], graphs[i].get_yticks()[-1], len(graphs[0].get_yticks())))
 
         elif y_axis == "rel":
             tot_area = np.sum(sample.ir[gas])

@@ -13,8 +13,8 @@ import logging
 import re
 
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import InitVar, dataclass, field
+from typing import Literal, Optional
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
@@ -33,8 +33,9 @@ class Sample:
     profile: str = COUPLING["profile"]
     alias: str = field(default=None)
     results: dict = field(default_factory=dict)
+    mode: InitVar[Literal["construct", 'pickle']]= 'construct'
 
-    def __post_init__(self, mode: str = "construct", **kwargs):
+    def __post_init__(self, mode, **kwargs):
         if mode == "construct":
             logger.info(f'Initializing "{self.name}"')
             # load TG data
@@ -244,37 +245,34 @@ class Sample:
         if self.ir is None and (plot in ["IR", "DIR", "cumsum", "IR_to_DTG"]):
             logger.warn("Option unavailable without IR data.")
             return
-        else:
-            if plot == "IR":
-                plot_FTIR(self, **kwargs)
 
-            if plot == "DIR":
-                temp = copy.deepcopy(self)
-                temp.ir.update(
-                    self.ir.filter(self.info["gases"], axis=1)
-                    .diff()
-                    .ewm(span=10)
-                    .mean()
-                )
-                plot_FTIR(temp, **kwargs)
-
-            if plot == "cumsum":
-                temp = copy.deepcopy(self)
-                temp.ir.update(self.ir.filter(self.info["gases"], axis=1).cumsum())
-                plot_FTIR(temp, **kwargs)
+        if plot == "IR":
+            plot_FTIR(self, **kwargs)
+        elif plot == "DIR":
+            temp = copy.deepcopy(self)
+            temp.ir.update(
+                self.ir.filter(self.info["gases"], axis=1)
+                .diff()
+                .ewm(span=10)
+                .mean()
+            )
+            plot_FTIR(temp, **kwargs)
+        elif plot == "cumsum":
+            temp = copy.deepcopy(self)
+            temp.ir.update(self.ir.filter(self.info["gases"], axis=1).cumsum())
+            plot_FTIR(temp, **kwargs)
 
         if (self.tga is None) and (plot in ["TG", "heat_flow", "IR_to_DTG"]):
             logger.warn("Option unavailable without TGA data.")
             return
-        else:
-            if plot == "TG":
-                plot_TGA(self, "sample_mass", **kwargs)
 
-            if plot == "heat_flow":
-                if "heat_flow" in self.tga.columns:
-                    plot_TGA(self, plot, **kwargs)
-                else:
-                    logger.warn("No heat flow data available!")
+        if plot == "TG":
+            plot_TGA(self, "sample_mass", **kwargs)
+        elif plot == "heat_flow":
+            if "heat_flow" in self.tga.columns:
+                plot_TGA(self, plot, **kwargs)
+            else:
+                logger.warn("No heat flow data available!")
 
         if (self.linreg is not None) and (plot == "IR_to_DTG"):
             FTIR_to_DTG(self, **kwargs)
@@ -355,8 +353,8 @@ class Sample:
         return pd.concat(
             [peaks], keys=[(self.sample, self.run)], names=["sample", "run"]
         )
-    def robustness():
-        pass
+    def robustness(ref, **kwargs):
+        logger.warn('Robustness only available for multiple Samples.')
 
     def save(self, how="samplelog", **kwargs):
         "save object or its contents as pickle file or excel"

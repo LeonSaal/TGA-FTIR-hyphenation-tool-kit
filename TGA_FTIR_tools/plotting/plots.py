@@ -1,3 +1,4 @@
+from typing import Literal
 import matplotlib.pyplot as plt
 from ..config import PARAMS, SEP, UNITS, PATHS
 import copy
@@ -12,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def plots(
-    TG_IR_objs,
-    plot,
+    samples,
+    plot: Literal["TG", "IR", "DTG", "heat_flow"],
     x_axis="sample_temp",
     y_axis="orig",
     ylim="auto",
@@ -23,8 +24,13 @@ def plots(
     legend=True,
     reference_mass="reference_mass",
     linewidth=1,
+    **kwargs,
 ):
     "overlay plots from different objects"
+    options = ["TG", "IR", "DTG", "heat_flow"]
+    if plot not in options:
+        logger.warn(f"{plot=} not in {options=}")
+        return
 
     # setting up axis-labels and catching possible input errors
     if plot == "TG":
@@ -37,13 +43,13 @@ def plots(
             return
         else:
             gas = gas.upper()
-            if gas not in TG_IR_objs[0].ir.columns:
+            if gas not in samples[0].ir.columns:
                 logger.warn(f"{gas} was not found in IR data.")
                 return
 
         # just to see if supplied gas is calibrated or not
         calibrated = set()
-        for TG_IR in TG_IR_objs:
+        for TG_IR in samples:
             try:
                 calibrated.update(set(TG_IR.linreg.index))
             except AttributeError:
@@ -75,7 +81,7 @@ def plots(
             )
 
     # actual plotting
-    for obj in TG_IR_objs:
+    for obj in samples:
         if reference_mass == "reference_mass":
             ref_mass = obj.info[obj.info[reference_mass]]
         else:
@@ -188,4 +194,3 @@ def plots(
         fig.savefig(
             os.path.join(path_plots, "_".join([time(), plot, gas, y_axis])) + ".png",
         )
-

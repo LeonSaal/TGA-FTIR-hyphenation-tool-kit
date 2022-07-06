@@ -17,9 +17,6 @@ class Worklist:
     samples: List[Sample] = field(default_factory=list)
     results: dict = field(default_factory=dict)
 
-    def __post_init__(self, **kwargs):
-        self.load(**kwargs)
-
     def __add__(self, other):
         if isinstance(other, Sample):
             return Worklist([other] + self.samples)
@@ -93,26 +90,30 @@ class Worklist:
             if (ls:=len(self)) != (lr:=len(references)):
                 logger.error(f'Lengths of samples ({ls}) and references ({lr}) do not match.')
                 return
-        references = [references for _ in len(references)]
+        elif type(references)==str:
+            references = [references for _ in self.samples]
 
         for sample, baseline in zip(self.samples, references):
-            sample.corr(sample, baseline, plot=plot, **kwargs)
+            sample.corr(baseline, plot=plot, **kwargs)
 
     def pop(self, i):
         self.samples.pop(i)
 
-    def save(self):
+    def save(self, fname:str=None, **kwargs):
         path_output = PATHS["output"]
         if os.path.exists(path_output) == False:
             os.makedirs(path_output)
-        path = os.path.join(path_output, f'{self.info["name"]}.pkl')
+        if not fname:
+            fname= self.name
+        path = os.path.join(path_output, f'{fname}.wkl')
         with open(path, "wb") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+        for sample in self.samples:
+            sample.save()
 
-    def load(self, mode=None):
-        if mode == "pickle":
-            with open(os.path.join(PATHS["output"], f'{self.name}.pkl'), "rb") as inp:
-                obj = pickle.load(inp)
-            for key in obj.__dict__:
-                self.__dict__[key] = obj.__dict__[key]
+    def load(self, fname:str):
+        with open(os.path.join(PATHS["output"], f'{fname}.wkl'), "rb") as inp:
+            obj = pickle.load(inp)
+        for key in obj.__dict__:
+            self.__dict__[key] = obj.__dict__[key]
 

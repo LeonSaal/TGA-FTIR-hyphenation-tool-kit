@@ -1,48 +1,36 @@
-from imp import reload
+from typing import Iterable, Mapping
 import PySimpleGUI as sg
-import matplotlib
-from traitlets import default
-
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May  2 10:16:15 2022
-
-@author: Leon
-"""
-import PySimpleGUI as sg
-from dotmap import DotMap
-from ..config import cfg, config, fmt
+from ..config import cfg, fmt
 from ..classes import Sample, Worklist
+from ..calibration import calibrate
+from ..input_output import samplelog
 import os
-import copy
 import re
 from pathlib import Path
-from ..fitting import get_presets
 import logging
 from .lang import EN
 import matplotlib.pyplot as plt
 import configparser
+import pandas as pd
+from .popups import plot_set_window, setting_window, fit_set_window, samplelog_window
+
 plt.ion()
 
 logger = logging.getLogger(__name__)
+width = 50
 
 lang = EN
 
-fonts = DotMap()
-fonts.head = "Calibri 15 bold"
-fonts.sub = "Calibri 10 bold"
-
-default_folder = ""  # r'C:\Users\Leon\tubCloud2\Shared\LC-OCD\Rohdaten'
-width = 50
-
-
-opts = {lang.plot:[lang.tga, lang.ir, lang.dir, lang.irdtg, lang.heatflow, lang.fit],
-lang.file:[lang.open, lang.load, lang.save],
-lang.wl: [lang.open, lang.load, lang.save],
-lang.settings:[lang.edit, lang.load, lang.save],
-lang.cali: [lang.load, lang.recali],
-lang.samples:[lang.fit, lang.rob, lang.plot, lang.delete]
+opts = {
+    lang.plot: [lang.tga, lang.ir, lang.dir, lang.irdtg, lang.heatflow, lang.fit],
+    lang.file: [lang.open, lang.load],
+    lang.wl: [lang.load, lang.save, lang.from_samplelog, lang.rename, lang.cl],
+    lang.settings: [lang.edit, lang.load, lang.save],
+    lang.cali: [lang.load, lang.recali],
+    lang.recali: [lang.max, lang.iter, lang.co_oxi, lang.co_oxi_iter, lang.mlr],
+    lang.samples: [lang.fit, lang.rob, lang.plot, lang.delete, lang.corr, lang.save_wl],
 }
+
 
 def update_samples(wl):
     data = [
@@ -51,163 +39,32 @@ def update_samples(wl):
             sample.alias,
             sample.sample,
             sample.run,
-            ', '.join(sample.info.gases),
+            ", ".join(sample.info.gases),
             lang.heatflow in sample.tga,
         ]
         for sample in wl.samples
     ]
     return data
-    
 
-def make_menu(top, keys,opts):
+
+def make_menu(top: str, keys: Iterable, opts: Mapping):
     menu = []
     for key in keys:
         if key in opts:
-            menu.append([key, make_menu(key, opts[key],opts)])
+            menu.extend([key, make_menu(key, opts[key], opts)])
         else:
-            menu.append(f'{key}::{top}')
+            menu.append(f"{key}::{top}")
     return menu
 
-def make_rcl_menu(top, keys,opts):
-    menu = []
-    for key in keys:
-        if key in opts:
-            menu.extend([key, make_rcl_menu(key, opts[key],opts)])
-        else:
-            menu.append(f'{key}::{top}')
-    return menu
-    
 
-menu_definition = make_menu("",[lang.file,lang.wl, lang.settings, lang.cali],opts)
-right_click_menu =make_rcl_menu("",[lang.samples], opts)
-
-def setting_window():
-    tabs = []
-    params = ['hwhm', 'height']
-    for section, vals in cfg.items():
-        if section == "DEFAULT":
-            continue
-        elif section == "paths":
-            tab = [[sg.T(name, expand_x=True),sg.Input(val, k=f"-SET_{section}::{name}"),sg.B(lang.browse, k=f"-B_{section}::{name}"),] for name, val in vals.items()]
-        elif section == 'plotting':
-            tab = [[sg.T(name, expand_x=True), sg.Combo(matplotlib.style.available+['default'], default_value=val, k=f"-SET_{section}::{name}")] for name, val in vals.items()]
-        elif section == 'fitting':
-            name, val= 'tol_center', vals['tol_center']
-            tol_center = [sg.T(name), sg.Slider((0,float(val)*2), default_value=float(val), orientation='h', resolution=0.5, k=f'-SET_{section}::tol_center')]
-            rows = [[[sg.Push()],[sg.T('min')],[sg.Push(),  sg.T('0'), sg.Push()],[ sg.T('max')]]]
-            resolution={'hwhm':0.5,'height': 0.05}
-            for param in params:
-                val = [vals[f'{param}_{suff}'] for suff in ['min', '0', 'max']]
-                rows.append([[sg.T(param)], [sg.Input(default_text=val[0], size=4, enable_events=True,k=f'-SET_{section}::{param}_min')], [sg.Slider((val[0], val[2]), default_value=val[1], orientation='h', resolution=resolution[param], k=f'-SET_{section}::{param}_0')], [sg.Input(default_text=val[2], size=4, enable_events=True, k=f'-SET_{section}::{param}_max')]])
-            
-            tab = [tol_center, [sg.Column([row[i] for row in rows]) for i in range(4) ]]
-        elif section =='savgol':
-            resolution = {'window_length':2, 'polyorder':1}
-            ranges = {'window_length':(1,301), 'polyorder':(1,5)}
-            tab=[[sg.T(name, expand_x=True), sg.Slider(range= ranges[name],default_value=val, k=f'-SET_{section}::{name}', resolution=resolution[name], orientation='h')] for name, val in vals.items()]
-        else:
-            tab = [[sg.T(name, expand_x=True), sg.Input(val, k=f'-SET_{section}::{name}')] for name, val in vals.items()]
-
-        tabs.append([sg.Tab(section, tab)])
-
-    layout = [
-        [sg.TabGroup(tabs, k="-SET_TAB-", enable_events=True)],
-        [sg.B(lang.OK, key="-SET_K-"), sg.B(lang.cancel, key="-SET_X-"),sg.Push(), sg.B(lang.apply, k='-SET_APP-'), sg.B(lang.reset, k='-SET_RESET-')],
-    ]
-
-    window = sg.Window(lang.settings, layout, modal=True)
-    while True:
-        event, values = window.read()
-        if event in [sg.WIN_CLOSED, "-SET_X-"]:
-            break
-        if type(event) == str:
-            if event.startswith("-B_"):
-                _, name = event.split("::")
-                key = f'-SET_{values["-SET_TAB-"]}::{name}'
-                folder = sg.popup_get_folder("", no_window=True)
-                if folder:
-                    window[key].update(folder)
-        if event in ["-SET_K-",'-SET_APP-']:
-            for key, value in values.items():
-                if key.startswith("-SET_") and "::" in key:
-                    section, name = key.removeprefix("-SET_").split("::")
-                    cfg[section][name] = str(value)
-            matplotlib.style.use(cfg['plotting']['mpl-style'])
-
-            if event == '-SET_K-':
-                break
-                
-        if event == '-SET_RESET-':
-            for key, value in values.items():
-                if key.startswith("-SET_") and "::" in key:
-                    section, name = key.removeprefix("-SET_").split("::")
-                    window[key].update(cfg[section][name])
-        if event.endswith('_min') or event.endswith('_max'):
-            for param in params:
-                d, u = float(values[f'{param}_min']), float(values[f'{param}_max'])
-                if d > u:
-                    d, u = cfg['fitting'][f'{param}_min'], cfg['fitting'][f'{param}_min']
-                    logger.warn('Upper bound must be bigger than lower bound.')
-                window[f'{param}_slider'].update(range=(d, u))
-
-
-    window.close()
-
-def plot_set_window(plot, gases):
-    cboxes = ['save', 'title', 'legend']
-    settings = {
-    'x_axis': sg.Column([[sg.T('x_axis'),sg.Combo(['sample_temp', 'time'], default_value='sample_temp',k='x_axis')]]),
-    'y_axis': sg.Column([[sg.T('y_axis'),sg.Combo(['rel','orig'], default_value='orig',k='y_axis')]]),
-    'xlim': sg.Column([[sg.T('xlim'), sg.Input(default_text= 'None, None',k='xlim')]]),
-    'ylim': sg.Column([[sg.T('ylim'),sg.Combo([None, 'auto'], default_value='auto', k='ylim')]]),
-    'gases' :sg.Column([[sg.T('show gases')]+[sg.CBox(gas, k=gas) for gas in gases]])
-    }
-
-    settings.update({name: sg.CBox(name, k=name) for name in cboxes})
-    base_opts = ['xlim','x_axis','y_axis', 'title', 'legend','save']
-    if plot  in [lang.tga, lang.heatflow]:
-        options = ['ylim']
-        
-    if plot in [lang.ir, lang.irdtg]:
-        options = ['gases']
-    
-    if plot in ['fit', 'robustness']:
-        options=[]
-
-    layout = [[sg.T(f'{lang.plot}: {plot}', )]]+[[settings[opt]] for opt in options+base_opts]+[[sg.B(lang.OK, k=lang.OK), sg.Cancel(k='-X-')]]
-    window = sg.Window(lang.plot, layout, modal=True)
-
-    while True:
-        event, values = window.read()
-        if event in [sg.WIN_CLOSED, "-X-"]:
-            break 
-        if event==lang.OK:
-            window.close()
-            out = {name: val if name != 'xlim' else eval(val) for name, val in values.items() if not name.startswith('-')}
-            if plot in [lang.ir, lang.irdtg]:
-                out['gases']=[gas for gas in gases if values[gas]]
-            return out
-    window.close()
-
-def fit_set_window(name):
-    layout = [
-        [sg.T(lang.ref),sg.Combo(get_presets(None), k="-REF-")],
-        [sg.CBox('show plot', k='-PLOT-', default=True)],
-        [sg.B(name, k="-GO-"), sg.Cancel(k="-X-")],
-    ]
-    window = sg.Window(lang.fit, layout, modal=True)
-
-    while True:
-        event, values = window.read()
-        if event in [sg.WIN_CLOSED, "-X-"]:
-            break
-        if event == "-GO-":
-            window.close()
-            return {'reference': values["-REF-"], 'plot': values["-PLOT-"]}
-    window.close()
+menu_definition = [
+    make_menu("", [opt], opts) for opt in [lang.file, lang.wl, lang.settings, lang.cali]
+]
+right_click_menu = make_menu("", [lang.samples], opts)
 
 
 def gui():
+    # SETUP
     global cfg
     cols_wl = [lang.name, lang.alias, lang.sample, lang.run, lang.gases, lang.heatflow]
     worklist_frame = [
@@ -228,39 +85,10 @@ def gui():
         ],
     ]
 
-    # figure_frame = [
-    #     [
-    #         sg.T(lang.incl_signal, font=fonts.sub),
-    #         sg.CBox("OC", default=True, key="-OC_P-"),
-    #         sg.CBox("UV", default=True, key="-UV_P-"),
-    #         sg.CBox("UV2", default=True, key="-UV2_P-"),
-    #         sg.CBox("t", default=False, key="-T_P-"),
-    #         sg.CBox(lang.bounds_int, default=False, k='-BOUNDS_INT-', disabled=True),
-    #         sg.Push(),
-    #         sg.Canvas(key="-CONTROLS-"),
-    #         sg.B(lang.cl, key="-FIG_CLEAR-", visible=False),
-    #     ],
-    #     [
-    #         sg.Column(
-    #             layout=[
-    #                 [
-    #                     sg.Canvas(
-    #                         key="-FIGURE-",
-    #                         # it's important that you set this size
-    #                         size=(400 * 2, 400),
-    #                     )
-    #                 ]
-    #             ],
-    #             background_color="#DAE0E6",
-    #             pad=(0, 0),
-    #         )
-    #     ],
-    # ]
-
     layout = [
         [sg.MenuBar(menu_definition, key="-MENU-")],
         [sg.VPush()],
-        [sg.Frame(lang.wl, worklist_frame, expand_x=True)],
+        [sg.Frame(lang.wl, worklist_frame, expand_x=True, k="-SAMPLELIST-")],
         [sg.VPush()],
         [
             sg.Multiline(
@@ -280,10 +108,10 @@ def gui():
     logging.basicConfig(level=logging.INFO, format=fmt, style="{", force=True)
 
     wl = Worklist(lang.wl)
+    # EVENT LOOP
     while True:
         # Converter
         event, values = window.read()
-        print(event)
         if event:
             window["-OUT-"].update()
 
@@ -291,12 +119,53 @@ def gui():
             break
 
         if type(event) == str:
+            event = str(event)
+            # WORKLIST OPTIONS
             if event.endswith(lang.wl):
-                if event.startswith(lang.open):
-                    sg.popup_get_file("", no_window=True)
+                if not os.path.exists(cfg["paths"]["output"]):
+                    os.mkdir(cfg["paths"]["output"])
                 if event.startswith(lang.load):
-                    sg.popup_get_file("", no_window=True)
+                    path = sg.popup_get_file(
+                        "",
+                        no_window=True,
+                        initial_folder=cfg["paths"]["output"],
+                        file_types=((".wkl", ["*.wkl"]),),
+                    )
+                    if path:
+                        fname, _ = os.path.splitext(Path(path).name)
+                        wl.load(fname=fname)
+                        window["-SAMPLELIST-"].update(wl.name)
 
+                if event.startswith(lang.save):
+                    path = sg.popup_get_file(
+                        "",
+                        no_window=True,
+                        initial_folder=cfg["paths"]["output"],
+                        save_as=True,
+                        file_types=((".wkl", ["*.wkl"]),),
+                    )
+                    if path:
+                        fname, _ = os.path.splitext(Path(path).name)
+                        wl.save(fname=fname)
+                if event.startswith(lang.rename):
+                    text = sg.popup_get_text(
+                        f"Rename '{wl.name}' to:", default_text=wl.name
+                    )
+                    if text:
+                        wl.name = text
+
+                if event.startswith(lang.from_samplelog):
+                    log = samplelog()
+                    if names := samplelog_window(log):
+                        for name in names:
+                            wl.append(Sample(name))
+                if event.startswith(lang.cl):
+                    wl = Worklist(lang.wl)
+
+                window["-SAMPLES-"].update(values=update_samples(wl))
+                window["-SAMPLELIST-"].update(wl.name)
+
+            # FILE OPTIONS
             if event.endswith(lang.file):
                 if event.startswith(lang.open):
                     selection = sg.popup_get_file(
@@ -325,8 +194,8 @@ def gui():
                     window["-SAMPLES-"].update(values=update_samples(wl))
 
                 if event.startswith(lang.load):
-                    # if not (path:=os.path.exists(config["paths"]["output"])):
-                    #     os.mkdir(path)
+                    if not (path := os.path.exists(cfg["paths"]["output"])):
+                        os.makedirs(path)
                     selection = sg.popup_get_file(
                         "",
                         initial_folder=cfg["paths"]["output"],
@@ -336,55 +205,99 @@ def gui():
                     )
                     if selection:
                         for file in selection:
-                            name = os.path.splitext(Path(file).name)[0]
-                            wl.append(Sample(name))
+                            name, _ = os.path.splitext(Path(file).name)
+                            wl.append(Sample(name, mode="pickle"))
                         window["-SAMPLES-"].update(values=update_samples(wl))
 
+            # SETTINGS
             if event.endswith(lang.settings):
-                fname = 'settings.ini'
+                fname = "settings.ini"
                 if event.startswith(lang.load):
-                    file = sg.popup_get_file("", no_window=True, file_types=((".ini", ["*.ini"]),), initial_folder=cfg['paths']['home'], default_path=fname)
+                    file = sg.popup_get_file(
+                        "",
+                        no_window=True,
+                        file_types=((".ini", ["*.ini"]),),
+                        initial_folder=cfg["paths"]["home"],
+                        default_path=fname,
+                    )
                     if file:
                         cfg = configparser.ConfigParser()
                         cfg.read(file)
-                if event.startswith(lang.edit):
+                elif event.startswith(lang.edit):
                     setting_window()
-                if event.startswith(lang.save):
-                    file = sg.popup_get_file("", no_window=True, file_types=((".ini", [".ini"]),), initial_folder=cfg['paths']['home'], default_path=fname, save_as=True)
-                    if file: 
+                elif event.startswith(lang.save):
+                    file = sg.popup_get_file(
+                        "",
+                        no_window=True,
+                        file_types=((".ini", [".ini"]),),
+                        initial_folder=cfg["paths"]["home"],
+                        default_path=fname,
+                        save_as=True,
+                    )
+                    if file:
                         with open(file, "w") as configfile:
                             cfg.write(configfile)
-
+            # CALIBRATION
             if event.endswith(lang.cali):
                 if event.startswith(lang.load):
-                    sg.popup_get_file("", no_window=True)
+                    sg.popup_get_file(
+                        "", no_window=True, initial_folder=cfg["paths"]["calibration"]
+                    )
 
+            if event.endswith(lang.recali):
+                method, _ = event.split("::")
+                calibrate(mode="recalibrate", method=method)
+
+            # SAMPLELIST
             if event.endswith(lang.samples) and values["-SAMPLES-"]:
                 if event.startswith(lang.fit):
                     reference = fit_set_window(lang.fit)
                     if reference:
                         wl[values["-SAMPLES-"]].fit(**reference)
-                if event.startswith(lang.rob):
+                elif event.startswith(lang.rob):
                     reference = fit_set_window(lang.rob)
                     if reference:
                         wl[values["-SAMPLES-"]].robustness(**reference)
-                if event.startswith(lang.delete):
+                elif event.startswith(lang.delete):
                     for i in reversed(values["-SAMPLES-"]):
                         wl.pop(i)
-
                     window["-SAMPLES-"].update(values=update_samples(wl))
-                
+                elif event.startswith(lang.corr):
+                    path = sg.popup_get_file(
+                        "", no_window=True, initial_folder=cfg["paths"]["data"]
+                    )
+                    if path:
+                        file, _ = os.path.splitext(Path(path).name)
+                        wl.corr(references=file, plot=True)
+                elif event.startswith(lang.save_wl):
+                    subset = wl[values["-SAMPLES-"]]
+                    if type(subset) == Worklist:
+                        file_type = ".wkl"
+                    else:
+                        file_type = ".pkl"
+                    path = sg.popup_get_file(
+                        "",
+                        default_path=subset.name,
+                        no_window=True,
+                        initial_folder=cfg["paths"]["output"],
+                        save_as=True,
+                        file_types=((f"{file_type}", [f"*{file_type}"]),),
+                    )
+                    if path:
+                        fname, _ = os.path.splitext(Path(path).name)
+                        subset.save(fname=fname, how="pickle")
+
+            # PLOTTING
             if event.endswith(lang.plot) and values["-SAMPLES-"]:
+                subset = wl[values["-SAMPLES-"]]
                 plot = event.split("::")[0]
-                gases = wl[values["-SAMPLES-"]].info.gases
-                settings = plot_set_window(plot,gases)
-                wl[values["-SAMPLES-"]].plot(plot, **settings)
-                
+                if type(subset) == Worklist:
+                    gases = list(eval('&'.join([repr(set(sample.info.gases)) for sample in wl[values["-SAMPLES-"]]])))
 
-        if type(event) == tuple:
-            if event[0] == "-SAMPLES-":
-                print(values["-SAMPLES-"])
-            
-
-
-        
+                    one_gas = True
+                else:
+                    gases = wl[values["-SAMPLES-"]].info.gases
+                    one_gas = False
+                settings = plot_set_window(plot, gases, one_gas=one_gas)
+                if settings:
+                    subset.plot(plot, **settings)

@@ -77,7 +77,7 @@ def integrate_peaks(
             integral = sp.integrate.simps(subset - baseline)
             integrals.loc[i, gas] = integral
 
-            if plot == True:
+            if plot:
                 x = (
                     FTIR_data["time"][
                         (FTIR_data["time"] >= step_start[i])
@@ -89,7 +89,7 @@ def integrate_peaks(
                     x, baseline, color=colors[gases.index(gas)], linestyle="dashed"
                 )
 
-    if plot == True:
+    if plot:
         plt.show()
 
     return integrals
@@ -109,7 +109,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
         return pd.DataFrame()
 
     f = n - 2
-    if beta == None:
+    if not beta:
         beta = alpha
 
     stats = pd.DataFrame()
@@ -144,6 +144,10 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
 
 
 def calibrate(plot=False, mode="load", method="max"):
+    methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
+    if method not in methods:
+        logger.warn(f'{method=} not in {methods=}.')
+
     if mode == "load":
         # check if calibration folder is present
         if os.path.exists(PATHS["calibration"]) == False:
