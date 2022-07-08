@@ -33,7 +33,7 @@ class Sample:
     profile: str = COUPLING["profile"]
     alias: str = field(default=None)
     results: dict = field(default_factory=dict)
-    mode: InitVar[Literal["construct", 'pickle']]= 'construct'
+    mode: InitVar[Literal["construct", "pickle"]] = "construct"
 
     def __post_init__(self, mode, **kwargs):
         if mode == "construct":
@@ -201,6 +201,7 @@ class Sample:
 
         out = pd.DataFrame(index=[which], columns=pd.Index(values, name=at))
         for value in values:
+            print(repr(value))
             out.loc[which, value] = self.tga[which][self.tga[at] >= value].values[0]
 
         return out
@@ -251,10 +252,7 @@ class Sample:
         elif plot == "DIR":
             temp = copy.deepcopy(self)
             temp.ir.update(
-                self.ir.filter(self.info["gases"], axis=1)
-                .diff()
-                .ewm(span=10)
-                .mean()
+                self.ir.filter(self.info["gases"], axis=1).diff().ewm(span=10).mean()
             )
             plot_FTIR(temp, **kwargs)
         elif plot == "cumsum":
@@ -287,7 +285,7 @@ class Sample:
                 logger.warn(
                     'No fitting results available for plotting. Run ".fit()" first.'
                 )
-                
+
     def fit(
         self,
         reference,
@@ -325,7 +323,8 @@ class Sample:
         # setting up output directory
         if save:
             path = os.path.join(
-                PATHS["fitting"], general.time() + reference + "_" + self.info["name"],
+                PATHS["fitting"],
+                general.time() + reference + "_" + self.info["name"],
             ).replace(os.sep, os.altsep)
             os.makedirs(path)
             os.chdir(path)
@@ -353,8 +352,9 @@ class Sample:
         return pd.concat(
             [peaks], keys=[(self.sample, self.run)], names=["sample", "run"]
         )
+
     def robustness(ref, **kwargs):
-        logger.warn('Robustness only available for multiple Samples.')
+        logger.warn("Robustness only available for multiple Samples.")
 
     def save(self, how="samplelog", **kwargs):
         "save object or its contents as pickle file or excel"

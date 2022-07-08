@@ -7,3 +7,5 @@ settings.ini
 *.ini
 docs/
 Output/
+Calibration/
+Fitting/

@@ -86,3 +86,6 @@ class EN:
     from_samplelog = "from samplelog"
     samplelog = "samplelog"
     sel_rows = "Select Samples to be added to Worklist."
+    results = "results"
+    mass_step = 'mass step'
+    get_value = 'get value'

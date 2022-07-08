@@ -11,8 +11,14 @@ import logging
 from .lang import EN
 import matplotlib.pyplot as plt
 import configparser
-import pandas as pd
-from .popups import plot_set_window, setting_window, fit_set_window, samplelog_window
+from .popups import (
+    plot_set_window,
+    setting_window,
+    fit_set_window,
+    samplelog_window,
+    mass_step_window,
+    get_value_window,
+)
 
 plt.ion()
 
@@ -22,12 +28,28 @@ width = 50
 lang = EN
 
 opts = {
-    lang.plot: [lang.tga, lang.ir, lang.dir, lang.irdtg, lang.heatflow, lang.fit],
     lang.file: [lang.open, lang.load],
     lang.wl: [lang.load, lang.save, lang.from_samplelog, lang.rename, lang.cl],
     lang.settings: [lang.edit, lang.load, lang.save],
     lang.cali: [lang.load, lang.recali],
     lang.recali: [lang.max, lang.iter, lang.co_oxi, lang.co_oxi_iter, lang.mlr],
+}
+
+opts_sample = {
+    lang.plot: [lang.tga, lang.ir, lang.dir, lang.irdtg, lang.heatflow, lang.fit],
+    lang.samples: [
+        lang.fit,
+        lang.plot,
+        lang.delete,
+        lang.corr,
+        lang.save_wl,
+        lang.get_value,
+        lang.mass_step,
+    ],
+}
+
+opts_wl = {
+    lang.plot: [lang.tga, lang.ir, lang.dir, lang.heatflow, lang.fit],
     lang.samples: [lang.fit, lang.rob, lang.plot, lang.delete, lang.corr, lang.save_wl],
 }
 
@@ -60,7 +82,6 @@ def make_menu(top: str, keys: Iterable, opts: Mapping):
 menu_definition = [
     make_menu("", [opt], opts) for opt in [lang.file, lang.wl, lang.settings, lang.cali]
 ]
-right_click_menu = make_menu("", [lang.samples], opts)
 
 
 def gui():
@@ -77,10 +98,11 @@ def gui():
                 justification="left",
                 col_widths=[5, 5, width - 5],
                 select_mode="extended",
+                enable_events=True,
                 enable_click_events=True,
                 expand_x=True,
                 tooltip=lang.tip_itable,
-                right_click_menu=right_click_menu,
+                right_click_menu=sg.MENU_RIGHT_CLICK_DISABLED,
             )
         ],
     ]
@@ -112,6 +134,13 @@ def gui():
     while True:
         # Converter
         event, values = window.read()
+        if values:
+            if len(values["-SAMPLES-"]) == 1:
+                menu = make_menu("", [lang.samples], opts_sample)
+            else:
+                menu = make_menu("", [lang.samples], opts_wl)
+            window["-SAMPLES-"].set_right_click_menu(menu)
+
         if event:
             window["-OUT-"].update()
 
@@ -286,13 +315,30 @@ def gui():
                     if path:
                         fname, _ = os.path.splitext(Path(path).name)
                         subset.save(fname=fname, how="pickle")
+                elif event.startswith(lang.mass_step):
+                    sample = wl[values["-SAMPLES-"]]
+                    settings = mass_step_window(max(sample.tga.sample_temp), 1)
+                    if settings:
+                        sample.mass_step(**settings)
+                elif event.startswith(lang.get_value):
+                    get_value_window(wl[values["-SAMPLES-"]])
+                    pass
 
             # PLOTTING
             if event.endswith(lang.plot) and values["-SAMPLES-"]:
                 subset = wl[values["-SAMPLES-"]]
                 plot = event.split("::")[0]
                 if type(subset) == Worklist:
-                    gases = list(eval('&'.join([repr(set(sample.info.gases)) for sample in wl[values["-SAMPLES-"]]])))
+                    gases = list(
+                        eval(
+                            "&".join(
+                                [
+                                    repr(set(sample.info.gases))
+                                    for sample in wl[values["-SAMPLES-"]]
+                                ]
+                            )
+                        )
+                    )
 
                     one_gas = True
                 else:
