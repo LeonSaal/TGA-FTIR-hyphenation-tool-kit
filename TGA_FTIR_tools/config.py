@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format=fmt, style="{")
 logger = logging.getLogger(__name__)
 
 
-url_settings = "https://raw.githubusercontent.com/BAMresearch/TGA-FTIR-hyphenation-tool-kit/master/TGA_FTIR_tools/settings/"
+url_settings = "https://raw.githubusercontent.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/main/TGA_FTIR_tools/settings/"
 
 names = ["ini", "import_profiles", "fitting_params"]
 config_files = ["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
