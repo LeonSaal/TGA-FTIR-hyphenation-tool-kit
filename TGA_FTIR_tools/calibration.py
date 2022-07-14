@@ -154,7 +154,7 @@ def calibrate(plot=False, mode="load", method="max"):
             logger.warn(
                 "No calibration data found. To obtain quantitative IR data supply an 'Calibration' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode='recalibrate')!"
             )
-            return
+            return None, None
         os.chdir(PATHS["calibration"])
 
         # try to load saved calibration
@@ -199,7 +199,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 "'Sample_list.txt' was created in the 'Calibration' folder, please fill in calibration measurements and rerun this command."
             )
             os.chdir(PATHS["home"])
-            return
+            return None, None
 
         # calculating mass steps and integrating FTIR_data signals for all samples
         logger.info("Calibrating...")
