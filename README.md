@@ -6,6 +6,7 @@ For installation with conda and pip:
 First create fresh environment with name <YOUR_ENV>:
 
 ``conda create -n <YOUR_ENV> python``
+
 ``conda activate <YOUR_ENV>``
 
 Then run:
