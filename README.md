@@ -32,7 +32,7 @@ Class attributes
     info = None     contains sample information e.g. name
     tga = None      contains tga data
     ir = None       contains ir data
-    linreg = None   conains calibration data
+    linreg = None   contains calibration data
 
 ``wl = Worklist([obj], name = <WORKLIST_NAME>)``
 
