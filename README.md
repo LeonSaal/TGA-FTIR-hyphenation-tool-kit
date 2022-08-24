@@ -27,15 +27,15 @@ Core classes of the package are ``Sample`` and ``Worklist``, where a ``Worklist`
 ### Initialization
 ``obj = Sample(<SAMPLE_NAME>, alias = <ALIAS>)``
 
-``wl = Worklist([obj], name = <WORKLIST_NAME>)``
-
-
 Class attributes 
 
     info = None     contains sample information e.g. name
     tga = None      contains tga data
     ir = None       contains ir data
     linreg = None   conains calibration data
+
+``wl = Worklist([obj], name = <WORKLIST_NAME>)``
+
 
 ---
 ### Correction
@@ -57,7 +57,7 @@ Optional arguments:
 
     T_max = None        limit fit interval
     T_max_tol = 50      tolerance of center value
-save = True             save results
+    save = True         save results
     plot = True         plot results
     presets = None      pass presets other than those specified by <REFERENCE_NAME>
     mod_sample = True   modify object during fitting
