@@ -1,6 +1,9 @@
+from typing import Iterable, Mapping
+
 import PySimpleGUI as sg
+
+from ...config import PLOTTING
 from ..config import lang
-from typing import Mapping, Iterable
 
 
 def plot_set_window(plot: str, gases: Iterable, one_gas=False) -> Mapping:
@@ -11,7 +14,7 @@ def plot_set_window(plot: str, gases: Iterable, one_gas=False) -> Mapping:
                 [
                     sg.T("x_axis"),
                     sg.Combo(
-                        ["sample_temp", "time"], default_value="sample_temp", k="x_axis"
+                        ["sample_temp", "time"], k="x_axis"
                     ),
                 ]
             ]
@@ -20,15 +23,15 @@ def plot_set_window(plot: str, gases: Iterable, one_gas=False) -> Mapping:
             [
                 [
                     sg.T("y_axis"),
-                    sg.Combo(["rel", "orig"], default_value="orig", k="y_axis"),
+                    sg.Combo(["rel", "orig"], k="y_axis"),
                 ]
             ]
         ),
         "xlim": sg.Column(
-            [[sg.T("xlim"), sg.Input(default_text="None, None", k="xlim")]]
+            [[sg.T("xlim"), sg.Input(k="xlim")]]
         ),
         "ylim": sg.Column(
-            [[sg.T("ylim"), sg.Combo([None, "auto"], default_value="auto", k="ylim")]]
+            [[sg.T("ylim"), sg.Combo([None, "auto"], k="ylim")]]
         ),
     }
     if one_gas:
@@ -58,6 +61,7 @@ def plot_set_window(plot: str, gases: Iterable, one_gas=False) -> Mapping:
     if plot in ["fit", "robustness"]:
         options = []
 
+    options += base_opts
     layout = (
         [
             [
@@ -66,17 +70,30 @@ def plot_set_window(plot: str, gases: Iterable, one_gas=False) -> Mapping:
                 )
             ]
         ]
-        + [[settings[opt]] for opt in options + base_opts]
-        + [[sg.B(lang.OK, k=lang.OK), sg.Cancel(k="-X-")]]
+        + [[settings[opt]] for opt in options]
+        + [[sg.B(lang.OK, k='-K-'), sg.Cancel(k="-X-")]]
     )
-    window = sg.Window(lang.plot, layout, modal=True)
+
+    if PLOTTING['dialog'] =='False':
+        out = {key: PLOTTING[key] if (PLOTTING[key] not in ['True', 'False'] and key != 'xlim') else eval(PLOTTING[key]) for key in options}
+        return out
+
+    window = sg.Window(lang.plot, layout, modal=True, finalize=True)
+
+    for elem  in window.__dict__['AllKeysDict'].keys():
+        if not elem.startswith('-'):
+            if (val:=PLOTTING[elem]) in ['True', 'False']:
+                default = eval(val)
+            else:
+                default = val
+            window[elem].update(default)
+
 
     while True:
         event, values = window.read()
-        print(event, values)
         if event in [sg.WIN_CLOSED, "-X-"]:
             break
-        if event == lang.OK:
+        if event == '-K-':
             window.close()
             out = {
                 name: val if name != "xlim" else eval(val)

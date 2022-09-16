@@ -3,7 +3,7 @@ import numpy as np
 from .fitting import fits, get_presets
 from ..input_output.general import time
 import os
-from ..config import PATHS, BOUNDS
+from ..config import PATHS, BOUNDS, MERGE_CELLS
 import copy
 import time as tm
 import logging
@@ -184,8 +184,8 @@ def robustness(
     if save:
         logger.info(f"Plots and results are saved.'{path=}'.")
         with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
-            summary.to_excel(writer, sheet_name="summary")
-            data.to_excel(writer, sheet_name="data")
+            summary.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
+            data.to_excel(writer, sheet_name="data", merge_cells=MERGE_CELLS)
 
     os.chdir(PATHS["home"])
     logger.info("Robustness test finished!")

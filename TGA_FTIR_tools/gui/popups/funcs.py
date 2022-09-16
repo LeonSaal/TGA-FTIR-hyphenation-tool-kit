@@ -1,4 +1,7 @@
+from typing import Iterable
+
 import PySimpleGUI as sg
+
 from ..config import lang
 
 
@@ -79,9 +82,34 @@ def get_value_window(sample):
                     key: val for key, val in values.items() if not key.startswith("-")
                 }
                 data = sample.get_value(*eval(f"{values['-values']},"), **args)
-                values = [[values["which"], values["at"]]] + [
+                data =  [
                     [idx, val] for idx, val in data.T.itertuples()
-                ]
-                window["-VALUES-"].update(values=values)
+                ] #[[values["which"], values["at"]]] +
+
+                print(data)
+                window["-VALUES-"].update(values=data)
 
     window.close()
+
+
+def corr_window(gases: Iterable):
+    layout = [[sg.T(f'{lang.tga}:'),sg.CBox(lang.tga, k='tga'), sg.CBox(lang.dry_weight, k='dry_weight')], [sg.T(f'{lang.ir}:')]+[sg.CBox(gas.upper(), k=gas) for gas in gases], [sg.OK(k='-K-')]]
+
+    window = sg.Window(lang.corr_plot, layout=layout)
+
+    while True:
+        event, values= window.read()
+
+        if event == sg.WIN_CLOSED:
+            break
+        
+        if event == '-K-':
+            out = {}
+            out['tga'] = values['tga']
+            out['dry_weight'] = values['dry_weight']
+            out['ir'] = [gas for gas in gases if values[gas]]
+            window.close()
+            return out
+
+    window.close()
+    return False

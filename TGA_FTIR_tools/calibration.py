@@ -1,16 +1,17 @@
-import pandas as pd
-import numpy as np
-import scipy as sp
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+import logging
 import os
 
-from .plotting import get_label
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy as sp
+from molmass import Formula
 from sklearn import linear_model
-from .config import SAVGOL, PARAMS, UNITS, SEP, MOLAR_MASS, COUPLING, PATHS
-import logging
-from .classes import Sample
 
+from .classes import Sample
+from .config import (COUPLING, MERGE_CELLS, PARAMS, PATHS, SAVGOL,
+                     SEP, UNITS)
+from .plotting import get_label
 
 logger = logging.getLogger(__name__)
 
@@ -312,7 +313,7 @@ def calibrate(plot=False, mode="load", method="max"):
 
         # regression (method 'max')
         for gas in gases:
-            x_cali.update(x_cali[gas] / (MOLAR_MASS.getfloat(gas)))
+            x_cali.update(x_cali[gas] / (Formula(gas).mass))
             x = x_cali[gas].dropna(axis=0).astype(float)
             y = y_cali[gas].dropna(axis=0).astype(float)
             regression = pd.DataFrame(
@@ -410,7 +411,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 linreg.loc[[gas]] = pd.DataFrame(
                     [
                         [
-                            1 / mlr.coef_[i] * MOLAR_MASS.getfloat(gas),
+                            1 / mlr.coef_[i] * Formula(gas).mass,
                             0,
                             np.nan,
                             np.nan,
@@ -428,15 +429,15 @@ def calibrate(plot=False, mode="load", method="max"):
                 step_sums = [0] * len(data.index.levels[0])
                 for gas in gases:
                     step_sums += Y_cali.loc[(slice(None), step), gas].values / (
-                        linreg.loc[gas, "slope"] * MOLAR_MASS.getfloat(gas)
+                        linreg.loc[gas, "slope"] * Formula(gas).mass
                     )
                 for gas in gases:
                     step_gas = Y_cali.loc[(slice(None), step), gas].values / (
-                        linreg.loc[gas, "slope"] * MOLAR_MASS.getfloat(gas)
+                        linreg.loc[gas, "slope"] * Formula(gas).mass
                     )
                     x_cali.loc[(slice(None), step), gas] = (
                         X_cali[(slice(None), step)].values * step_gas / step_sums
-                    ) / MOLAR_MASS.getfloat(gas)
+                    ) / Formula(gas).mass
             y_cali = Y_cali
 
             # from new x_cali and y_cali a linear regression is calculated
@@ -463,7 +464,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 x_cali.to_excel(writer, sheet_name=f"x in {UNITS['molar_amount']}")
                 y_cali.to_excel(writer, sheet_name=f"y in {UNITS['int_ir']}")
                 stats.to_excel(writer, sheet_name="stats")
-                data.to_excel(writer, sheet_name="data")
+                data.to_excel(writer, sheet_name="data",merge_cells=MERGE_CELLS)
 
                 logger.info(f"Calibration completed, data is stored under {path=}")
         except PermissionError:

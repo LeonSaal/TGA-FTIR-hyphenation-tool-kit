@@ -1,10 +1,10 @@
-import os
-import pandas as pd
-import numpy as np
-
-from ..config import PATHS
 import logging
+import os
 
+import numpy as np
+import pandas as pd
+
+from ..config import MERGE_CELLS, PATHS
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
         samplelog = pd.DataFrame(columns=["alias", "reference"])
         samplelog.index.name = "name"
         if create:  # create new Samplelox.xlsx file
-            samplelog.to_excel(path)
+            samplelog.to_excel(path, merge_cells=MERGE_CELLS)
             logger.info(f"Empty 'Samplelog.xlsx' created in {path}")
     else:
         samplelog = pd.read_excel(path, index_col=0)
@@ -43,7 +43,7 @@ def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
             samplelog = pd.concat([samplelog, data])
 
         try:
-            samplelog.to_excel(path)
+            samplelog.to_excel(path, merge_cells=MERGE_CELLS)
             logger.info("Successfully updated 'Samplelog.xlsx'.")
         except:
             logger.error(

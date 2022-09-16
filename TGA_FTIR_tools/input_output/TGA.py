@@ -1,17 +1,11 @@
+import logging
 import re
-import os
-from dotmap import DotMap
-import pandas as pd
+
 import numpy as np
 import scipy as sp
 
-
-from .general import find_files
-from ..config import PATHS, COUPLING, SAVGOL
-
-
-import logging
-
+from ..config import COUPLING, PATHS, SAVGOL
+from .general import find_files_re, read_profile_json
 
 logger = logging.getLogger(__name__)
 
@@ -20,90 +14,24 @@ WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
 
 
-def read_profiles(profile):
-    profiles = pd.read_excel(
-        os.path.join(PATHS["import_profiles"]), index_col=0, sheet_name=None
-    )
-
-    return {key: df.loc[profile, :].to_dict() for key, df in profiles.items()}
-
-
-def read_TGA(file, profile=COUPLING["profile"]):
-    "load TG data from file"
-    # open file from TGA in given directory and make a DataFrame from it
-    try:
-        path = find_files(file, ".txt", PATHS["data"])[0]
-    except:
-        logger.error(f"No TG data for {file} was found")
-        return
-
-    profiles = read_profiles(profile)["TGA"]
-    names = profiles["names"].split(",")
-    names_heatflow = profiles["names_heatflow"].split(",")
-    skipfooter = profiles["skipfooter"]
-    skiprows = profiles["skiprows"]
-    sep = profiles["sep"]
-    drop = list(profiles["drop"])
-
-    try:
-        data = pd.read_csv(
-            path,
-            delim_whitespace=True,
-            decimal=sep,
-            names=names,
-            skiprows=skiprows,
-            skipfooter=skipfooter,
-            converters={"sample_mass": lambda x: float(x.replace(sep, "."))},
-            engine="python",
-            encoding="latin-1",
-        ).drop(columns=drop, errors="ignore")
-
-    except:
-        logger.error(f"Failed to read TG-data from {file}")
-        return
-
-    # check if there is heat flow information and append it
-    try:
-        path_mW = find_files(file, "_mW.txt", PATHS["data"])[0]
-        data["heat_flow"] = pd.read_csv(
-            path_mW,
-            delim_whitespace=True,
-            decimal=sep,
-            names=names_heatflow,
-            skiprows=skiprows,
-            skipfooter=skipfooter,
-            converters={"sample_mass": lambda x: float(x.replace(sep, "."))},
-            usecols=["heat_flow"],
-            engine="python",
-            encoding="latin-1",
-        )
-    except PermissionError:
-        pass
-
-    return data
-
-
 def TGA_info(file, TGA, profile=COUPLING["profile"]):
     from ..classes import SampleInfo
 
-    profiles = read_profiles(profile)["TGA"]
+    profile = read_profile_json(profile)['tga']
 
     "extract TG info e.g. measurement time, initial mass... from TG file"
     # open file from TGA in given directory and make a DataFrame from it
-    path = find_files(file, profiles["ext"], PATHS["data"])[0]
+    path = find_files_re(file, profile["ext"], PATHS["data"])[0]
     with open(path) as f:
         text = f.readlines()
 
     text = "".join(text)
     info = SampleInfo(file, initial_mass=TGA["sample_mass"].iloc[0])
-    for key, pat in {
-        name[3:]: pattern
-        for name, pattern in profiles.items()
-        if name.startswith("re_")
-    }.items():
+
+    for key, pat in profile['info_pattern'].items():
         if m := re.search(pat, text):
             info[key] = m.group(key)
-
+        
     return info
 
 
@@ -190,10 +118,10 @@ def dry_weight(
     # getting the dry_mass at the dry_point as well as the final weight and calculating the relative
     # mass-loss and the water content from it
     dry_temp = sample.tga["sample_temp"][dry_point]
-    info = DotMap()
+    info = {}
 
     if not how_dry:
-        info.reference_mass = "initial_mass"
+        info['reference_mass'] = "initial_mass"
         times = [0] + list(
             sample.tga.index[sample.tga["reference_temp"].isin(sample.info.step_temp)]
         )
@@ -206,23 +134,23 @@ def dry_weight(
             sample.tga.index[sample.tga["reference_temp"].isin(sample.info.step_temp)]
         )
         names = ["dry"] + sample.info.mass_steps
-        info.dry_mass = sample.tga["sample_mass"][dry_point]
-        info.reference_mass = "dry_mass"
-        info.dry_temp = dry_temp
-        info.dry_time = dry_point
+        info['reference_mass'] = "dry_mass"
+        info['dry_mass'] = sample.tga["sample_mass"][dry_point]
+        info['dry_temp'] = dry_temp
+        info['dry_time'] = dry_point
 
     if ref_mass != "dry_mass":
-        info.reference_mass = ref_mass
+        info['reference_mass'] = ref_mass
     weights = sample.tga["sample_mass"][sample.tga.index.isin(times)].values
     mass_loss = abs(np.diff(weights))
 
-    info.final_mass = sample.tga["sample_mass"][len(sample.tga) - 1]
+    info['final_mass'] = sample.tga["sample_mass"][len(sample.tga) - 1]
     for name, ml in zip(names, mass_loss):
         info["ML_" + name] = ml
         info["rel_ML_" + name] = ml / sample.info[sample.info.reference_mass]
 
-    info.step_temp = sample.tga["reference_temp"][sample.tga.index.isin(times)].unique()
-    info.step_time = times
-    info.mass_steps = names
+    info['step_temp'] = sample.tga["reference_temp"][sample.tga.index.isin(times)].unique()
+    info['step_time'] = times
+    info['mass_steps'] = names
     sample.info.update(info)
 

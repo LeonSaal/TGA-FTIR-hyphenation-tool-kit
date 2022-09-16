@@ -323,12 +323,12 @@ def fitting(
             f_name = TG_IR.info["name"] + "_" + y_axis + ".xlsx"
             try:
                 with pd.ExcelWriter(f_name, engine="openpyxl", mode="a") as writer:
-                    profiles.to_excel(writer, sheet_name=gas)
-                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param")
+                    profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
+                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param", merge_cells=MERGE_CELLS)
             except:
                 with pd.ExcelWriter(f_name, engine="openpyxl") as writer:
-                    profiles.to_excel(writer, sheet_name=gas)
-                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param")
+                    profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
+                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param", merge_cells=MERGE_CELLS)
 
     # calculate summarized groups
     # groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
@@ -349,7 +349,7 @@ def fitting(
 
     if save:
         with pd.ExcelWriter(f_name, engine="openpyxl", mode="a") as writer:
-            peaks.astype(float).to_excel(writer, sheet_name="summary")
+            peaks.astype(float).to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
     return peaks.astype(float), sumsqerr
 
 
@@ -498,8 +498,8 @@ def fits(objs, reference, save=True, presets=None, **kwargs):
         logger.info(f"Fitting finished! Plots and results are saved in '{path}'.")
         with pd.ExcelWriter("summary.xlsx") as writer:
             for key in results:
-                results[key].dropna(axis=1, thresh=1).to_excel(writer, sheet_name=key)
-            err.to_excel(writer, sheet_name="sum_squerr")
+                results[key].dropna(axis=1, thresh=1).to_excel(writer, sheet_name=key, merge_cells=MERGE_CELLS)
+            err.to_excel(writer, sheet_name="sum_squerr", merge_cells=MERGE_CELLS)
         os.chdir(PATHS["home"])
     return results
 

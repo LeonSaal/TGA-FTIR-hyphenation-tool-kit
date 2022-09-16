@@ -9,3 +9,4 @@ docs/
 Output/
 Calibration/
 Fitting/
+*.pyc

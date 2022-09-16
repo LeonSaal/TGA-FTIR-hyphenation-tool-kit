@@ -1,20 +1,20 @@
-import pandas as pd
-from scipy.signal import savgol_filter
 import copy
+import logging
 import os
 import pickle
-from ..config import SAVGOL, PATHS, COUPLING
-from ..input_output import corrections, TGA, FTIR, general, samplelog, mass_step
-import numpy as np
-import scipy.stats as sp
-
-from ..plotting import plot_fit, plot_dweight
-import logging
 import re
-
-
 from dataclasses import InitVar, dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
+
+import numpy as np
+import pandas as pd
+import scipy.stats as sp
+from scipy.signal import savgol_filter
+
+from ..config import COUPLING, PATHS, SAVGOL
+from ..input_output import (FTIR, TGA, corrections, general, mass_step,
+                            read_data, samplelog)
+from ..plotting import plot_dweight
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
@@ -29,17 +29,17 @@ class Sample:
     ir: Optional[pd.DataFrame] = field(default=None)
     tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
-    info: Optional[dict] = field(default_factory=dict)
-    profile: str = COUPLING["profile"]
     alias: str = field(default=None)
     results: dict = field(default_factory=dict)
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
+    profile: InitVar[str] = COUPLING["profile"]
 
-    def __post_init__(self, mode, **kwargs):
+    def __post_init__(self, mode, profile, **kwargs):
         if mode == "construct":
-            logger.info(f'Initializing "{self.name}"')
-            # load TG data
-            self.tga = TGA.read_TGA(self.name, profile=self.profile)
+            logger.info(f"Initializing '{self.name}'")
+            # load data
+            self.__dict__.update(read_data(self.name, profile=profile))
+
             if self.tga is not None:
                 logger.info("TGA data found.")
                 self.tga["dtg"] = -savgol_filter(
@@ -48,7 +48,7 @@ class Sample:
                 # deriving TG info
                 try:
                     self.info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
-                except:
+                except PermissionError:
                     logger.info("Failed to derive TG info. Using default values.")
                     self.info = TGA.default_info(self.name, self.tga)
                 try:
@@ -56,8 +56,6 @@ class Sample:
                 except:
                     pass
 
-            # load IR data
-            self.ir = FTIR.read_FTIR(self.name)
             if self.ir is not None:
                 from ..calibration import calibrate
 
@@ -81,7 +79,7 @@ class Sample:
                         ),
                     )
                 )
-                # derivinf IR info
+                # deriving IR info
                 try:
                     self.info.update(FTIR.FTIR_info(self))
                 except:
@@ -137,6 +135,17 @@ class Sample:
         return f'Sample({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'
 
     def corr(self, reference=None, plot=False, **kwargs):
+        if plot == True:
+            plot = {}
+            plot["ir"] = True
+            plot["tga"] = True
+            plot["dry_weight"] = True
+        if plot == False:
+            plot = {}
+            plot["ir"] = False
+            plot["tga"] = False
+            plot["dry_weight"] = False
+
         "correction of TG and IR data"
 
         if "reference" in self.info:
@@ -147,7 +156,7 @@ class Sample:
         # try to load reference from samplelog if none is supplied
         if not reference:
             try:
-                reference = samplelog(create=False).loc[self.info["name"], "reference"]
+                reference = samplelog(create=False).reference.loc[self.info["name"]]
             except KeyError:
                 logger.warning(
                     "No reference found in Samplelog. Please supply 'reference = '"
@@ -158,7 +167,9 @@ class Sample:
         self.info["reference"] = reference
         if self.tga is not None:
             try:
-                self.tga = corrections.corr_TGA(self.tga, reference, plot=plot)
+                self.tga = corrections.corr_TGA_Baseline(
+                    self.tga, reference, plot=plot['tga']
+                )
                 self.tga["dtg"] = -savgol_filter(
                     self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
                 )
@@ -173,7 +184,7 @@ class Sample:
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
                     pass
 
-                self.dry_weight(plot=plot, **kwargs)
+                self.dry_weight(plot=plot['dry_weight'], **kwargs)
                 logger.info(
                     f'".info" of {self.info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
                 )
@@ -183,8 +194,8 @@ class Sample:
 
         if self.ir is not None:
             try:
-                self.ir.update(corrections.corr_FTIR(self, reference, plot=plot))
-            except:
+                self.ir.update(corrections.corr_FTIR(self, reference, plot=plot['ir']))
+            except PermissionError:
                 logger.error("Failed to correct IR data.")
 
             try:
@@ -193,7 +204,7 @@ class Sample:
                     logger.info(
                         "'.info' was updated. To store these in Samplelog.xlsx run '.save()'"
                     )
-            except:
+            except PermissionError:
                 logger.error("Failed to derive IR info.")
 
     def get_value(self, *values, which="sample_mass", at="sample_temp"):
@@ -201,7 +212,7 @@ class Sample:
 
         out = pd.DataFrame(index=[which], columns=pd.Index(values, name=at))
         for value in values:
-            print(repr(value))
+
             out.loc[which, value] = self.tga[which][self.tga[at] >= value].values[0]
 
         return out
@@ -235,7 +246,7 @@ class Sample:
         )
 
     def plot(self, plot, **kwargs):
-        from ..plotting import plot_FTIR, plot_TGA, FTIR_to_DTG, plot_fit
+        from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
 
@@ -356,8 +367,12 @@ class Sample:
     def robustness(ref, **kwargs):
         logger.warn("Robustness only available for multiple Samples.")
 
-    def save(self, how="samplelog", **kwargs):
+    def save(self, how: Literal["samplelog", "excel", "pickle"], **kwargs):
         "save object or its contents as pickle file or excel"
+        options = ["samplelog", "excel", "pickle"]
+        if how not in options:
+            logger.warn(f"{how=} not in {options=}")
+            return
 
         # update samplelog
         samplelog(self.info.__dict__, create=True, **kwargs)
@@ -367,6 +382,7 @@ class Sample:
 
         if os.path.exists(path_output) == False:
             os.makedirs(path_output)
+
         # save object
         if how == "pickle":
             with open(
@@ -382,14 +398,14 @@ class Sample:
                     )
                 except PermissionError:
                     logger.warn(
-                        f"Unable to write on {path=} as thre file is opened by another program."
+                        f"Unable to write on {path=} as the file is opened by another program."
                     )
                 for key in ["tga", "ir"]:
                     try:
                         self.__dict__[key].to_excel(writer, sheet_name=key)
                     except PermissionError:
                         logger.warn(
-                            f"Unable to write on {path=} as thre file is opened by another program."
+                            f"Unable to write on {path=} as the file is opened by another program."
                         )
 
     def calibrate(self, **kwargs):
@@ -397,3 +413,9 @@ class Sample:
         from ..calibration import calibrate
 
         self.linreg, self.stats = calibrate(**kwargs)
+
+    def __len__(self) -> int:
+        return 1
+
+    def __iter__(self):
+        yield self

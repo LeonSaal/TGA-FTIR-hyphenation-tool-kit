@@ -1,9 +1,10 @@
 import re
-import pandas as pd
-import numpy as np
 
-from .general import find_files
+import numpy as np
+import pandas as pd
+
 from ..config import PATHS
+from .general import find_files
 
 
 def read_FTIR(file_name):
@@ -71,8 +72,8 @@ def FTIR_info(TG_IR):
                 temp = 0
                 for gas in TG_IR.linreg.index:
                     if elem in gas:
-                        if re.search("(?<=" + elem + ")\d", gas) != None:
-                            n = int(re.search("(?<=" + elem + ")\d", gas).group())
+                        if (n_elem:=re.search("(?<=" + elem + ")\d", gas)) != None:
+                            n = int(n_elem.group())
                         else:
                             n = 1
                         temp += n * info[f"mmol_{gas}"]

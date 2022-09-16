@@ -1,8 +1,9 @@
-from ..config import SAVGOL, UNITS, PARAMS, SEP
-import numpy as np
 import matplotlib.pyplot as plt
-import scipy as sp
 import matplotlib.ticker as ticker
+import numpy as np
+import scipy as sp
+
+from ..config import PARAMS, SAVGOL, SEP, UNITS
 
 
 def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
@@ -10,7 +11,10 @@ def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
     # calculation and smoothing of DTG
     TG = TGA_data["sample_mass"] / TGA_data["sample_mass"][0]
     DTG = sp.signal.savgol_filter(
-        TG, int(SAVGOL["window_length"]), int(SAVGOL["polyorder"]), deriv=1
+        TG,
+        int(SAVGOL.getfloat("window_length")),
+        int(SAVGOL.getfloat("polyorder")),
+        deriv=1,
     )
 
     # detect mass steps

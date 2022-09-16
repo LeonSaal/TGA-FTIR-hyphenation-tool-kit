@@ -1,24 +1,24 @@
-from typing import Iterable, Mapping
-import PySimpleGUI as sg
-from ..config import cfg, fmt
-from ..classes import Sample, Worklist
-from ..calibration import calibrate
-from ..input_output import samplelog
+import configparser
+import logging
 import os
 import re
+import webbrowser
+from heapq import merge
 from pathlib import Path
-import logging
-from .lang import EN
+from typing import Iterable, List, Mapping
+
 import matplotlib.pyplot as plt
-import configparser
-from .popups import (
-    plot_set_window,
-    setting_window,
-    fit_set_window,
-    samplelog_window,
-    mass_step_window,
-    get_value_window,
-)
+import PySimpleGUI as sg
+
+from ..calibration import calibrate
+from ..classes import Sample, Worklist
+from ..config import cfg, fmt
+from ..input_output import samplelog
+from ..links import LINKS
+from .lang import EN
+from .popups import (corr_window, fit_set_window, get_value_window,
+                     mass_step_window, plot_set_window, samplelog_window,
+                     setting_window)
 
 plt.ion()
 
@@ -29,28 +29,32 @@ lang = EN
 
 opts = {
     lang.file: [lang.open, lang.load],
-    lang.wl: [lang.load, lang.save, lang.from_samplelog, lang.rename, lang.cl],
+    lang.wl: [lang.load,  lang.from_samplelog, "-", lang.rename, lang.cl,"-", lang.save],
     lang.settings: [lang.edit, lang.load, lang.save],
     lang.cali: [lang.load, lang.recali],
     lang.recali: [lang.max, lang.iter, lang.co_oxi, lang.co_oxi_iter, lang.mlr],
+    lang.info: [lang.about, lang.help]
 }
 
 opts_sample = {
     lang.plot: [lang.tga, lang.ir, lang.dir, lang.irdtg, lang.heatflow, lang.fit],
     lang.samples: [
-        lang.fit,
         lang.plot,
-        lang.delete,
         lang.corr,
-        lang.save_wl,
+        "-",
+        lang.fit,
+        "-",
         lang.get_value,
         lang.mass_step,
+        "-",
+        lang.delete,
+        lang.save_wl,
     ],
 }
 
 opts_wl = {
     lang.plot: [lang.tga, lang.ir, lang.dir, lang.heatflow, lang.fit],
-    lang.samples: [lang.fit, lang.rob, lang.plot, lang.delete, lang.corr, lang.save_wl],
+    lang.samples: [lang.plot,lang.corr,"-",lang.fit, lang.rob,"-",lang.delete,lang.save_wl],
 }
 
 
@@ -74,13 +78,24 @@ def make_menu(top: str, keys: Iterable, opts: Mapping):
     for key in keys:
         if key in opts:
             menu.extend([key, make_menu(key, opts[key], opts)])
+        elif key == "-":
+            menu.append("---")
         else:
             menu.append(f"{key}::{top}")
     return menu
 
+def disable_menu(menu: list, disable: list):
+    out =[]
+    for i, item in enumerate(menu):
+        if isinstance(item, list):
+            out.append(disable_menu(item, disable))
+        else:
+            if item not in [f'{key}::{parent}' for key, parent in disable]:
+                out.append(item)
+    return out
 
 menu_definition = [
-    make_menu("", [opt], opts) for opt in [lang.file, lang.wl, lang.settings, lang.cali]
+    make_menu("", [opt], opts) for opt in [lang.file, lang.wl, lang.settings, lang.cali, lang.info]
 ]
 
 
@@ -115,37 +130,36 @@ def gui():
         [
             sg.Multiline(
                 k="-OUT-",
-                # reroute_stdout=True,
-                # reroute_stderr=True,
+                #reroute_stdout=True,
+                #reroute_stderr=True,
                 autoscroll=True,
                 disabled=True,
                 size=(None, 10),
             )
         ],
         [sg.VPush()],
-        [sg.Button(lang.convert, key="-RUN-"), sg.Push()],
     ]
 
     window = sg.Window(lang.prog_name, layout)
     logging.basicConfig(level=logging.INFO, format=fmt, style="{", force=True)
+    log = samplelog()
 
     wl = Worklist(lang.wl)
+    subset = None
+    import matplotlib.pyplot as plt
+
     # EVENT LOOP
     while True:
         # Converter
         event, values = window.read()
-        if values:
-            if len(values["-SAMPLES-"]) == 1:
-                menu = make_menu("", [lang.samples], opts_sample)
-            else:
-                menu = make_menu("", [lang.samples], opts_wl)
-            window["-SAMPLES-"].set_right_click_menu(menu)
-
-        if event:
-            window["-OUT-"].update()
 
         if event == sg.WINDOW_CLOSED:
             break
+
+        subset = wl[values["-SAMPLES-"]]
+
+        if event:
+            window["-OUT-"].update()
 
         if type(event) == str:
             event = str(event)
@@ -184,7 +198,6 @@ def gui():
                         wl.name = text
 
                 if event.startswith(lang.from_samplelog):
-                    log = samplelog()
                     if names := samplelog_window(log):
                         for name in names:
                             wl.append(Sample(name))
@@ -277,27 +290,84 @@ def gui():
                 method, _ = event.split("::")
                 calibrate(mode="recalibrate", method=method)
 
+
+            # INFO
+            if event.endswith(lang.info):
+                if event.startswith(lang.about):
+                    webbrowser.open(LINKS.REPO)
+                if event.startswith(lang.help):
+                    webbrowser.open(LINKS.WIKI)
+
+            if subset:
+                if len(subset) == 1:
+                    sample = subset
+                    menu = make_menu("", [lang.samples], opts_sample)
+
+                    disable = []
+                    if lang.fit not in sample.results:
+                        disable.append((lang.fit, lang.plot))
+                    for att in ['ir', 'tga']:
+                        if att not in sample.__dict__:
+                            disable.append((lang.__dict__[att], lang.plot))
+                    if lang.heatflow not in sample.tga:
+                        disable.append((lang.heatflow,lang.plot))
+                    menu = disable_menu(menu, disable)    
+
+                else:
+                    menu = make_menu("", [lang.samples], opts_wl)
+                    menu = disable_menu(menu, [(lang.fit, lang.plot)])
+
+                window["-SAMPLES-"].set_right_click_menu(menu)
+            else:
+                continue
+
             # SAMPLELIST
             if event.endswith(lang.samples) and values["-SAMPLES-"]:
                 if event.startswith(lang.fit):
                     reference = fit_set_window(lang.fit)
                     if reference:
-                        wl[values["-SAMPLES-"]].fit(**reference)
+                        subset.fit(**reference)
+
                 elif event.startswith(lang.rob):
                     reference = fit_set_window(lang.rob)
                     if reference:
-                        wl[values["-SAMPLES-"]].robustness(**reference)
+                        subset.robustness(**reference)
+
                 elif event.startswith(lang.delete):
                     for i in reversed(values["-SAMPLES-"]):
                         wl.pop(i)
                     window["-SAMPLES-"].update(values=update_samples(wl))
+
                 elif event.startswith(lang.corr):
-                    path = sg.popup_get_file(
-                        "", no_window=True, initial_folder=cfg["paths"]["data"]
-                    )
-                    if path:
-                        file, _ = os.path.splitext(Path(path).name)
-                        wl.corr(references=file, plot=True)
+                    refs = all(log.reference.loc[[sample.name for sample in subset]].notna())
+                    if not refs:
+                        path = sg.popup_get_file(
+                            "", no_window=True, initial_folder=cfg["paths"]["data"]
+                        )
+                        if path:
+                            ref, _ = os.path.splitext(Path(path).name)
+                    else: 
+                        ref = None
+                    
+
+                    if type(subset) == Worklist:
+                        gases = list(
+                            eval(
+                                "&".join(
+                                    [
+                                        repr(set(sample.info.gases))
+                                        for sample in subset
+                                    ]
+                                )
+                            )
+                        )
+                    else:
+                        gases = subset.info.gases
+
+                    plot = corr_window(gases)   
+                    print(plot)
+                    wl.corr(references=ref, plot=plot)
+
                 elif event.startswith(lang.save_wl):
                     subset = wl[values["-SAMPLES-"]]
                     if type(subset) == Worklist:
@@ -315,18 +385,19 @@ def gui():
                     if path:
                         fname, _ = os.path.splitext(Path(path).name)
                         subset.save(fname=fname, how="pickle")
+
                 elif event.startswith(lang.mass_step):
                     sample = wl[values["-SAMPLES-"]]
                     settings = mass_step_window(max(sample.tga.sample_temp), 1)
                     if settings:
                         sample.mass_step(**settings)
+
                 elif event.startswith(lang.get_value):
-                    get_value_window(wl[values["-SAMPLES-"]])
+                    get_value_window(subset)
                     pass
 
             # PLOTTING
             if event.endswith(lang.plot) and values["-SAMPLES-"]:
-                subset = wl[values["-SAMPLES-"]]
                 plot = event.split("::")[0]
                 if type(subset) == Worklist:
                     gases = list(
@@ -334,7 +405,7 @@ def gui():
                             "&".join(
                                 [
                                     repr(set(sample.info.gases))
-                                    for sample in wl[values["-SAMPLES-"]]
+                                    for sample in subset
                                 ]
                             )
                         )
@@ -342,7 +413,7 @@ def gui():
 
                     one_gas = True
                 else:
-                    gases = wl[values["-SAMPLES-"]].info.gases
+                    gases = subset.info.gases
                     one_gas = False
                 settings = plot_set_window(plot, gases, one_gas=one_gas)
                 if settings:

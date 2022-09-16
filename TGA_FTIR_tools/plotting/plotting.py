@@ -1,20 +1,20 @@
+import copy
 import os
 from turtle import color
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy as sp
-import copy
-from ..config import PATHS, SEP, UNITS, PARAMS, MOLAR_MASS, SAVGOL
+from molmass import Formula
 
-from .utils import ylim_auto, get_label
-
+from ..config import MERGE_CELLS, PARAMS, PATHS, SAVGOL, SEP, UNITS
+from .utils import get_label, ylim_auto
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER =int( SAVGOL.getfloat("POLYORDER"))
 
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -307,7 +307,7 @@ def FTIR_to_DTG(
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
-            * MOLAR_MASS.getfloat(gas)
+            * Formula(gas).mass
         )
         y[i][:] = sample.ir[gas] / tot_area * tot_mass
         out[gas] = y[i][:]
@@ -361,5 +361,5 @@ def FTIR_to_DTG(
             os.makedirs(path_plot_irdtg)
         fig.savefig(os.path.join(path_plot_irdtg, f"{sample.info['name']}_IRDTG.png"),)
         out["dtg"] = DTG
-        out.to_excel(os.path.join(PATHS["output"], sample.info["name"] + "_IRDTG.xlsx"))
+        out.to_excel(os.path.join(PATHS["output"], sample.info["name"] + "_IRDTG.xlsx"), merge_cells=MERGE_CELLS)
 

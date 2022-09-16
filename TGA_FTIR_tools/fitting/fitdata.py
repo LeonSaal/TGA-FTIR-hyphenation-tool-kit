@@ -1,9 +1,10 @@
-from dataclasses import dataclass, field
-import pandas as pd
-import numpy as np
-
 import logging
+from dataclasses import dataclass, field
 
+import numpy as np
+import pandas as pd
+
+from ..config import MERGE_CELLS
 
 logger = logging.getLogger(__name__)
 
@@ -203,9 +204,9 @@ class FitData:
             f_presets, engine="openpyxl"
         ) as writer_presets:
             for gas, profiles in self.profiles.items():
-                profiles.to_excel(writer, sheet_name=gas)
-                self.presets[gas].to_excel(writer_presets, sheet_name=gas)
-            self.peaks.dropna(axis=1, how="all").to_excel(writer, sheet_name="summary")
+                profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
+                self.presets[gas].to_excel(writer_presets, sheet_name=gas, merge_cells=MERGE_CELLS)
+            self.peaks.dropna(axis=1, how="all").to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
 
 
 def link_groups(presets):

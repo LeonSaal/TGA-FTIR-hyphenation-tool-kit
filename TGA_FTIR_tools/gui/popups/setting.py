@@ -1,7 +1,9 @@
-import PySimpleGUI as sg
-import matplotlib
-from ..config import lang, cfg, fmt
 import logging
+
+import matplotlib
+import PySimpleGUI as sg
+
+from ..config import cfg, fmt, lang
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +23,43 @@ def setting_window():
                 ]
                 for name, val in vals.items()
             ]
+
+        elif section == "correction":
+            tab = []
+            for name, value in vals.items():
+                key = f"-SET_{section}::{name}"
+                if key in ['tga_plot', 'dry_weight_plot']:
+                    tab.append([sg.CBox(name, k=key)])
+                elif key == 'ir_plot':
+                    tab.append([sg.CBox(gas, k=gas) for gas in gases])
+       
         elif section == "plotting":
-            tab = [
-                [
+            tab = []
+            for name, val in vals.items():
+                key = f"-SET_{section}::{name}"
+                if name == 'mpl-style':
+                    tab.append([
                     sg.T(name, expand_x=True),
                     sg.Combo(
                         matplotlib.style.available + ["default"],
                         default_value=val,
-                        k=f"-SET_{section}::{name}",
-                    ),
-                ]
-                for name, val in vals.items()
-            ]
+                        k=key,
+                        ),
+                    ])
+                elif val in ['True', 'False']:
+                    tab.append([sg.CBox(name,default=eval(val), k=key)])
+                elif name.endswith('axis'):
+                    if name.startswith('x'):
+                        vals = ['sample_temp', 'time']
+                    elif name.startswith('y'):
+                        vals = ['orig', 'rel']
+                    tab.append([sg.T(name),sg.Push(),sg.Combo(vals, default_value=val, k=key)])
+                elif name== 'xlim':
+                    tab.append([sg.T(name),sg.Push(),sg.Input(default_text=val, k=key)])
+                elif name == 'ylim':
+                    tab.append([sg.T(name),sg.Push(),sg.Combo([None, 'auto'], default_value=val, k=key)])
+
+
         elif section == "fitting":
             name, val = "tol_center", vals["tol_center"]
             tol_center = [

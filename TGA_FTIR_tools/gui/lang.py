@@ -89,3 +89,6 @@ class EN:
     results = "results"
     mass_step = 'mass step'
     get_value = 'get value'
+    help = 'help'
+    dry_weight = 'dry weight'
+    corr_plot = 'Choose plots'

@@ -1,86 +1,97 @@
-import pandas as pd
-import numpy as np
-import scipy as sp
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-
-from .general import find_files
-from ..config import PATHS, PARAMS, UNITS, SEP, IR_NOISE
-from .FTIR import read_FTIR
 import logging
+from typing import Iterable, Mapping
 
+import numpy as np
+import pandas as pd
+import scipy as sp
+
+from ..config import IR_NOISE
+from ..plotting import plot_corr
 
 logger = logging.getLogger(__name__)
 
 
-def corr_TGA(TGA, file_baseline, plot=False):
-    "corrects TG data by subtracting buoyancy blank value of crucible"
+def corr_TGA_Baseline(TGA: pd.DataFrame, file_baseline: str, plot: bool = False) -> pd.DataFrame:
+    from ..classes import Baseline
+
     corr_data = TGA.copy()
-    path_baseline = find_files(file_baseline, ".txt", PATHS["data"])[0]
+    baseline = Baseline(file_baseline).tga
+    
+    for value in ['sample_mass','heat_flow']:
+        if (value in TGA.columns) and (value in baseline.columns):
+            corr_data.loc[:,value] = corr_data.loc[:,value].subtract(baseline.loc[:,value])
+            logger.info(f'Corrected "{value}".')
 
-    # opens the buoyancy blank value 'baseline' and substracts them from the original data
-    try:
-        reference_mass = pd.read_csv(
-            path_baseline,
-            delim_whitespace=True,
-            decimal=",",
-            names=["Index", "time", "sample_temp", "reference_temp", "sample_mass"],
-            skiprows=13,
-            skipfooter=11,
-            converters={"sample_mass": lambda x: float(x.replace(",", "."))},
-            engine="python",
-            encoding="latin-1",
-        ).drop(columns="Index")
-        corr_data["sample_mass"] = corr_data["sample_mass"].subtract(
-            reference_mass["sample_mass"]
-        )
-    except:
-        logger.error(f'"{path_baseline}" was not found.')
-        return None
-    try:
-        path_mW = find_files(file_baseline, "_mW.txt", PATHS["data"])[0]
-        reference_heat_flow = pd.read_csv(
-            path_mW,
-            delim_whitespace=True,
-            decimal=",",
-            names=["Index", "time", "sample_temp", "reference_temp", "heat_flow"],
-            skiprows=13,
-            skipfooter=11,
-            converters={"sample_mass": lambda x: float(x.replace(",", "."))},
-            usecols=["heat_flow"],
-            engine="python",
-            encoding="latin-1",
-        )
-        corr_data["heat_flow"] = corr_data["heat_flow"].subtract(
-            reference_heat_flow["heat_flow"]
-        )
-    except:
-        pass
-
-    # plotting of data, baseline and corrected value
-    if plot == True:
-        fig, ax = plt.subplots()
-        x = TGA["sample_temp"]
-        y = TGA["sample_mass"]
-        ax.plot(x, y, label="data")
-        ax.plot(x, reference_mass["sample_mass"][: len(TGA)], label="baseline")
-        ax.plot(x, corr_data["sample_mass"], label="corrected")
-        ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
-        ax.set_ylabel(f"{PARAMS['sample_mass']} {SEP} {UNITS['sample_mass']}")
-        ax.legend()
-        ax.xaxis.set_minor_locator(
-            ticker.AutoMinorLocator()
-        )  # switch on minor ticks on each axis
-        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax.set(title="TGA baseline correction")
-        plt.show()
-
+            if plot:
+                plot_corr(TGA, baseline, label = value)
+    
     return corr_data
 
+# def corr_TGA(TGA: pd.DataFrame, file_baseline: str, plot: bool = False) -> pd.DataFrame:
+#     "corrects TG data by subtracting buoyancy blank value of crucible"
+#     corr_data = TGA.copy()
+#     path_baseline = find_files(file_baseline, ".txt", PATHS["data"])[0]
 
-def corr_FTIR(Sample, file_baseline, plot=False):
-    from ..plotting import get_label
+#     # opens the buoyancy blank value 'baseline' and substracts them from the original data
+#     try:
+#         reference_mass = pd.read_csv(
+#             path_baseline,
+#             delim_whitespace=True,
+#             decimal=",",
+#             names=["Index", "time", "sample_temp", "reference_temp", "sample_mass"],
+#             skiprows=13,
+#             skipfooter=11,
+#             converters={"sample_mass": lambda x: float(x.replace(",", "."))},
+#             engine="python",
+#             encoding="latin-1",
+#         ).drop(columns="Index")
+#         corr_data["sample_mass"] = corr_data["sample_mass"].subtract(
+#             reference_mass["sample_mass"]
+#         )
+#     except:
+#         logger.error(f'"{path_baseline}" was not found.')
+#         return None
+#     try:
+#         path_mW = find_files(file_baseline, "_mW.txt", PATHS["data"])[0]
+#         reference_heat_flow = pd.read_csv(
+#             path_mW,
+#             delim_whitespace=True,
+#             decimal=",",
+#             names=["Index", "time", "sample_temp", "reference_temp", "heat_flow"],
+#             skiprows=13,
+#             skipfooter=11,
+#             converters={"sample_mass": lambda x: float(x.replace(",", "."))},
+#             usecols=["heat_flow"],
+#             engine="python",
+#             encoding="latin-1",
+#         )
+#         corr_data["heat_flow"] = corr_data["heat_flow"].subtract(
+#             reference_heat_flow["heat_flow"]
+#         )
+#     except:
+#         pass
 
+#     # plotting of data, baseline and corrected value
+
+#     if plot:
+#         plot_corr(TGA, reference_mass, label = 'sample_mass')
+#         # fig, ax = plt.subplots()
+#         # x = TGA["sample_temp"]
+#         # y = TGA["sample_mass"]
+#         # ax.plot(x, y, label="data")
+#         # ax.plot(x, reference_mass["sample_mass"][: len(TGA)], label="baseline")
+#         # ax.plot(x, corr_data["sample_mass"], label="corrected")
+#         # ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
+#         # ax.set_ylabel(f"{PARAMS['sample_mass']} {SEP} {UNITS['sample_mass']}")
+#         # ax.legend()
+#         # ax.set(title="TGA baseline correction")
+#         # plt.show()
+
+#     return corr_data
+
+
+def corr_FTIR(Sample, file_baseline: str, plot: bool | Iterable | Mapping=False):
+    from ..classes import Baseline
     "corrects IR data by setting minimal adsorption to 0 "
     FTIR = Sample.ir
     # setting up output DataFrame
@@ -91,22 +102,16 @@ def corr_FTIR(Sample, file_baseline, plot=False):
         ),
     )
     # opens FTIR data of the baseline
-    try:
-        baseline = read_FTIR(file_baseline)
-        gases = set(baseline.columns.drop(["time"]).values).intersection(
-            Sample.info["gases"]
-        )
-        logger.info(f"Baseline found for {', '.join(gases)}")
-    except:
-        logger.error("No baseline data found.")
-        baseline = pd.DataFrame(
-            index=FTIR.index,
-            columns=FTIR.columns.drop(
-                ["time", "sample_temp", "reference_temp"], errors="ignore"
-            ),
-        )
+    baselineData = Baseline(file_baseline)
+    baseline = baselineData.ir
+    gases = baselineData.info.gases
 
     # cycling through gases
+    if plot == True:
+        plot = gases
+    elif plot == False:
+        plot = []
+
     for gas in gases:
 
         # load threshold of noise from settings.ini or determine it from baseline
@@ -136,11 +141,11 @@ def corr_FTIR(Sample, file_baseline, plot=False):
 
                 # in the original data the peaks and valleys that have similar height as the baseline are determined
                 tol = 1.5
-                peaks, properties = sp.signal.find_peaks(
+                peaks, _ = sp.signal.find_peaks(
                     FTIR["CO2"],
                     height=[-tol * amplitude_baseline, tol * amplitude_baseline],
                 )
-                valleys, valley_properties = sp.signal.find_peaks(
+                valleys, _ = sp.signal.find_peaks(
                     -FTIR["CO2"],
                     height=[None, None],
                     prominence=amplitude_baseline * 0.05,
@@ -202,30 +207,8 @@ def corr_FTIR(Sample, file_baseline, plot=False):
             )
 
         # plotting of baseline, data and the corrected data
-        if plot:
-            try:
-                x = FTIR["sample_temp"]
-            except:
-                x = FTIR["time"]
-                x /= 60
-
-            fig, ax = plt.subplots()
-            ax.plot(x, FTIR[gas], label="data")
-            ax.plot(x, corr_data[gas], label="baseline")
-            ax.plot(x, FTIR[gas].subtract(corr_data[gas]), label="corr. data")
-
-            ax.legend()
-            if x.name == "time":
-                ax.set_xlabel(f"{PARAMS['time']} {SEP} {UNITS['time']}")
-            elif x.name == "sample_temp":
-                ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
-            ax.set_ylabel(f"{get_label(gas)} {SEP} {UNITS['IR']}")
-            ax.xaxis.set_minor_locator(
-                ticker.AutoMinorLocator()
-            )  # switch on minor ticks on each axis
-            ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-            ax.set(title=f"{get_label(gas)} baseline correction")
-            plt.show()
+        if gas in plot:
+            plot_corr(originalData=FTIR, BaselineData=corr_data, label=gas)
 
     return FTIR[list(gases)].subtract(corr_data)
 
