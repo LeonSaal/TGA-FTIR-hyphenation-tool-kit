@@ -129,7 +129,7 @@ class Sample:
 
         # initialize object from pickle file
         if mode == "pickle":
-            with open(PATHS["output"]/ self.name + ".pkl", "rb") as inp:
+            with open(PATHS["output"]/ f'{self.name}.pkl', "rb") as inp:
                 obj = pickle.load(inp)
             for key in obj.__dict__:
                 self.__dict__[key] = obj.__dict__[key]
@@ -339,7 +339,7 @@ class Sample:
 
         # setting up output directory
         if save:
-            path = PATHS["fitting"]/ general.time() + reference + "_" + self.info["name"],
+            path = PATHS["fitting"]/ f'{general.time()}{reference}_{self.info["name"]}',
             os.makedirs(path)
             os.chdir(path)
 
@@ -388,10 +388,10 @@ class Sample:
 
         # save object
         if how == "pickle":
-            with open(path_output/ self.info["name"] + ".pkl", "wb") as output:
+            with open(path_output/ f'{self.name}.pkl', "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         elif how == "excel":
-            path = path_output/ self.info["name"] + ".xlsx"
+            path = path_output/ f'{self.info["name"]}.xlsx'
             with pd.ExcelWriter(path) as writer:
                 try:
                     pd.DataFrame.from_dict(self.info.__dict__, orient="index").to_excel(

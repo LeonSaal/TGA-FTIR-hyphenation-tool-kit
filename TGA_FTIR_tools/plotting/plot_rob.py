@@ -76,4 +76,4 @@ def plot_robustness(data, save=False, ylim=[0, None], **kwargs):
                 sample_name = "".join(
                     [x if (x.isalnum() or x in "._- ") else "_" for x in sample]
                 )  # to catch invalide sample names
-                fig.savefig(sample_name + "_" + param + ".png")
+                fig.savefig(f'{sample_name}_{param}.png')

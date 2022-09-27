@@ -117,7 +117,7 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
         sample_names = "".join(
             [x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]
         )  # to catch invalide sample names
-        path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
+        path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
         # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
         longest_name_length = 0
         for sample in worklist:
@@ -128,7 +128,7 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
             sample_names = sample_names[
                 : (len(sample_names) - ((len(path) + longest_name_length) - (258 - 8)))
             ]  # -8 for _gas and .png
-            path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
+            path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
         os.makedirs(path)
         os.chdir(path)
 

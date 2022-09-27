@@ -192,4 +192,4 @@ def plots(
             path_plots.mkdir()
         if gas == None:
             gas = ""
-        fig.savefig(path_plots /"_".join([time(), plot, gas, y_axis]) + ".png")
+        fig.savefig(path_plots /"_".join([time(), plot, gas, y_axis, '.png']))

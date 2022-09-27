@@ -356,7 +356,7 @@ def FTIR_to_DTG(
         path_plot_irdtg = PATHS["plots"]/ "IRDTG"
         if not path_plot_irdtg.exists():
             path_plot_irdtg.mkdir()
-        fig.savefig(path_plot_irdtg/ f"{sample.info['name']}_IRDTG.png")
+        fig.savefig(path_plot_irdtg/ f"{sample.name}_IRDTG.png")
         out["dtg"] = DTG
-        out.to_excel(PATHS["output"]/ sample.info["name"] + "_IRDTG.xlsx", merge_cells=MERGE_CELLS)
+        out.to_excel(PATHS["output"]/ f"{sample.name}_IRDTG.xlsx", merge_cells=MERGE_CELLS)
 

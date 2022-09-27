@@ -326,11 +326,11 @@ def fitting(
             try:
                 with pd.ExcelWriter(f_name, engine="openpyxl", mode="a") as writer:
                     profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
-                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param", merge_cells=MERGE_CELLS)
+                    temp_presets[gas].to_excel(writer, sheet_name=f'{gas}_param', merge_cells=MERGE_CELLS)
             except:
                 with pd.ExcelWriter(f_name, engine="openpyxl") as writer:
                     profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
-                    temp_presets[gas].to_excel(writer, sheet_name=gas + "_param", merge_cells=MERGE_CELLS)
+                    temp_presets[gas].to_excel(writer, sheet_name=f'{gas}_param', merge_cells=MERGE_CELLS)
 
     # calculate summarized groups
     # groups=list(set([re.split('_| ',group)[0] for group in peaks.index if group not in gases]))
@@ -343,10 +343,10 @@ def fitting(
         ]
         if len(group_set) > 1:
             peaks = peaks.append(
-                pd.DataFrame(group_set.sum(axis=0).rename(group + "_sum")).T
+                pd.DataFrame(group_set.sum(axis=0).rename(f'{group}_sum')).T
             )
             peaks = peaks.append(
-                pd.DataFrame(group_set.mean(axis=0).rename(group + "_mean")).T
+                pd.DataFrame(group_set.mean(axis=0).rename(f'{group}_sum')).T
             )
 
     if save:
@@ -378,7 +378,7 @@ def fits(objs, reference, save=True, presets=None, **kwargs):
         sample_names = "".join(
             [x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]
         )  # to catch invalide sample names
-        path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
+        path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
         # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
         longest_name_length = 0
         for obj in objs:
@@ -389,7 +389,7 @@ def fits(objs, reference, save=True, presets=None, **kwargs):
             sample_names = sample_names[
                 : (len(sample_names) - ((len(path) + longest_name_length) - (258 - 8)))
             ]  # -8 for _gas and .png
-            path = PATHS["fitting"]/ time() + reference + "_" + sample_names
+            path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
         os.makedirs(path)
         os.chdir(path)
 
