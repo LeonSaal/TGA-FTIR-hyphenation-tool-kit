@@ -56,7 +56,12 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
 
         frames = []
         for path in paths:
-            path = Path(path)
+            filename = Path(path).name
+
+            # extract suffix from filename
+            pat = f'{re.escape(sample_name)}{values["ext"]}'
+            if m := re.match(pat, filename, flags=re.I):
+                suffix = m.group("suffix")
 
             # load data from path
             try:
@@ -65,10 +70,10 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
                 # rename columns
                 if "map_suffix" in values:
                     data.rename(
-                        {"suffix": values["map_suffix"][path.suffix]}, axis=1, inplace=True
+                        {"suffix": values["map_suffix"][suffix]}, axis=1, inplace=True
                     )
                 else:
-                    data.rename({"suffix": path.suffix.upper()}, axis=1, inplace=True)
+                    data.rename({"suffix": suffix.upper()}, axis=1, inplace=True)
 
             except PermissionError:
                 logger.error(f"Failed to read {key}-data from {path}")
