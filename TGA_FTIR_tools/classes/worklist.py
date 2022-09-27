@@ -109,18 +109,18 @@ class Worklist:
 
     def save(self, fname:str=None, **kwargs) -> None:
         path_output = PATHS["output"]
-        if os.path.exists(path_output) == False:
+        if not path_output.exists(path_output) :
             os.makedirs(path_output)
         if not fname:
             fname= self.name
-        path = os.path.join(path_output, f'{fname}.wkl')
+        path = path_output/ f'{fname}.wkl'
         with open(path, "wb") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         for sample in self.samples:
             sample.save(**kwargs)
 
     def load(self, fname:str) -> None:
-        with open(os.path.join(PATHS["output"], f'{fname}.wkl'), "rb") as inp:
+        with open(PATHS["output"]/ f'{fname}.wkl', "rb") as inp:
             obj = pickle.load(inp)
         for key in obj.__dict__:
             self.__dict__[key] = obj.__dict__[key]

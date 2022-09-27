@@ -4,7 +4,9 @@ import os
 import pickle
 import re
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Literal, Optional
+from lib2to3.pytree import Base
+from types import NoneType
+from typing import Any, Literal, Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -23,6 +25,7 @@ POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
 logger = logging.getLogger(__name__)
 
 
+
 @dataclass
 class Sample:
     name: str
@@ -30,6 +33,7 @@ class Sample:
     tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
+    baseline= None
     results: dict = field(default_factory=dict)
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = COUPLING["profile"]
@@ -125,16 +129,17 @@ class Sample:
 
         # initialize object from pickle file
         if mode == "pickle":
-            with open(os.path.join(PATHS["output"], self.name + ".pkl"), "rb") as inp:
+            with open(PATHS["output"]/ self.name + ".pkl", "rb") as inp:
                 obj = pickle.load(inp)
             for key in obj.__dict__:
                 self.__dict__[key] = obj.__dict__[key]
+        self.raw = copy.deepcopy(self)
 
     def __repr__(self):
         attrs = ["name", "alias", "sample", "run"]
         return f'Sample({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'
 
-    def corr(self, reference=None, plot=False, **kwargs):
+    def corr(self, reference: NoneType| str=None, plot: Mapping|bool=False, update =False ,**kwargs):
         if plot == True:
             plot = {}
             plot["ir"] = True
@@ -148,9 +153,9 @@ class Sample:
 
         "correction of TG and IR data"
 
-        if "reference" in self.info:
+        if "reference" in self.info and not update:
             logger.warning(
-                "Sample has already been corrected! Re-initialise object for correction."
+                "Sample has already been corrected! Re-initialise object for correction or specify 'update'=True."
             )
             return
         # try to load reference from samplelog if none is supplied
@@ -164,14 +169,15 @@ class Sample:
                 return
 
         # correction of data
+        self.baseline = Baseline(reference)
         self.info["reference"] = reference
         if self.tga is not None:
             try:
                 self.tga = corrections.corr_TGA_Baseline(
-                    self.tga, reference, plot=plot['tga']
+                    self.raw.tga, self.baseline, plot=plot['tga']
                 )
                 self.tga["dtg"] = -savgol_filter(
-                    self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
+                    self.tga.sample_mass, WINDOW_LENGTH, POLYORDER, deriv=1
                 )
             except PermissionError:
                 logger.error("Failed to correct TG data.")
@@ -184,7 +190,7 @@ class Sample:
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
                     pass
 
-                self.dry_weight(plot=plot['dry_weight'], **kwargs)
+                self.dry_weight(plot=plot['dry_weight'])
                 logger.info(
                     f'".info" of {self.info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
                 )
@@ -194,7 +200,7 @@ class Sample:
 
         if self.ir is not None:
             try:
-                self.ir.update(corrections.corr_FTIR(self, reference, plot=plot['ir']))
+                self.ir.update(corrections.corr_FTIR(self.raw, self.baseline, plot=plot['ir'], **kwargs))
             except PermissionError:
                 logger.error("Failed to correct IR data.")
 
@@ -333,10 +339,7 @@ class Sample:
 
         # setting up output directory
         if save:
-            path = os.path.join(
-                PATHS["fitting"],
-                general.time() + reference + "_" + self.info["name"],
-            ).replace(os.sep, os.altsep)
+            path = PATHS["fitting"]/ general.time() + reference + "_" + self.info["name"],
             os.makedirs(path)
             os.chdir(path)
 
@@ -380,17 +383,15 @@ class Sample:
         if how == "samplelog":
             return
 
-        if os.path.exists(path_output) == False:
+        if not path_output.exists():
             os.makedirs(path_output)
 
         # save object
         if how == "pickle":
-            with open(
-                os.path.join(path_output, self.info["name"] + ".pkl"), "wb"
-            ) as output:
+            with open(path_output/ self.info["name"] + ".pkl", "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         elif how == "excel":
-            path = os.path.join(path_output, self.info["name"] + ".xlsx")
+            path = path_output/ self.info["name"] + ".xlsx"
             with pd.ExcelWriter(path) as writer:
                 try:
                     pd.DataFrame.from_dict(self.info.__dict__, orient="index").to_excel(
@@ -419,3 +420,13 @@ class Sample:
 
     def __iter__(self):
         yield self
+
+
+
+class Baseline(Sample):
+    def __init_subclass__(cls) -> None:
+        return super().__init_subclass__()
+
+    def __repr__(self):
+        attrs = ["name"]
+        return f'Baseline({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'

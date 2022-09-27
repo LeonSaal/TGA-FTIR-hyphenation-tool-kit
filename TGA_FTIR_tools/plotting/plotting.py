@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy as sp
-from molmass import Formula
+from chempy import Substance
 
 from ..config import MERGE_CELLS, PARAMS, PATHS, SAVGOL, SEP, UNITS
 from .utils import get_label, ylim_auto
@@ -103,12 +103,10 @@ def plot_TGA(
     plt.show()
 
     if save:
-        path_plots_tga = os.path.join(PATHS["plots"], "TGA")
-        if os.path.exists(path_plots_tga) == False:
-            os.makedirs(path_plots_tga)
-        fig.savefig(
-            os.path.join(path_plots_tga, f"{sample.info['name']}_TG_{y_axis}.png"),
-        )
+        path_plots_tga = PATHS["plots"]/ "TGA"
+        if path_plots_tga.exists() == False:
+            path_plots_tga.mkdir()
+        fig.savefig(path_plots_tga/ f"{sample.info['name']}_TG_{y_axis}.png")
 
 
 def plot_FTIR(
@@ -231,12 +229,11 @@ def plot_FTIR(
     plt.show()
 
     if save:
-        path_plots_ir = os.path.join(PATHS["plots"], "IR")
-        if os.path.exists(path_plots_ir) == False:
-            os.makedirs(path_plots_ir)
-        fig.savefig(
-            os.path.join(path_plots_ir, f"{sample.info['name']}_IR_{y_axis}.png"),
-        )
+        path_plots_ir = PATHS["plots"]/ "IR"
+        if not path_plots_ir.exists():
+            path_plots_ir.mkdir()
+            
+        fig.savefig(path_plots_ir/ f"{sample.info['name']}_IR_{y_axis}.png")
 
 
 def FTIR_to_DTG(
@@ -307,7 +304,7 @@ def FTIR_to_DTG(
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
-            * Formula(gas).mass
+            * Substance.from_formula(gas).mass
         )
         y[i][:] = sample.ir[gas] / tot_area * tot_mass
         out[gas] = y[i][:]
@@ -356,10 +353,10 @@ def FTIR_to_DTG(
     plt.show()
 
     if save:
-        path_plot_irdtg = os.path.join(PATHS["plots"], "IRDTG")
-        if os.path.exists(path_plot_irdtg) == False:
-            os.makedirs(path_plot_irdtg)
-        fig.savefig(os.path.join(path_plot_irdtg, f"{sample.info['name']}_IRDTG.png"),)
+        path_plot_irdtg = PATHS["plots"]/ "IRDTG"
+        if not path_plot_irdtg.exists():
+            path_plot_irdtg.mkdir()
+        fig.savefig(path_plot_irdtg/ f"{sample.info['name']}_IRDTG.png")
         out["dtg"] = DTG
-        out.to_excel(os.path.join(PATHS["output"], sample.info["name"] + "_IRDTG.xlsx"), merge_cells=MERGE_CELLS)
+        out.to_excel(PATHS["output"]/ sample.info["name"] + "_IRDTG.xlsx", merge_cells=MERGE_CELLS)
 

@@ -1,17 +1,19 @@
+import copy
+import logging
+import os
+import re
+import shutil as sh
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import scipy as sp
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from ..plotting import get_label
-from ..config import UNITS, PARAMS, SEP, BOUNDS, PATHS, COUPLING, cfg
-from ..input_output.general import time
-import os
-import copy
-import re
-import shutil as sh
-import logging
 
+from ..config import (BOUNDS, COUPLING, MERGE_CELLS, PARAMS, PATHS, SEP, UNITS,
+                      cfg)
+from ..input_output.general import time
+from ..plotting import get_label
 
 logger = logging.getLogger(__name__)
 
@@ -376,9 +378,7 @@ def fits(objs, reference, save=True, presets=None, **kwargs):
         sample_names = "".join(
             [x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]
         )  # to catch invalide sample names
-        path = os.path.join(
-            PATHS["fitting"], time() + reference + "_" + "_" + sample_names
-        ).replace(os.sep, os.altsep)
+        path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
         # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
         longest_name_length = 0
         for obj in objs:
@@ -389,9 +389,7 @@ def fits(objs, reference, save=True, presets=None, **kwargs):
             sample_names = sample_names[
                 : (len(sample_names) - ((len(path) + longest_name_length) - (258 - 8)))
             ]  # -8 for _gas and .png
-            path = os.path.join(
-                PATHS["fitting"], time() + reference + "_" + "_" + sample_names
-            ).replace(os.sep, os.altsep)
+            path = PATHS["fitting"]/ time() + reference + "_" + sample_names
         os.makedirs(path)
         os.chdir(path)
 
@@ -510,7 +508,7 @@ def get_presets(path, reference):
     presets = dict()
 
     if not os.path.exists(cfg["fitting_params"]):
-        if os.path.exists(PATHS["fitting_params"]):
+        if PATHS["fitting_params"].exists():
             sh.copy(PATHS["fitting_params"], cfg["fitting_params"])
         else:
             logger.warn("Unable to get default settings.")

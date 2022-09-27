@@ -1,13 +1,14 @@
-from typing import Literal
-import matplotlib.pyplot as plt
-from ..config import PARAMS, SEP, UNITS, PATHS
 import copy
-import matplotlib.ticker as ticker
-import os
-from .utils import ylim_auto, get_label
-from ..input_output.general import time
 import logging
+import os
+from typing import Literal
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+
+from ..config import PARAMS, PATHS, SEP, UNITS
+from ..input_output.general import time
+from .utils import get_label, ylim_auto
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +188,8 @@ def plots(
 
     if save:
         path_plots = PATHS["plots"]
-        if os.path.exists(path_plots) == False:
-            os.makedirs(path_plots)
+        if not path_plots.exists() :
+            path_plots.mkdir()
         if gas == None:
             gas = ""
-        fig.savefig(
-            os.path.join(path_plots, "_".join([time(), plot, gas, y_axis])) + ".png",
-        )
+        fig.savefig(path_plots /"_".join([time(), plot, gas, y_axis]) + ".png")

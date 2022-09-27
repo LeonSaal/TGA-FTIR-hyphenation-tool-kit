@@ -1,4 +1,8 @@
+
 import pandas as pd
+from chempy import Substance
+from pyparsing.exceptions import ParseException
+
 from ..config import LABELS
 
 
@@ -19,9 +23,13 @@ def ylim_auto(x, y, xlim):
 
 def get_label(key):
     "get labels to put in plots"
-    if key in LABELS:
-        return LABELS[key]
-    elif key.isdigit():
-        if int(key) in LABELS:
-            return LABELS[int(key)]
-    return str(key)
+    try:
+        substance = Substance.from_formula(key)
+        return f'${substance.latex_name}$'
+    except ParseException:
+        if key in LABELS:
+            return LABELS[key]
+        elif key.isdigit():
+            if int(key) in LABELS:
+                return LABELS[int(key)]
+        return str(key)

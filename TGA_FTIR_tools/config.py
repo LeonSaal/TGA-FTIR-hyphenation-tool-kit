@@ -4,6 +4,7 @@ import configparser
 import logging
 import os
 import shutil as sh
+from pathlib import Path
 
 import requests
 
@@ -19,24 +20,24 @@ names = ["ini", "import_profiles", "fitting_params"]
 config_files = ["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
 config = dict(zip(names, config_files))
 
-PATH_DIR = os.path.realpath(os.path.dirname(__file__))
-PATH_SET = os.path.join(PATH_DIR, "settings")
+PATH_DIR = Path(os.path.dirname(__file__))
+PATH_SET = PATH_DIR / "settings"
 
-PATHS = {name: os.path.join(PATH_SET, file) for name, file in config.items()}
+PATHS = {name: PATH_SET/ file for name, file in config.items()}
 
 for name, path in PATHS.items():
-    if not os.path.exists(path):
+    if not path.exists():
         url = f"{LINKS.SETTINGS}/{config[name]}"
         resp = requests.get(url)
         if resp.ok:
-            dst = os.path.join(PATH_SET, config[name])
+            dst = PATH_SET/ config[name]
             with open(dst, "wb") as file:
                 file.write(resp.content)
         else:
             logger.err(f"Unable to download '{url}'.")
 
 if not os.path.exists(config["ini"]):
-    if os.path.exists(PATHS["ini"]):
+    if PATHS["ini"].exists():
         sh.copy(PATHS["ini"], config["ini"])
     else:
         logger.error("Unable to find default settings.")
@@ -44,23 +45,23 @@ if not os.path.exists(config["ini"]):
 cfg = configparser.ConfigParser()
 cfg.read(config["ini"])
 
-PATHS.update(cfg["paths"])
+PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
 if PATHS["home"] == "":
     cwd = os.getcwd().replace(os.sep, os.altsep)
     logger.info(f"No home path was supplied in {config['ini']}. home was set to '{cwd}'")
     cfg["paths"]["home"] = cwd
-if PATHS["data"] == "" or os.path.exists(PATHS["data"]) == False:
+if PATHS["data"] == "" or not PATHS["data"].exists():
     logger.warn(f"No valid data path was supplied in '{config['ini']}'.")
     cfg["paths"]["data"] = input("Supply directory of Data:").replace(
         os.sep, os.altsep
     )
-    if os.path.exists(cfg["paths"]["data"]) == False:
+    if not os.path.exists(cfg["paths"]["data"]):
         logger.error(
             "Supplied directory does not exist. Revise path in 'settings.ini' prior to continue."
         )
 
-PATHS.update(cfg["paths"])
+PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
 with open(config["ini"], "w") as configfile:
     cfg.write(configfile)

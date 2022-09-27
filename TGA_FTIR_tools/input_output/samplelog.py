@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
     "load and write samplelog file with obj.info"
-    path = os.path.join(PATHS["home"], "Samplelog.xlsx")
+    path = PATHS["home"]/ "Samplelog.xlsx"
 
     # try to load samplelog file
-    if not os.path.exists(path):
+    if not path.exists():
         samplelog = pd.DataFrame(columns=["alias", "reference"])
         samplelog.index.name = "name"
         if create:  # create new Samplelox.xlsx file

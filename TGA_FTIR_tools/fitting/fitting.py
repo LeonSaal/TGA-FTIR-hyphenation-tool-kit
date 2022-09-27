@@ -117,9 +117,7 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
         sample_names = "".join(
             [x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]
         )  # to catch invalide sample names
-        path = os.path.join(
-            PATHS["fitting"], time() + reference + "_" + "_" + sample_names
-        ).replace(os.sep, os.altsep)
+        path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
         # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
         longest_name_length = 0
         for sample in worklist:
@@ -130,9 +128,7 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
             sample_names = sample_names[
                 : (len(sample_names) - ((len(path) + longest_name_length) - (258 - 8)))
             ]  # -8 for _gas and .png
-            path = os.path.join(
-                PATHS["fitting"], time() + reference + "_" + "_" + sample_names
-            ).replace(os.sep, os.altsep)
+            path = PATHS["fitting"]/ time() + reference + "_" + "_" + sample_names
         os.makedirs(path)
         os.chdir(path)
 
@@ -225,7 +221,7 @@ def get_presets(reference):
     presets = dict()
 
     if not os.path.exists(config["fitting_params"]):
-        if os.path.exists(PATHS["fitting_params"]):
+        if PATHS["fitting_params"].exists():
             sh.copy(PATHS["fitting_params"], config["fitting_params"])
         else:
             logger.warn("Unable to get default settings.")

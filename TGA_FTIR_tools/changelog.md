@@ -1,0 +1,7 @@
+## 2022-09-26
+- added changelog
+- added Sample.raw to access raw-data
+- removed chemical formulas from settings -> use of chempy.Substance.latex_name
+- added Sample.baseline to access baseline-data
+- deleted old IO-functions
+- updated paths to use Path from pathlib

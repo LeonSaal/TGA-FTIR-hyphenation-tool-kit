@@ -1,4 +1,3 @@
-from .sample import Sample
+from .sample import Sample, Baseline
 from .worklist import Worklist
-from .baseline import Baseline
 from .info import SampleInfo

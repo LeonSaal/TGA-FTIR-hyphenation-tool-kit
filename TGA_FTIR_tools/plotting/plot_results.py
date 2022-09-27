@@ -121,12 +121,10 @@ def bar_plot_results(
         ax.set_title(f"summary plot with errors from {res}")
     plt.show()
     if save:
-        path_plots_eval = os.path.join(PATHS["plots"], "Evaluation")
-        if os.path.exists(path_plots_eval) == False:
-            os.mkdir(path_plots_eval)
-        fig.savefig(
-            os.path.join(path_plots_eval, f"{time()}_{worklist.name}_by_{group_by}.png"),
-        )
+        path_plots_eval = PATHS["plots"]/ "Evaluation"
+        if path_plots_eval.exists() == False:
+            path_plots_eval.mkdir()
+        fig.savefig(path_plots_eval/ f"{time()}_{worklist.name}_by_{group_by}.png")
 
 
 # def bar_plot_results(

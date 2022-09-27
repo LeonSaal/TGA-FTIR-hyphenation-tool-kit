@@ -64,6 +64,6 @@ def plot_dweight(
     plt.show()
     if save:
         path_plots = PATHS["plots"]
-        if os.path.exists(path_plots) == False:
+        if not path_plots.exists():
             os.makedirs(path_plots)
-        fig.savefig(os.path.join(path_plots, f"{sample.info.name}_mass_steps.png"),)
+        fig.savefig(path_plots/f"{sample.info.name}_mass_steps.png")

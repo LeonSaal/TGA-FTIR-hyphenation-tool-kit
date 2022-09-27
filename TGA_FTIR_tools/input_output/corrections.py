@@ -11,11 +11,9 @@ from ..plotting import plot_corr
 logger = logging.getLogger(__name__)
 
 
-def corr_TGA_Baseline(TGA: pd.DataFrame, file_baseline: str, plot: bool = False) -> pd.DataFrame:
-    from ..classes import Baseline
-
+def corr_TGA_Baseline(TGA: pd.DataFrame, baseline, plot: bool = False) -> pd.DataFrame:
     corr_data = TGA.copy()
-    baseline = Baseline(file_baseline).tga
+    baseline = baseline.tga
     
     for value in ['sample_mass','heat_flow']:
         if (value in TGA.columns) and (value in baseline.columns):
@@ -27,71 +25,9 @@ def corr_TGA_Baseline(TGA: pd.DataFrame, file_baseline: str, plot: bool = False)
     
     return corr_data
 
-# def corr_TGA(TGA: pd.DataFrame, file_baseline: str, plot: bool = False) -> pd.DataFrame:
-#     "corrects TG data by subtracting buoyancy blank value of crucible"
-#     corr_data = TGA.copy()
-#     path_baseline = find_files(file_baseline, ".txt", PATHS["data"])[0]
-
-#     # opens the buoyancy blank value 'baseline' and substracts them from the original data
-#     try:
-#         reference_mass = pd.read_csv(
-#             path_baseline,
-#             delim_whitespace=True,
-#             decimal=",",
-#             names=["Index", "time", "sample_temp", "reference_temp", "sample_mass"],
-#             skiprows=13,
-#             skipfooter=11,
-#             converters={"sample_mass": lambda x: float(x.replace(",", "."))},
-#             engine="python",
-#             encoding="latin-1",
-#         ).drop(columns="Index")
-#         corr_data["sample_mass"] = corr_data["sample_mass"].subtract(
-#             reference_mass["sample_mass"]
-#         )
-#     except:
-#         logger.error(f'"{path_baseline}" was not found.')
-#         return None
-#     try:
-#         path_mW = find_files(file_baseline, "_mW.txt", PATHS["data"])[0]
-#         reference_heat_flow = pd.read_csv(
-#             path_mW,
-#             delim_whitespace=True,
-#             decimal=",",
-#             names=["Index", "time", "sample_temp", "reference_temp", "heat_flow"],
-#             skiprows=13,
-#             skipfooter=11,
-#             converters={"sample_mass": lambda x: float(x.replace(",", "."))},
-#             usecols=["heat_flow"],
-#             engine="python",
-#             encoding="latin-1",
-#         )
-#         corr_data["heat_flow"] = corr_data["heat_flow"].subtract(
-#             reference_heat_flow["heat_flow"]
-#         )
-#     except:
-#         pass
-
-#     # plotting of data, baseline and corrected value
-
-#     if plot:
-#         plot_corr(TGA, reference_mass, label = 'sample_mass')
-#         # fig, ax = plt.subplots()
-#         # x = TGA["sample_temp"]
-#         # y = TGA["sample_mass"]
-#         # ax.plot(x, y, label="data")
-#         # ax.plot(x, reference_mass["sample_mass"][: len(TGA)], label="baseline")
-#         # ax.plot(x, corr_data["sample_mass"], label="corrected")
-#         # ax.set_xlabel(f"{PARAMS['sample_temp']} {SEP} {UNITS['sample_temp']}")
-#         # ax.set_ylabel(f"{PARAMS['sample_mass']} {SEP} {UNITS['sample_mass']}")
-#         # ax.legend()
-#         # ax.set(title="TGA baseline correction")
-#         # plt.show()
-
-#     return corr_data
 
 
-def corr_FTIR(Sample, file_baseline: str, plot: bool | Iterable | Mapping=False):
-    from ..classes import Baseline
+def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_offs = 0):
     "corrects IR data by setting minimal adsorption to 0 "
     FTIR = Sample.ir
     # setting up output DataFrame
@@ -102,7 +38,6 @@ def corr_FTIR(Sample, file_baseline: str, plot: bool | Iterable | Mapping=False)
         ),
     )
     # opens FTIR data of the baseline
-    baselineData = Baseline(file_baseline)
     baseline = baselineData.ir
     gases = baselineData.info.gases
 
@@ -128,7 +63,7 @@ def corr_FTIR(Sample, file_baseline: str, plot: bool | Iterable | Mapping=False)
             try:
                 co2_baseline = np.array(baseline["CO2"])
 
-                # determining the peaks and valleys in the baseline as well as its amplitude
+                # determining the peaks and valleys in the baseline as well as their amplitude
                 peaks_baseline, properties_baseline = sp.signal.find_peaks(
                     co2_baseline, height=[None, None]
                 )
@@ -183,7 +118,7 @@ def corr_FTIR(Sample, file_baseline: str, plot: bool | Iterable | Mapping=False)
                         prominence=amplitude_baseline * 0.02,
                     )
                     c.append(len(peaks))
-                x_offs = np.where(c == np.min(c))[0][0] - 1
+                x_offs = np.where(c == np.min(c))[0][0] - 1 + co2_offs
 
                 co2_baseline = co2_baseline[
                     x_shift + x_offs : len(FTIR) + x_shift + x_offs

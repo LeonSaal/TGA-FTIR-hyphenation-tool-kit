@@ -1,45 +1,5 @@
-import re
-
 import numpy as np
-import pandas as pd
-
-from ..config import PATHS
-from .general import find_files
-
-
-def read_FTIR(file_name):
-    "read IR data from files"
-
-    files = find_files(file_name, ".csv", PATHS["data"])
-
-    # find the gases by looking at the suffix of the files
-    gases = []
-    paths = []
-    for file in files:
-        gases.append(file[file.rfind("_") + 1 : file.rfind(".")].upper())
-        paths.append(file)
-
-    if gases == []:
-        return
-    else:
-        # make DataFrame with the first gas, keeping the time column
-        data = pd.read_csv(
-            files[0], delimiter=";", decimal=",", names=["time", gases[0]]
-        )
-
-        # append the IR data from the other gases as new columns
-        for i in range(1, len(gases)):
-            data[gases[i]] = pd.read_csv(
-                files[i],
-                delimiter=";",
-                decimal=",",
-                names=["time", gases[i]],
-                usecols=[gases[i]],
-            )
-
-        # convert time column for minutes to seconds
-        data["time"] = (data["time"] * 60).astype(int)
-        return data.dropna()
+from chempy import Substance
 
 
 def FTIR_info(TG_IR):
@@ -50,36 +10,29 @@ def FTIR_info(TG_IR):
     for gas in TG_IR.info["gases"]:
         info[f"area_{gas}"] = np.sum(TG_IR.ir[gas])
 
-    if hasattr(TG_IR, "linreg"):
+    if TG_IR.linreg is not None:
         # calculate molar amount of calibrated gases
-        for gas in [gas for gas in TG_IR.info["gases"] if gas in TG_IR.linreg.index]:
+        gases = [gas for gas in TG_IR.info["gases"] if gas in TG_IR.linreg.index]
+        for gas in gases:
             info[f"mmol_{gas}"] = (
                 info[f"area_{gas}"] - TG_IR.linreg["intercept"][gas]
             ) / TG_IR.linreg["slope"][gas]
 
         # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters
         try:
-            elems = list(
-                set(
-                    re.sub(
-                        "\d",
-                        "",
-                        "".join([gas for gas in TG_IR.info["gases"] if len(gas) < 5]),
-                    )
-                )
-            )
-            for elem in elems:
+            substances = [Substance.from_formula(gas) for gas in gases]
+            elem_keys = Substance.composition_keys(substances)
+            for elem_key in elem_keys:
                 temp = 0
                 for gas in TG_IR.linreg.index:
-                    if elem in gas:
-                        if (n_elem:=re.search("(?<=" + elem + ")\d", gas)) != None:
-                            n = int(n_elem.group())
-                        else:
-                            n = 1
+                    Gas = Substance.from_formula(gas)
+                    if elem_key in Gas.composition_keys:
+                        n = Gas.composition[elem_key]
                         temp += n * info[f"mmol_{gas}"]
                 if temp != 0:
-                    info[f"mmol_{elem}"] = temp
+                    info[f"mmol_{elem_key}"] = temp
         except:
             pass
+
 
     return info

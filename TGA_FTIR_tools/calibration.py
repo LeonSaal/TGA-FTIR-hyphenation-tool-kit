@@ -5,12 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy as sp
-from molmass import Formula
+from chempy import Substance
 from sklearn import linear_model
 
 from .classes import Sample
-from .config import (COUPLING, MERGE_CELLS, PARAMS, PATHS, SAVGOL,
-                     SEP, UNITS)
+from .config import COUPLING, MERGE_CELLS, PARAMS, PATHS, SAVGOL, SEP, UNITS
 from .plotting import get_label
 
 logger = logging.getLogger(__name__)
@@ -151,7 +150,7 @@ def calibrate(plot=False, mode="load", method="max"):
 
     if mode == "load":
         # check if calibration folder is present
-        if os.path.exists(PATHS["calibration"]) == False:
+        if not PATHS["calibration"].exists():
             logger.warn(
                 "No calibration data found. To obtain quantitative IR data supply an 'Calibration' folder in the home directory containing cali.xlsx or run TGA_FTIR_tools.calibrate(mode='recalibrate')!"
             )
@@ -177,9 +176,9 @@ def calibrate(plot=False, mode="load", method="max"):
     # new calibration
     elif mode == "recalibrate":
         # check if calibration folder is present
-        if os.path.exists(PATHS["calibration"]) == False:
+        if not PATHS["calibration"].exists():
             # make directory
-            os.makedirs(PATHS["calibration"])
+            PATHS["calibration"].mkdir()
         os.chdir(PATHS["calibration"])
 
         # setting up output DataFrames
@@ -313,7 +312,7 @@ def calibrate(plot=False, mode="load", method="max"):
 
         # regression (method 'max')
         for gas in gases:
-            x_cali.update(x_cali[gas] / (Formula(gas).mass))
+            x_cali.update(x_cali[gas] / (Substance.from_formula(gas).mass))
             x = x_cali[gas].dropna(axis=0).astype(float)
             y = y_cali[gas].dropna(axis=0).astype(float)
             regression = pd.DataFrame(
@@ -411,7 +410,7 @@ def calibrate(plot=False, mode="load", method="max"):
                 linreg.loc[[gas]] = pd.DataFrame(
                     [
                         [
-                            1 / mlr.coef_[i] * Formula(gas).mass,
+                            1 / mlr.coef_[i] * Substance(gas).mass,
                             0,
                             np.nan,
                             np.nan,
@@ -429,15 +428,15 @@ def calibrate(plot=False, mode="load", method="max"):
                 step_sums = [0] * len(data.index.levels[0])
                 for gas in gases:
                     step_sums += Y_cali.loc[(slice(None), step), gas].values / (
-                        linreg.loc[gas, "slope"] * Formula(gas).mass
+                        linreg.loc[gas, "slope"] * Substance(gas).mass
                     )
                 for gas in gases:
                     step_gas = Y_cali.loc[(slice(None), step), gas].values / (
-                        linreg.loc[gas, "slope"] * Formula(gas).mass
+                        linreg.loc[gas, "slope"] * Substance(gas).mass
                     )
                     x_cali.loc[(slice(None), step), gas] = (
                         X_cali[(slice(None), step)].values * step_gas / step_sums
-                    ) / Formula(gas).mass
+                    ) / Substance(gas).mass
             y_cali = Y_cali
 
             # from new x_cali and y_cali a linear regression is calculated
@@ -458,7 +457,7 @@ def calibrate(plot=False, mode="load", method="max"):
         logger.info("Calibration finished.")
         # saving of
         try:
-            path = os.path.join(PATHS["calibration"], "cali.xlsx")
+            path = PATHS["calibration"]/ "cali.xlsx"
             with pd.ExcelWriter(path) as writer:
                 linreg.to_excel(writer, sheet_name="linreg")
                 x_cali.to_excel(writer, sheet_name=f"x in {UNITS['molar_amount']}")

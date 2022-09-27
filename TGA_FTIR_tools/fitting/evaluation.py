@@ -280,20 +280,17 @@ def bar_plot_results(
     plt.show()
 
     if save:
-        path_plots_eval = os.path.join(PATHS["plots"], "Evaluation")
-        if os.path.exists(path_plots_eval) == False:
+        path_plots_eval = PATHS["plots"]/ "Evaluation"
+        if not path_plots_eval.exists():
             os.makedirs(path_plots_eval)
         sample_names = "".join(
             [x if (x.isalnum() or x in "._- ") else "" for x in str(samples)]
         )  # to catch invalide sample names
         # check path length and if necessary shorten file name by list of samples
-        path_save = os.path.join(
-            path_plots_eval, f"{time()}_{sample_names}_by_{group_by}.png"
-        )
+        path_save = path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png"
         if len(path_save) > 260:
             sample_names = sample_names[: (len(sample_names) - (len(path_save) - 259))]
-        fig.savefig(
-            os.path.join(path_plots_eval, f"{time()}_{sample_names}_by_{group_by}.png"),
+        fig.savefig(path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png",
             
         )
 
