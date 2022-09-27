@@ -403,7 +403,8 @@ class Sample:
                     )
                 for key in ["tga", "ir"]:
                     try:
-                        self.__dict__[key].to_excel(writer, sheet_name=key)
+                        if self.__dict__[key] is not None:
+                            self.__dict__[key].to_excel(writer, sheet_name=key)
                     except PermissionError:
                         logger.warn(
                             f"Unable to write on {path=} as the file is opened by another program."
