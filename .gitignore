@@ -10,3 +10,5 @@ Output/
 Calibration/
 Fitting/
 *.pyc
+
+TGA_FTIR_tools/settings/*

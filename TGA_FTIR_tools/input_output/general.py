@@ -9,6 +9,7 @@ from typing import List, Mapping
 import pandas as pd
 
 from ..config import COUPLING, PATH_SET, PATHS
+from ..links import download_supplementary
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,11 @@ def find_files_re(file: str, suffix: str, parent_dir: str) -> List[str]:
 
 
 def read_profile_json(profile: str) -> Mapping:
-    path = PATH_SET/ f"{profile}.json"
+    filename = f"{profile}.json"
+    path = PATH_SET/ filename
+    if not path.exists():
+        download_supplementary(directory='import_profiles', filename=filename, dst=path)
+
     if not path.exists():
         logger.error(f"Cannot find '{profile}.json' in {PATH_SET!r}")
     else:

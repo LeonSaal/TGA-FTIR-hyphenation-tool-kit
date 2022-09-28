@@ -6,9 +6,7 @@ import os
 import shutil as sh
 from pathlib import Path
 
-import requests
-
-from .links import LINKS
+from .links import download_supplementary
 
 fmt = "[{levelname:^7s}] {module:}.{funcName}: {message}"
 logging.basicConfig(level=logging.INFO, format=fmt, style="{")
@@ -27,15 +25,10 @@ PATHS = {name: PATH_SET/ file for name, file in config.items()}
 
 for name, path in PATHS.items():
     if not path.exists():
-        url = f"{LINKS.SETTINGS}/{config[name]}"
-        resp = requests.get(url)
-        if resp.ok:
-            dst = PATH_SET/ config[name]
-            with open(dst, "wb") as file:
-                file.write(resp.content)
-        else:
-            logger.err(f"Unable to download '{url}'.")
-
+        dst = PATH_SET/ config[name]
+        filename = config[name]
+        download_supplementary(directory='TGA_FTIR_tools/settings',filename=filename, dst=dst)
+            
 if not os.path.exists(config["ini"]):
     if PATHS["ini"].exists():
         sh.copy(PATHS["ini"], config["ini"])
