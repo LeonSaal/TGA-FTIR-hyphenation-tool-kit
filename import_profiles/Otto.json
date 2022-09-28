@@ -1,0 +1,54 @@
+{
+    "ir": {
+        "spec": "ThermoFisher",
+        "ext": "_(?P<suffix>.+).csv",
+        "kwargs": {
+            "delimiter": ";",
+            "decimal": ",",
+            "names": [
+                "time",
+                "suffix"
+            ],
+            "converters": {
+                "time": "lambda x: int(60*float(x.replace(',','.')))"
+            }
+        }
+    },
+    "tga": {
+        "spec": "MT TGA/DSC 3+",
+        "ext": "_?(?P<suffix>.*).txt",
+        "kwargs": {
+            "skiprows": 13,
+            "skipfooter": 11,
+            "delim_whitespace": 1,
+            "decimal": ",",
+            "converters": {
+                "sample_mass": "lambda x: float(x.replace(',','.'))"
+            },
+            "engine": "python",
+            "encoding": "latin-1",
+            "names": [
+                "Index",
+                "time",
+                "sample_temp",
+                "reference_temp",
+                "suffix"
+            ],
+            "usecols": [
+                "time",
+                "sample_temp",
+                "reference_temp",
+                "suffix"
+            ]
+        },
+        "map_suffix": {
+            "mW": "heat_flow",
+            "": "sample_mass"
+        },
+        "info_pattern": {
+            "method": "Methode:\\n\\s*(?P<method>\\S+)",
+            "date": "Durchgeführt am(?P<date>\\d{2}\\.\\d{2}\\.\\d{4})",
+            "time": "Durchgeführt am.+(?P<time>\\d{2}:\\d{2}:\\d{2})"
+        }
+    }
+}
