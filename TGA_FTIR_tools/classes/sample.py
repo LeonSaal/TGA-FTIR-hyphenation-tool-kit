@@ -140,6 +140,11 @@ class Sample:
         return f'Sample({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'
 
     def corr(self, reference: NoneType| str=None, plot: Mapping|bool=False, update =False ,**kwargs):
+        "correction of TG and IR data"
+        if self.ir is None and self.tga is None:
+            logger.error('There is no data to correct.')
+            return
+
         if plot == True:
             plot = {}
             plot["ir"] = True
@@ -150,8 +155,6 @@ class Sample:
             plot["ir"] = False
             plot["tga"] = False
             plot["dry_weight"] = False
-
-        "correction of TG and IR data"
 
         if "reference" in self.info and not update:
             logger.warning(

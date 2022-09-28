@@ -1,3 +1,6 @@
+## 2022-09-28
+- improved download of supplementary data
+
 ## 2022-09-26
 - added changelog
 - added Sample.raw to access raw-data
