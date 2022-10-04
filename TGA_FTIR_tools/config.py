@@ -40,18 +40,19 @@ cfg.read(config["ini"])
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
-if PATHS["home"] == "":
+
+if PATHS["home"] == Path() or not PATHS["home"].exists():
     cwd = os.getcwd().replace(os.sep, os.altsep)
-    logger.info(f"No home path was supplied in {config['ini']}. home was set to '{cwd}'")
+    logger.info(f"No valid home path was supplied in {config['ini']!r}. home was set to {cwd!r}")
     cfg["paths"]["home"] = cwd
-if PATHS["data"] == "" or not PATHS["data"].exists():
-    logger.warn(f"No valid data path was supplied in '{config['ini']}'.")
+if PATHS["data"] == Path() or not PATHS["data"].exists():
+    logger.warn(f"No valid data path was supplied in {config['ini']!r}.")
     cfg["paths"]["data"] = input("Supply directory of Data:").replace(
         os.sep, os.altsep
     )
     if not os.path.exists(cfg["paths"]["data"]):
         logger.error(
-            "Supplied directory does not exist. Revise path in 'settings.ini' prior to continue."
+            f"Supplied directory does not exist. Revise path in {config['ini']!r} prior to continue."
         )
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})

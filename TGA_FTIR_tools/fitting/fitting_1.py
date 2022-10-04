@@ -300,7 +300,7 @@ def fitting(
             error.text(
                 0,
                 abs_max,
-                f"        SQERR: {sumsqerr[gas][TG_IR.info['name']]:.2e} ({100 * sumsqerr[gas][TG_IR.info['name']] / peaks[ir_values][gas]:.2f}%)",
+                f"        SQERR: {sumsqerr[gas][TG_IR.name]:.2e} ({100 * sumsqerr[gas][TG_IR.name] / peaks[ir_values][gas]:.2f}%)",
             )  # percentage SQERR
             error.plot(x, diff)
             error.hlines(0, min(x), max(x), ls="dashed")

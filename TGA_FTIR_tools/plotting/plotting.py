@@ -106,7 +106,7 @@ def plot_TGA(
         path_plots_tga = PATHS["plots"]/ "TGA"
         if path_plots_tga.exists() == False:
             path_plots_tga.mkdir()
-        fig.savefig(path_plots_tga/ f"{sample.info['name']}_TG_{y_axis}.png")
+        fig.savefig(path_plots_tga/ f"{sample.name}_TG_{y_axis}.png")
 
 
 def plot_FTIR(
@@ -233,7 +233,7 @@ def plot_FTIR(
         if not path_plots_ir.exists():
             path_plots_ir.mkdir()
             
-        fig.savefig(path_plots_ir/ f"{sample.info['name']}_IR_{y_axis}.png")
+        fig.savefig(path_plots_ir/ f"{sample.name}_IR_{y_axis}.png")
 
 
 def FTIR_to_DTG(

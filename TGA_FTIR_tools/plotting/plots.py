@@ -55,7 +55,7 @@ def plots(
                 calibrated.update(set(TG_IR.linreg.index))
             except AttributeError:
                 if y_axis == "rel":
-                    logger.warn(f"{gas} is not calibrated for {TG_IR.info['name']}")
+                    logger.warn(f"{gas} is not calibrated for {TG_IR.name}")
 
         if y_axis == "rel":
             if calibrated == set():
