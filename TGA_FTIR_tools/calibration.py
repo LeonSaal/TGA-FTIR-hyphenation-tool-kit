@@ -9,7 +9,7 @@ from chempy import Substance
 from sklearn import linear_model
 
 from .classes import Sample
-from .config import COUPLING, MERGE_CELLS, PARAMS, PATHS, SAVGOL, SEP, UNITS
+from .config import COUPLING, MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
 from .plotting import get_label
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def integrate_peaks(
         fig.subplots_adjust(right=0.8)
         graph.append(ax)
 
-        graph[0].set_xlabel(f'{PARAMS["time"]} {SEP} { UNITS["time"]}')
+        graph[0].set_xlabel(f'{get_label("time")} {SEP} { UNITS["time"]}')
         graph[0].set_ylabel(f'{get_label(gases[0])} {SEP} {UNITS["ir"]}')
         graph[0].yaxis.label.set_color(colors[0])
         graph[0].plot(x, FTIR_data[gases[0]])

@@ -3,7 +3,8 @@ import matplotlib.ticker as ticker
 import numpy as np
 import scipy as sp
 
-from ..config import PARAMS, SAVGOL, SEP, UNITS
+from ..config import SAVGOL, SEP, UNITS
+from ..plotting import get_label
 
 
 def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
@@ -65,8 +66,8 @@ def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
             f'sample mass: {TGA_data["sample_mass"][0]:.2f} {UNITS["sample_mass"]}',
             horizontalalignment="center",
         )
-        ax.set_xlabel(f'{PARAMS["sample_temp"]} {SEP} {UNITS["sample_temp"]}')
-        ax.set_ylabel(f'{PARAMS["sample_mass"]} {SEP} %')
+        ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
+        ax.set_ylabel(f'{get_label("sample_mass")} {SEP} %')
         ax.xaxis.set_minor_locator(
             ticker.AutoMinorLocator()
         )  # switch on minor ticks on each axis
@@ -86,9 +87,9 @@ def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
             x[step_end],
             x[step_start],
         )
-        ax.set_xlabel(f'{PARAMS["sample_temp"]} {SEP} {UNITS["sample_temp"]}')
+        ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
         ax.set_ylabel(
-            f'{PARAMS["dtg"]} { SEP} {UNITS["sample_mass"]} ${UNITS["time"]}^{{-1}}$'
+            f'{get_label("dtg")} { SEP} {UNITS["sample_mass"]} ${UNITS["time"]}^{{-1}}$'
         )
         ax.xaxis.set_minor_locator(
             ticker.AutoMinorLocator()

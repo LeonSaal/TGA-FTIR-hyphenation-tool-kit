@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 
-from ..config import (BOUNDS, COUPLING, MERGE_CELLS, PARAMS, PATHS, SEP, UNITS,
-                      cfg)
+from ..config import BOUNDS, COUPLING, MERGE_CELLS, PATHS, SEP, UNITS, cfg
 from ..input_output.general import time
 from ..plotting import get_label
 
@@ -275,7 +274,7 @@ def fitting(
         if plot:
             fitting.legend()
             fitting.set_xlabel(
-                f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$"
+                f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$"
             )
             if y_axis == "orig":
                 fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ir']}$")
@@ -304,7 +303,7 @@ def fitting(
             )  # percentage SQERR
             error.plot(x, diff)
             error.hlines(0, min(x), max(x), ls="dashed")
-            error.set_xlabel(f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$")
+            error.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
             error.set_ylabel("error")
             error.set_ylim(-abs_max, abs_max)
 

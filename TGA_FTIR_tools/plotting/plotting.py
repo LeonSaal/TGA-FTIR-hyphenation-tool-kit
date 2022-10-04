@@ -8,7 +8,7 @@ import pandas as pd
 import scipy as sp
 from chempy import Substance
 
-from ..config import MERGE_CELLS, PARAMS, PATHS, SAVGOL, SEP, UNITS
+from ..config import MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
 from .utils import get_label, ylim_auto
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
@@ -47,19 +47,19 @@ def plot_TGA(
     if y_axis == "rel":
         y = (sample.tga[plot] / sample.info[sample.info["reference_mass"]]) * 100
         yDTG = sample.tga["dtg"] * 60 / sample.info[sample.info["reference_mass"]] * 100
-        ylabelDTG = rf'{PARAMS["dtg"]} {SEP} $ \%\,min^{{-1}}$'
+        ylabelDTG = rf'{get_label("dtg")} {SEP} $ \%\,min^{{-1}}$'
         if plot == "sample_mass":
-            ylabel = f"{PARAMS['sample_mass']} {SEP} $\\%$"
+            ylabel = f"{get_label('sample_mass')} {SEP} $\\%$"
         elif plot == "heat_flow":
-            ylabel = f'{PARAMS["heat_flow"]} {SEP} $ {UNITS["heat_flow"]}\,{UNITS["sample_mass"]}^{{-1}}$'
+            ylabel = f'{get_label("heat_flow")} {SEP} $ {UNITS["heat_flow"]}\,{UNITS["sample_mass"]}^{{-1}}$'
 
     elif y_axis == "orig":
         y = sample.tga[plot]
         yDTG = sample.tga["dtg"] * 60  # turning dtg from mg/s in mg/min
-        ylabelDTG = f"{PARAMS['dtg']} {SEP} ${UNITS['sample_mass']}\\,min^{{-1}}$"
-        ylabel = f"{PARAMS[plot]} {SEP} ${UNITS[plot]}$"
+        ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS['sample_mass']}\\,min^{{-1}}$"
+        ylabel = f"{get_label(plot)} {SEP} ${UNITS[plot]}$"
 
-    TGA.set_xlabel(f"{PARAMS[x_axis.lower()]} {SEP} ${UNITS[x_axis.lower()]}$")
+    TGA.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
 
     # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis == "time":
@@ -68,12 +68,12 @@ def plot_TGA(
         temp.plot(
             x,
             sample.tga["sample_temp"],
-            label=f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$",
+            label=f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$",
             ls="dashed",
             color="black",
         )
         temp.spines["right"].set_position(("axes", 1.15))
-        temp.set_ylabel(f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$")
+        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if legend:
             temp.legend(loc=1)
 
@@ -181,7 +181,7 @@ def plot_FTIR(
     fig, g0 = plt.subplots()
     fig.subplots_adjust(right=0.8)
     graphs.append(g0)
-    graphs[0].set_xlabel(f"{PARAMS[x_axis.lower()]} {SEP} ${UNITS[x_axis.lower()]}$")
+    graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
 
     if x_axis == "time":
         x = x / 60
@@ -322,22 +322,22 @@ def FTIR_to_DTG(
 
     error = fig.add_subplot(gs[-1, 0], sharex=stack)
 
-    stack.set_xlabel(f"{PARAMS[x_axis.lower()]} {SEP} ${UNITS[x_axis.lower()]}$")
-    error.set_xlabel(f"{PARAMS[x_axis.lower()]} {SEP} ${UNITS[x_axis.lower()]}$")
+    stack.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    error.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
 
     # actual plotting
     if x_axis == "time":
         x = x / 60
         temp = stack.twinx()
         temp.plot(x, data["sample_temp"], ls="dashed", color="black", label="T")
-        temp.set_ylabel(f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$")
+        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if legend:
             temp.legend()
 
     stack.stackplot(x, y, labels=[get_label(gas) for gas in gases])
-    stack.plot(x, DTG, label=PARAMS["dtg"])
+    stack.plot(x, DTG, label=get_label("dtg"))
     stack.set_ylabel(
-        f"{PARAMS['dtg']}, {', '.join([get_label(gas) for gas in gases])} {SEP} ${UNITS['sample_mass']}\\,{UNITS['time']}^{{-1}}$"
+        f"{get_label('dtg')}, {', '.join([get_label(gas) for gas in gases])} {SEP} ${UNITS['sample_mass']}\\,{UNITS['time']}^{{-1}}$"
     )
 
 
@@ -348,7 +348,7 @@ def FTIR_to_DTG(
     # plot error of reconstruction
     error.plot(x, DTG - cumul)
     error.hlines(0, min(x), max(x), ls="dashed")
-    error.set_ylabel(f"$\\Delta$ {PARAMS['dtg']}")
+    error.set_ylabel(f"$\\Delta$ {get_label('dtg')}")
     stack.set_xlim(xlim)
     plt.show()
 

@@ -68,8 +68,6 @@ for key, val in zip(keys, units):
 
 SEP = UNITS["sep"]
 
-PARAMS = cfg["parameters"]
-
 PLOTTING = cfg["plotting"]
 
 STYLE = cfg["plotting"]["mpl-style"]

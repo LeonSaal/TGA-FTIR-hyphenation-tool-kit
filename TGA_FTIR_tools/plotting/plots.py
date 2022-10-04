@@ -6,7 +6,7 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from ..config import PARAMS, PATHS, SEP, UNITS
+from ..config import PATHS, SEP, UNITS
 from ..input_output.general import time
 from .utils import get_label, ylim_auto
 
@@ -64,15 +64,15 @@ def plots(
                 )
                 return
     fig, ax = plt.subplots()
-    ax.set_xlabel(f"{PARAMS[x_axis.lower()]} {SEP} ${UNITS[x_axis.lower()]}$")
+    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
     if plot != "IR":
         if y_axis == "orig":
-            ax.set_ylabel(f"{PARAMS[ylabel]} {SEP} ${UNITS[ylabel]}$")
+            ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS[ylabel]}$")
         elif y_axis == "rel":
             if plot == "DTG":
-                ax.set_ylabel(f"{PARAMS[ylabel]} {SEP} $\\%\\,min^{{-1}}$")
+                ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
             else:
-                ax.set_ylabel(f"{PARAMS[ylabel]} {SEP} $\\%$")
+                ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
     elif plot == "IR":
         if y_axis == "orig":
             ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS[ylabel]}$")

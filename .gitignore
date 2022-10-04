@@ -11,4 +11,5 @@ Calibration/
 Fitting/
 *.pyc
 
-TGA_FTIR_tools/settings/*
+TGA_FTIR_tools/settings/*.json
+TGA_FTIR_tools/settings/*.xlsx

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from ..config import UNITS
 import numpy as np
-from ..config import PARAMS, SEP
+from ..config import  SEP
 from .plotting import get_label
 import matplotlib.ticker as ticker
 from ..utils import gaussian, multi_gauss
@@ -51,7 +51,7 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
             fitting.plot(x, y, linestyle="dashed", zorder=i)  #
 
         fitting.legend()
-        fitting.set_xlabel(f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$")
+        fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if y_axis == "orig":
             fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ir']}$")
         elif y_axis == "rel":
@@ -80,7 +80,7 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
         diff = y_data - yall
         error.plot(x, diff)
         error.hlines(0, min(x), max(x), ls="dashed")
-        error.set_xlabel(f"{PARAMS['sample_temp']} {SEP} ${UNITS['sample_temp']}$")
+        error.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         error.set_ylabel("error")
         error.set_ylim(-abs_max, abs_max)
 
