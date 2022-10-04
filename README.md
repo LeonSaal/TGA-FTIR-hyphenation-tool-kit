@@ -29,12 +29,26 @@ Core classes of the package are ``Sample`` and ``Worklist``, where a ``Worklist`
 
 Class attributes 
 
-    info = None     contains sample information e.g. name
+    name            name of Sample, default is filename used for initialization
+    alias           alias of Sample, defaults to Sample.name
+    info = None     contains sample information e.g. initial_mass
     tga = None      contains tga data
     ir = None       contains ir data
     linreg = None   contains calibration data
+    raw             conatins raw data from first initialization, remains unchanged after e.g. correction. Is of type Sample
+    
+    ---
+    after correction:
+    baseline        contains data of baseline used for correction. Is of type Baseline which inherits from Sample
 
 ``wl = Worklist([obj], name = <WORKLIST_NAME>)``
+
+Class attributes 
+
+    samples         List of Sample objects
+    name            name of Worklist
+    
+For overview on Worklist use print(Worklist).
 
 
 ---
