@@ -277,7 +277,7 @@ def gui():
                         save_as=True,
                     )
                     if file:
-                        with open(file, "w") as configfile:
+                        with open(file, "w", encoding='latin-1') as configfile:
                             cfg.write(configfile)
             # CALIBRATION
             if event.endswith(lang.cali):

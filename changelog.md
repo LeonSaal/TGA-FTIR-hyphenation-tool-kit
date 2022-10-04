@@ -1,6 +1,7 @@
 ## 2022-10-04
 - fixed bug introduced by the use of pathlib.Path
 - cleaned up settings.ini
+- fixed encoding error
 
 ## 2022-09-28
 - improved download of supplementary data

@@ -57,7 +57,7 @@ if PATHS["data"] == Path() or not PATHS["data"].exists():
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
-with open(config["ini"], "w") as configfile:
+with open(config["ini"], "w", encoding='latin-1') as configfile:
     cfg.write(configfile)
 
 UNITS = cfg["units"]

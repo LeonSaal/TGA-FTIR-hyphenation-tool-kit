@@ -22,7 +22,7 @@ def TGA_info(file, TGA, profile=COUPLING["profile"]):
     "extract TG info e.g. measurement time, initial mass... from TG file"
     # open file from TGA in given directory and make a DataFrame from it
     path = find_files_re(file, profile["ext"], PATHS["data"])[0]
-    with open(path) as f:
+    with open(path, encoding='latin-1') as f:
         text = f.readlines()
 
     text = "".join(text)
