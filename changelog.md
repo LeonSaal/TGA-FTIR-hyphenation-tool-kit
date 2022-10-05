@@ -1,5 +1,6 @@
 ## 2022-10-05
 - minor bugfixes regarding Worklist.save and Sample.fit
+- updated README
 
 ## 2022-10-04
 - fixed bug introduced by the use of pathlib.Path

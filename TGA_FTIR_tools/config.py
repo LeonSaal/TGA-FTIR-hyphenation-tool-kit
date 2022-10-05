@@ -14,8 +14,9 @@ logging.basicConfig(level=logging.INFO, format=fmt, style="{")
 logger = logging.getLogger(__name__)
 
 
-names = ["ini", "import_profiles", "fitting_params"]
-config_files = ["settings.ini", "TGA_import_profiles.xlsx", "Fitting_parameter.xlsx"]
+
+names = ["ini", "fitting_params"]
+config_files = ["settings.ini", "Fitting_parameter.xlsx"]
 config = dict(zip(names, config_files))
 
 PATH_DIR = Path(os.path.dirname(__file__))
@@ -84,3 +85,6 @@ IR_NOISE = cfg["correction"]
 
 MERGE_CELLS = False
 
+def fit_references():
+    os.startfile(PATHS['fitting_params'])
+    return PATHS['fitting_params']
