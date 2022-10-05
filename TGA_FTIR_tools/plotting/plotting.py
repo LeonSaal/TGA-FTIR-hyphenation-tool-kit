@@ -104,7 +104,7 @@ def plot_TGA(
 
     if save:
         path_plots_tga = PATHS["plots"]/ "TGA"
-        if path_plots_tga.exists() == False:
+        if not path_plots_tga.exists():
             path_plots_tga.mkdir()
         fig.savefig(path_plots_tga/ f"{sample.name}_TG_{y_axis}.png")
 

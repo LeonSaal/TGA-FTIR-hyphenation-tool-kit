@@ -109,15 +109,15 @@ class Worklist:
 
     def save(self, fname:str=None, **kwargs) -> None:
         path_output = PATHS["output"]
-        if not path_output.exists(path_output) :
+        if not path_output.exists() :
             os.makedirs(path_output)
         if not fname:
             fname= self.name
         path = path_output/ f'{fname}.wkl'
         with open(path, "wb") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-        for sample in self.samples:
-            sample.save(**kwargs)
+        # for sample in self.samples:
+        #     sample.save(**kwargs)
 
     def load(self, fname:str) -> None:
         with open(PATHS["output"]/ f'{fname}.wkl', "rb") as inp:

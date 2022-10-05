@@ -110,7 +110,7 @@ class Sample:
 
             # assigning alias
             if not self.alias:
-                if "alias" not in (log := samplelog(create=False)):
+                if "alias" in (log := samplelog(create=False)) and self.name in log.index:
                     self.alias = log.loc[self.name, "alias"]
                 else:
                     self.alias = self.name
@@ -342,7 +342,7 @@ class Sample:
 
         # setting up output directory
         if save:
-            path = PATHS["fitting"]/ f'{general.time()}{reference}_{self.info["name"]}',
+            path = PATHS["fitting"]/ f'{general.time()}{reference}_{self.info["name"]}'
             os.makedirs(path)
             os.chdir(path)
 
