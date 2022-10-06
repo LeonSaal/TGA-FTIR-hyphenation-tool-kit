@@ -1,3 +1,7 @@
+## 2022-10-06
+- update README
+- update Worklist.\_\_add__()
+
 ## 2022-10-05
 - minor bugfixes regarding Worklist.save and Sample.fit
 - updated README

@@ -70,7 +70,8 @@ Class attributes:
     samples         List of Sample objects
     name            name of Worklist
     
-For overview on Worklist use print(Worklist).
+For overview on ``Worklist`` use ``print(Worklist)``.
+Worklists can be added to yield a new ``Worklist`` with combined samples. To modify inplace you can `Worklist.append(Sample | Worklist)`
 
 
 ---

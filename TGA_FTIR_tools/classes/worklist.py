@@ -23,7 +23,9 @@ class Worklist:
 
     def __add__(self, other):
         if isinstance(other, Sample):
-            return Worklist([other] + self.samples)
+            return Worklist(self.samples + [other], name = f'{self.name}+{other.name}')
+        elif isinstance(other, Worklist):
+            return Worklist(self.samples + other.samples, name = f'{self.name}+{other.name}')    
         else:
             logger.warn("Can only add samples to Worklist")
 
@@ -66,8 +68,11 @@ class Worklist:
             name = key,
         )
 
-    def append(self, other: Sample) -> None:
-        self.samples.append(other)
+    def append(self, other) -> None:
+        if isinstance(other, Worklist):
+            self.samples.extend(other.samples)
+        if isinstance(other, Sample):
+            self.samples.append(other)
 
     def fit(self, reference: str, **kwargs) -> pd.DataFrame:
         fits(self, reference, **kwargs)
