@@ -1,3 +1,12 @@
+## 2022-10-13
+- fixed bug in linked groups
+- changed output path of worklist.fit to ~/worklist.name
+- fixed bug in plotting of fit
+- improved plotting overall
+- added reference to sample.\_\_repr__()
+- refactoring of mass_step
+- added plot option "mass_steps"
+
 ## 2022-10-06
 - update README
 - update Worklist.\_\_add__()

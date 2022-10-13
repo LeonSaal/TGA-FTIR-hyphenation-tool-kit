@@ -85,6 +85,8 @@ IR_NOISE = cfg["correction"]
 
 MERGE_CELLS = False
 
-def fit_references():
-    os.startfile(PATHS['fitting_params'])
-    return PATHS['fitting_params']
+def fit_references(open=False):
+    path = PATHS['fitting_params']
+    if open:
+        os.startfile(path)
+    return path

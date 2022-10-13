@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
-from ..config import UNITS
-import numpy as np
-from ..config import  SEP
-from .plotting import get_label
 import matplotlib.ticker as ticker
-from ..utils import gaussian, multi_gauss
+import numpy as np
 
+from ..config import SEP, UNITS
+from ..utils import gaussian, multi_gauss
+from .plotting import get_label, make_title
 
 
 def plot_fit(sample, title=False, y_axis="orig", **kwargs):
@@ -21,16 +20,14 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
         gs = fig.add_gridspec(8, 1)
         fitting = fig.add_subplot(gs[:-1, 0])
         if title:
-            fitting.set_title(
-                f"{sample.alias}, {sample.info['reference_mass']} = {sample.info[sample.info['reference_mass']]:.2f} ${UNITS['sample_mass']}$"
-            )
+            fitting.set_title(make_title(sample))
         error = fig.add_subplot(gs[-1, 0], sharex=fitting)
         # fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
 
         # plotting of fit
         # x, data = sample.ir.sample_temp, sample.ir[gas]
 
-        num_curves = fit_data.index.size
+        num_curves = params.index.size
         fitting.plot(
             sample.ir.sample_temp,
             sample.ir[gas],
@@ -61,7 +58,7 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
 
         # mark center on x-axis
         fitting.scatter(
-            fit_data.center,
+            params.center,
             np.zeros(num_curves),
             marker=7,
             color="k",

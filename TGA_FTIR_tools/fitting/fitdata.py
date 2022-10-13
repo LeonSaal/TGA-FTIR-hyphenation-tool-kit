@@ -48,6 +48,8 @@ class FitData:
         return self.ir.sample_temp, self.ir[gas]
 
     def get_bounds(self, gas, sample, predef_tol):
+        param_keys = {'c': 'center', 'w':'hwhm', 'h':'height'}
+
         for key in ["0", "min", "max"]:
             self.presets[gas].loc[:, f"height_{key}"] = (
                 self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ir[gas]))
@@ -61,17 +63,12 @@ class FitData:
                     .values[0]
                 )
                 for letter in df.loc[group, gas]:
-                    if letter == "c":
-                        param = "center"
-                    elif letter == "w":
-                        param = "hwhm"
-                    elif letter == "h":
-                        param = "height"
+                    param = param_keys[letter]
 
                     if param == "height":
                         if self.linreg is not None:
                             preset = (
-                                self.peaks.loc[(group, gas), param]
+                                self.peaks.loc[(group, other), param]
                                 / self.linreg.slope[other]
                                 * self.linreg.slope[gas]
                             )

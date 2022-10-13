@@ -3,7 +3,7 @@ import pandas as pd
 from chempy import Substance
 from pyparsing.exceptions import ParseException
 
-from ..config import LABELS
+from ..config import LABELS, UNITS
 
 
 def ylim_auto(x, y, xlim):
@@ -34,3 +34,13 @@ def get_label(key):
         return f'${substance.latex_name}$'
     except ParseException:
         return str(key)
+
+def make_title(sample):
+    alias = sample.alias
+    type_ref_mass = sample.info['reference_mass']
+    reference_mass = sample.info[type_ref_mass]
+    label_ref_mass = get_label(type_ref_mass)
+    unit = UNITS['sample_mass']
+    
+    return f"{alias}, {label_ref_mass} = {reference_mass:.2f} ${unit}$"
+            

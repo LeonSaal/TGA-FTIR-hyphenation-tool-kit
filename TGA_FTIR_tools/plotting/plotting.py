@@ -9,7 +9,7 @@ import scipy as sp
 from chempy import Substance
 
 from ..config import MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
-from .utils import get_label, ylim_auto
+from .utils import get_label, make_title, ylim_auto
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER =int( SAVGOL.getfloat("POLYORDER"))
@@ -96,9 +96,7 @@ def plot_TGA(
     DTG.set_yticks(np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(TGA.get_yticks())))
     TGA.set_yticks(np.linspace(TGA.get_yticks()[0], TGA.get_yticks()[-1], len(DTG.get_yticks())))
     if title == True:
-        TGA.set_title(
-            f"{sample.info['alias']}, {sample.info['reference_mass']} = {sample.info[sample.info['reference_mass']]:.2f} ${UNITS['sample_mass']}$"
-        )
+        TGA.set_title(make_title(sample))
 
     plt.show()
 
@@ -221,9 +219,7 @@ def plot_FTIR(
 
 
     if title == True:
-        graphs[0].set_title(
-            f"{sample.info['alias']}, {sample.info['reference_mass']}: {sample.info[sample.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$"
-        )
+        graphs[0].set_title(make_title(sample))
 
     graphs[0].set_xlim(xlim)
     plt.show()
@@ -316,9 +312,7 @@ def FTIR_to_DTG(
     stack = fig.add_subplot(gs[:-1, 0])
 
     if title == True:
-        stack.set_title(
-            f"{sample.info['alias']}, {sample.info['reference_mass']} = {sample.info[sample.info['reference_mass']]:.2f} ${UNITS['sample_mass']}$"
-        )
+        stack.set_title(make_title(sample))
 
     error = fig.add_subplot(gs[-1, 0], sharex=stack)
 

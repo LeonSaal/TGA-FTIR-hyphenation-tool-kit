@@ -75,8 +75,8 @@ class Worklist:
             self.samples.append(other)
 
     def fit(self, reference: str, **kwargs) -> pd.DataFrame:
-        fits(self, reference, **kwargs)
-        return self.results["fit"]
+        if fits(self, reference, **kwargs):
+            return self.results["fit"]
 
     def robustness(self, reference: str, plot=True, **kwargs)-> pd.DataFrame:
         self.results["robustness"] = robustness(self, reference, **kwargs)

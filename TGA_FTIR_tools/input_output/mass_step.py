@@ -1,101 +1,38 @@
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import scipy as sp
 
-from ..config import SAVGOL, SEP, UNITS
-from ..plotting import get_label
+from ..config import SAVGOL
 
 
-def mass_step(TGA_data, plot=False, **kwargs):  # rel_height=.963
+def mass_step(sample, samples= 20, **kwargs):  # rel_height=.963
     "deriving mass steps via peaks in DTG signal"
     # calculation and smoothing of DTG
-    TG = TGA_data["sample_mass"] / TGA_data["sample_mass"][0]
+    x = sample.tga['sample_temp'].to_numpy()
+    y = sample.tga['sample_mass'].to_numpy()
+
+    TG = y / y[0]
     DTG = sp.signal.savgol_filter(
         TG,
         int(SAVGOL.getfloat("window_length")),
         int(SAVGOL.getfloat("polyorder")),
         deriv=1,
     )
-
+    
     # detect mass steps
-    peaks, properties = sp.signal.find_peaks(-DTG, **kwargs)
-    step_end = properties["right_ips"].astype(np.int, copy=False)
-    step_start = properties["left_ips"].astype(np.int, copy=False)
+    _, properties = sp.signal.find_peaks(-DTG, **kwargs)
+    step_starts = np.insert(properties["left_ips"].astype(np.int, copy=False),0,0)
+    step_ends = np.append(properties["right_ips"].astype(np.int, copy=False),len(x))
 
-    # calculate masssteps
-    steps = np.zeros(len(peaks))
-    samples = 20
-    for i in range(len(peaks)):
-        steps[i] = np.mean(TGA_data["sample_mass"][step_end[i] : step_end[i] + samples])
+    # calculate mass steps
+    start_masses = np.zeros(len(step_starts))
+    for i, step_start in enumerate(step_starts):
+        start_masses[i] = np.mean(y[step_start : step_start + samples])
 
     # calculate step height
-    step_height = np.zeros(len(steps))
-    steps = np.insert(steps, 0, TGA_data["sample_mass"][0])
+    step_height = np.zeros(len(step_starts))
+    for i, (start_mass, step_end) in enumerate(zip(start_masses, step_ends)):
+        step_height[i] = start_mass - np.mean(y[step_end - samples : step_end])
 
-    step_height = np.zeros(len(step_start))
-    for i in range(len(step_start)):
-        step_height[i] = np.mean(
-            TGA_data["sample_mass"][step_start[i] - samples : step_start[i]]
-        ) - np.mean(TGA_data["sample_mass"][step_end[i] : step_end[i] + samples])
+    rel_step_height = step_height / sample.reference_mass
 
-    rel_step_height = step_height / steps[0] * 100
-    # plotting
-    if plot == True:
-        # plotting of rel. TG
-        x = TGA_data["sample_temp"]
-        fig, ax = plt.subplots()
-        rel_steps = steps / steps[0] * 100
-        ax.hlines(
-            rel_steps[:-1],
-            np.zeros(len(rel_steps) - 1),
-            x[step_end],
-            linestyle="dashed",
-        )
-        ax.vlines(x[step_end], rel_steps[1:], rel_steps[:-1], linestyle="dashed")
-        for i in range(len(step_end)):
-            ax.text(
-                x[step_end[i]] + 5,
-                rel_steps[i + 1] + rel_step_height[i] / 2,
-                str(round(rel_step_height[i], 2)) + " %",
-            )
-        ax.plot(x, TGA_data["sample_mass"] / TGA_data["sample_mass"][0] * 100)
-        ax.text(
-            0.85 * max(TGA_data["sample_temp"]),
-            100,
-            f'sample mass: {TGA_data["sample_mass"][0]:.2f} {UNITS["sample_mass"]}',
-            horizontalalignment="center",
-        )
-        ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
-        ax.set_ylabel(f'{get_label("sample_mass")} {SEP} %')
-        ax.xaxis.set_minor_locator(
-            ticker.AutoMinorLocator()
-        )  # switch on minor ticks on each axis
-        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax.set(title="TG")
-        plt.show()
-
-        # plotting of DTG
-        fig, ax = plt.subplots()
-        y = -DTG
-        ax.plot(x, y)
-        ax.vlines(x[step_end], 0, max(y), linestyle="dashed")
-        ax.vlines(x[step_start], 0, max(y), linestyle="dashed")
-        ax.vlines(x[peaks], y[peaks] - properties["prominences"], y[peaks])
-        ax.hlines(
-            y[peaks] - kwargs["rel_height"] * properties["prominences"],
-            x[step_end],
-            x[step_start],
-        )
-        ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
-        ax.set_ylabel(
-            f'{get_label("dtg")} { SEP} {UNITS["sample_mass"]} ${UNITS["time"]}^{{-1}}$'
-        )
-        ax.xaxis.set_minor_locator(
-            ticker.AutoMinorLocator()
-        )  # switch on minor ticks on each axis
-        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax.set(title="DTG")
-        plt.show()
-
-    return step_height, rel_step_height, step_start, step_end
+    return step_height, rel_step_height, step_starts, step_ends

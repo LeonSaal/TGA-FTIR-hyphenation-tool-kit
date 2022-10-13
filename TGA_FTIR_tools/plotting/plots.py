@@ -8,7 +8,7 @@ import matplotlib.ticker as ticker
 
 from ..config import PATHS, SEP, UNITS
 from ..input_output.general import time
-from .utils import get_label, ylim_auto
+from .utils import get_label, make_title, ylim_auto
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def plots(
     linewidth=1,
     **kwargs,
 ):
-    "overlay plots from different objects"
+    "overlay plots from different sampleects"
     options = ["TG", "IR", "DTG", "heat_flow"]
     if plot not in options:
         logger.warn(f"{plot=} not in {options=}")
@@ -82,20 +82,21 @@ def plots(
             )
 
     # actual plotting
-    for obj in samples:
+    for sample in samples:
         if reference_mass == "reference_mass":
-            ref_mass = obj.info[obj.info[reference_mass]]
+            ref_mass = sample.info[sample.info[reference_mass]]
         else:
-            ref_mass = obj.info[reference_mass]
+            ref_mass = sample.info[reference_mass]
 
+        label = make_title(sample)
         if plot == "TG":
-            x = copy.deepcopy(obj.tga[x_axis])
+            x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = obj.tga["sample_mass"]
+                y = sample.tga["sample_mass"]
             elif y_axis == "rel":
-                y = 100 * obj.tga["sample_mass"] / ref_mass
+                y = 100 * sample.tga["sample_mass"] / ref_mass
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
@@ -104,16 +105,16 @@ def plots(
                 x,
                 y,
                 linewidth=linewidth,
-                label=f"{obj.info['alias']}, {obj.info['reference_mass']}: {obj.info[obj.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$",
+                label=label,
             )
         if plot == "DTG":
-            x = copy.deepcopy(obj.tga[x_axis])
+            x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = obj.tga["dtg"] * 60
+                y = sample.tga["dtg"] * 60
             elif y_axis == "rel":
-                y = obj.tga["dtg"] * 60 / ref_mass * 100
+                y = sample.tga["dtg"] * 60 / ref_mass * 100
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
@@ -122,16 +123,15 @@ def plots(
                 x,
                 y,
                 linewidth=linewidth,
-                label=f"{obj.info['alias']}, {obj.info['reference_mass']}: {obj.info[obj.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$",
-            )
+                label=label)
         if plot == "heat_flow":
-            x = copy.deepcopy(obj.tga[x_axis])
+            x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = obj.tga["heat_flow"]
+                y = sample.tga["heat_flow"]
             elif y_axis == "rel":
-                y = obj.tga["heat_flow"] / ref_mass
+                y = sample.tga["heat_flow"] / ref_mass
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
@@ -140,14 +140,13 @@ def plots(
                 x,
                 y,
                 linewidth=linewidth,
-                label=f"{obj.info['alias']}, {obj.info['reference_mass']}: {obj.info[obj.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$",
-            )
+                label=label)
         if plot == "IR":
-            x = copy.deepcopy(obj.ir[x_axis])
+            x = copy.deepcopy(sample.ir[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = obj.ir[gas]
+                y = sample.ir[gas]
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis
@@ -156,10 +155,9 @@ def plots(
                     x,
                     y,
                     linewidth=linewidth,
-                    label=f"{obj.info['alias']}, {obj.info['reference_mass']}: {obj.info[obj.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$",
-                )
+                    label=label)
             elif y_axis == "rel":
-                y = obj.ir[gas] / obj.linreg["slope"][gas] / ref_mass
+                y = sample.ir[gas] / sample.linreg["slope"][gas] / ref_mass
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis
@@ -168,8 +166,7 @@ def plots(
                     x,
                     y,
                     linewidth=linewidth,
-                    label=f"{obj.info['alias']}, {obj.info['reference_mass']}: {obj.info[obj.info['reference_mass']]:.2f}$\\,{UNITS['sample_mass']}$",
-                )
+                    label=label)
 
     if ylim == "auto":  # reset ylim to [None,None]
         ylim = ylim_temp

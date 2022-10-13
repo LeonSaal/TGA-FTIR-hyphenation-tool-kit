@@ -4,7 +4,6 @@ import os
 import pickle
 import re
 from dataclasses import InitVar, dataclass, field
-from lib2to3.pytree import Base
 from types import NoneType
 from typing import Any, Literal, Mapping, Optional
 
@@ -16,14 +15,13 @@ from scipy.signal import savgol_filter
 from ..config import COUPLING, PATHS, SAVGOL
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog)
-from ..plotting import plot_dweight
+from ..plotting import plot_dweight, plot_mass_steps
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
 
 
 logger = logging.getLogger(__name__)
-
 
 
 @dataclass
@@ -33,7 +31,9 @@ class Sample:
     tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
-    baseline= None
+    reference: str = field(default=None)
+    info = None
+    baseline = None
     results: dict = field(default_factory=dict)
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = COUPLING["profile"]
@@ -110,17 +110,20 @@ class Sample:
 
             # assigning alias
             if not self.alias:
-                if "alias" in (log := samplelog(create=False)) and self.name in log.index:
+                if (
+                    "alias" in (log := samplelog(create=False))
+                    and self.name in log.index
+                ):
                     self.alias = log.loc[self.name, "alias"]
                 else:
                     self.alias = self.name
             else:
                 self.alias = str(self.alias)
 
-            if match := re.match(r"(?P<sample>.+)_(?P<run>\d{3})$", self.name):
+            if match := re.match(r"(?P<sample>.+)_(?P<run>\d{,3})$", self.name):
                 self.sample = match.group("sample")
                 self.run = match.group("run")
-            elif match := re.match(r"(?P<sample>.+)_(?P<run>\d{3})$", self.alias):
+            elif match := re.match(r"(?P<sample>.+)_(?P<run>\d{,3})$", self.alias):
                 self.sample = match.group("sample")
                 self.run = match.group("run")
             else:
@@ -129,20 +132,29 @@ class Sample:
 
         # initialize object from pickle file
         if mode == "pickle":
-            with open(PATHS["output"]/ f'{self.name}.pkl', "rb") as inp:
+            with open(PATHS["output"] / f"{self.name}.pkl", "rb") as inp:
                 obj = pickle.load(inp)
             for key in obj.__dict__:
                 self.__dict__[key] = obj.__dict__[key]
         self.raw = copy.deepcopy(self)
 
     def __repr__(self):
-        attrs = ["name", "alias", "sample", "run"]
-        return f'Sample({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'
+        attr_names = ["name", "alias", "sample", "reference", "run"]
+        attr_vals = ", ".join(
+            [f"{key}={repr(self.__dict__[key])}" for key in attr_names]
+        )
+        return f"Sample({attr_vals})"
 
-    def corr(self, reference: NoneType| str=None, plot: Mapping|bool=False, update =False ,**kwargs):
+    def corr(
+        self,
+        reference: NoneType | str = None,
+        plot: Mapping | bool = False,
+        update=False,
+        **kwargs,
+    ):
         "correction of TG and IR data"
         if self.ir is None and self.tga is None:
-            logger.error('There is no data to correct.')
+            logger.error("There is no data to correct.")
             return
 
         if plot == True:
@@ -156,28 +168,31 @@ class Sample:
             plot["tga"] = False
             plot["dry_weight"] = False
 
-        if "reference" in self.info and not update:
+        if self.reference and not update:
             logger.warning(
                 "Sample has already been corrected! Re-initialise object for correction or specify 'update'=True."
             )
             return
         # try to load reference from samplelog if none is supplied
         if not reference:
-            try:
-                reference = samplelog(create=False).reference.loc[self.info["name"]]
-            except KeyError:
-                logger.warning(
-                    "No reference found in Samplelog. Please supply 'reference = '"
-                )
-                return
+            if self.reference:
+                reference = self.reference
+            else:
+                if self.name in (log := samplelog(create=False).reference).index:
+                    reference = log.loc[self.name]
+                else:
+                    logger.warning(
+                        "No reference found in Samplelog. Please supply 'reference = '"
+                    )
+                    return
 
         # correction of data
         self.baseline = Baseline(reference)
-        self.info["reference"] = reference
+        self.reference = reference
         if self.tga is not None:
             try:
                 self.tga = corrections.corr_TGA_Baseline(
-                    self.raw.tga, self.baseline, plot=plot['tga']
+                    self.raw.tga, self.baseline, plot=plot["tga"]
                 )
                 self.tga["dtg"] = -savgol_filter(
                     self.tga.sample_mass, WINDOW_LENGTH, POLYORDER, deriv=1
@@ -193,7 +208,7 @@ class Sample:
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
                     pass
 
-                self.dry_weight(plot=plot['dry_weight'])
+                self.dry_weight(plot=plot["dry_weight"])
                 logger.info(
                     f'".info" of {self.info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
                 )
@@ -203,7 +218,11 @@ class Sample:
 
         if self.ir is not None:
             try:
-                self.ir.update(corrections.corr_FTIR(self.raw, self.baseline, plot=plot['ir'], **kwargs))
+                self.ir.update(
+                    corrections.corr_FTIR(
+                        self.raw, self.baseline, plot=plot["ir"], **kwargs
+                    )
+                )
             except PermissionError:
                 logger.error("Failed to correct IR data.")
 
@@ -221,7 +240,6 @@ class Sample:
 
         out = pd.DataFrame(index=[which], columns=pd.Index(values, name=at))
         for value in values:
-
             out.loc[which, value] = self.tga[which][self.tga[at] >= value].values[0]
 
         return out
@@ -245,8 +263,7 @@ class Sample:
     ):
         w_T = width / sp.mode(np.diff(self.tga.reference_temp)).mode[0]
         return mass_step(
-            self.tga,
-            plot=plot,
+            self,
             height=height,
             width=w_T,
             prominence=prominence,
@@ -259,7 +276,16 @@ class Sample:
 
         "plotting TG and or IR data"
 
-        options = ["TG", "heat_flow", "IR", "DIR", "cumsum", "IR_to_DTG", "fit"]
+        options = [
+            "TG",
+            "mass_steps",
+            "heat_flow",
+            "IR",
+            "DIR",
+            "cumsum",
+            "IR_to_DTG",
+            "fit",
+        ]
         if plot not in options:
             logger.warn(f"{plot} not in supported {options=}.")
 
@@ -280,7 +306,9 @@ class Sample:
             temp.ir.update(self.ir.filter(self.info["gases"], axis=1).cumsum())
             plot_FTIR(temp, **kwargs)
 
-        if (self.tga is None) and (plot in ["TG", "heat_flow", "IR_to_DTG"]):
+        if (self.tga is None) and (
+            plot in ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
+        ):
             logger.warn("Option unavailable without TGA data.")
             return
 
@@ -291,6 +319,15 @@ class Sample:
                 plot_TGA(self, plot, **kwargs)
             else:
                 logger.warn("No heat flow data available!")
+        elif plot == "mass_steps":
+            if "steps" not in kwargs:
+                if self.info and "step_temp" in self.info:
+                    steps = self.info.step_temp.astype(int).tolist()
+                else:
+                    logger.warn(f'Supply {"steps=[]"!r} or update self.info.step_temp')
+            else:
+                steps = kwargs["steps"]
+            plot_mass_steps(self, steps)
 
         if (self.linreg is not None) and (plot == "IR_to_DTG"):
             FTIR_to_DTG(self, **kwargs)
@@ -342,7 +379,7 @@ class Sample:
 
         # setting up output directory
         if save:
-            path = PATHS["fitting"]/ f'{general.time()}{reference}_{self.info["name"]}'
+            path = PATHS["fitting"] / f'{general.time()}{reference}_{self.info["name"]}'
             os.makedirs(path)
             os.chdir(path)
 
@@ -391,10 +428,10 @@ class Sample:
 
         # save object
         if how == "pickle":
-            with open(path_output/ f'{self.name}.pkl', "wb") as output:
+            with open(path_output / f"{self.name}.pkl", "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         elif how == "excel":
-            path = path_output/ f'{self.info["name"]}.xlsx'
+            path = path_output / f'{self.info["name"]}.xlsx'
             with pd.ExcelWriter(path) as writer:
                 try:
                     pd.DataFrame.from_dict(self.info.__dict__, orient="index").to_excel(
@@ -425,6 +462,9 @@ class Sample:
     def __iter__(self):
         yield self
 
+    @property
+    def reference_mass(self):
+        return self.info[self.info["reference_mass"]]
 
 
 class Baseline(Sample):

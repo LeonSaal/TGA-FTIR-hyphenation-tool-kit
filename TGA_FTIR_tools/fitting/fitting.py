@@ -111,24 +111,7 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
 
     # make subdirectory to save data
     if save:
-        sample_names = "".join(
-            list(set([str(sample.info["name"]) for sample in worklist]))
-        )
-        sample_names = "".join(
-            [x if (x.isalnum() or x in "._- ") else "" for x in str(sample_names)]
-        )  # to catch invalide sample names
-        path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
-        # check path length and if necessary shorten file name by list of samples, regarding expacted .png files to be saved to this directory
-        longest_name_length = 0
-        for sample in worklist:
-            obj_name_length = len(sample.info["name"])
-            if obj_name_length > longest_name_length:
-                longest_name_length = obj_name_length
-        if (len(path) + longest_name_length) > 258:
-            sample_names = sample_names[
-                : (len(sample_names) - ((len(path) + longest_name_length) - (258 - 8)))
-            ]  # -8 for _gas and .png
-            path = PATHS["fitting"]/ f'{time()}{reference}_{sample_names}'
+        path = PATHS["fitting"]/ f'{time()}{reference}_{worklist.name}'
         os.makedirs(path)
         os.chdir(path)
 
