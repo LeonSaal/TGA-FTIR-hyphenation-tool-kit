@@ -110,10 +110,10 @@ class FitData:
                 ]
             )
         )
-        return params_0, params_min, params_max
+        return params_0.astype(np.float64), params_min.astype(np.float64), params_max.astype(np.float64)
 
     def update_peaks(self, popt, gas, xy):
-        from .fitting import gaussian, multi_gauss
+        from ..utils import gaussian, multi_gauss
 
         x, y = xy
         num_curves = self.presets[gas].index.size

@@ -10,7 +10,7 @@ import scipy as sp
 
 from ..config import BOUNDS, COUPLING, MERGE_CELLS, PATHS, config
 from ..input_output.general import time
-from ..utils import gaussian, multi_gauss
+from ..utils import multi_gauss
 from .fitdata import FitData
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ def fitting(
         params_0, params_min, params_max = data.get_bounds(gas, sample, predef_tol)
 
         # actual fitting
-        x, y = data.ir.sample_temp, data.ir[gas]
+        x, y = data.ir.sample_temp.to_numpy(dtype=np.float64), data.ir[gas].to_numpy(dtype=np.float64)
         try:
             popt, _ = sp.optimize.curve_fit(
                 func, x, data.ir[gas], p0=params_0, bounds=(params_min, params_max)

@@ -37,7 +37,7 @@ if not os.path.exists(config["ini"]):
         logger.error("Unable to find default settings.")
 
 cfg = configparser.ConfigParser()
-cfg.read(config["ini"])
+cfg.read(config["ini"], encoding='ANSI')
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
