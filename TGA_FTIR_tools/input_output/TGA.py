@@ -144,6 +144,8 @@ def dry_weight(
     weights = sample.tga["sample_mass"][sample.tga.index.isin(times)].values
     mass_loss = abs(np.diff(weights))
 
+    info['reference'] = sample.reference
+
     info['final_mass'] = sample.tga["sample_mass"][len(sample.tga) - 1]
     for name, ml in zip(names, mass_loss):
         info["ML_" + name] = ml
