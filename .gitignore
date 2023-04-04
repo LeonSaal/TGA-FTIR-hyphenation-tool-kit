@@ -13,3 +13,6 @@ Fitting/
 
 TGA_FTIR_tools/settings/*.json
 TGA_FTIR_tools/settings/*.xlsx
+
+*.egg-info
+*/__pycache__/

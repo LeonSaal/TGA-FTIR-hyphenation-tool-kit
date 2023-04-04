@@ -216,7 +216,7 @@ class Sample:
             except PermissionError:
                 logger.error("Failed to derive TG info.")
 
-        if self.ir is not None:
+        if (self.ir is not None) and (self.baseline.ir is not None):
             try:
                 self.ir.update(
                     corrections.corr_FTIR(

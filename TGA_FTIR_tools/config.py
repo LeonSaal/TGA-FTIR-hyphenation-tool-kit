@@ -13,8 +13,6 @@ logging.basicConfig(level=logging.INFO, format=fmt, style="{")
 
 logger = logging.getLogger(__name__)
 
-
-
 names = ["ini", "fitting_params"]
 config_files = ["settings.ini", "Fitting_parameter.xlsx"]
 config = dict(zip(names, config_files))
@@ -88,5 +86,5 @@ MERGE_CELLS = False
 def fit_references(open=False):
     path = PATHS['fitting_params']
     if open:
-        os.startfile(path)
+        os.startfile(path.as_posix())
     return path
