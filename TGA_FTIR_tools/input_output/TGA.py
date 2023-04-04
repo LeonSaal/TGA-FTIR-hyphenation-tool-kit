@@ -122,6 +122,7 @@ def dry_weight(
 
     if not how_dry:
         info['reference_mass'] = "initial_mass"
+        info['initial_mass'] = sample.info['initial_mass']
         times = [0] + list(
             sample.tga.index[sample.tga["reference_temp"].isin(sample.info.step_temp)]
         )
@@ -149,7 +150,7 @@ def dry_weight(
     info['final_mass'] = sample.tga["sample_mass"][len(sample.tga) - 1]
     for name, ml in zip(names, mass_loss):
         info["ML_" + name] = ml
-        info["rel_ML_" + name] = ml / sample.info[sample.info.reference_mass]
+        info["rel_ML_" + name] = ml / info[ref_mass]
 
     info['step_temp'] = sample.tga["reference_temp"][sample.tga.index.isin(times)].unique()
     info['step_time'] = times

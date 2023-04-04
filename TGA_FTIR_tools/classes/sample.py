@@ -150,7 +150,8 @@ class Sample:
         reference: NoneType | str = None,
         plot: Mapping | bool = False,
         update=False,
-        **kwargs,
+        dry_args = {},
+        ir_args={},
     ):
         "correction of TG and IR data"
         if self.ir is None and self.tga is None:
@@ -208,7 +209,7 @@ class Sample:
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
                     pass
 
-                self.dry_weight(plot=plot["dry_weight"])
+                self.dry_weight(plot=plot["dry_weight"], **dry_args)
                 logger.info(
                     f'".info" of {self.info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
                 )
@@ -220,7 +221,7 @@ class Sample:
             try:
                 self.ir.update(
                     corrections.corr_FTIR(
-                        self.raw, self.baseline, plot=plot["ir"], **kwargs
+                        self.raw, self.baseline, plot=plot["ir"], **ir_args
                     )
                 )
             except PermissionError:
