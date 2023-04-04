@@ -124,7 +124,7 @@ def dry_weight(
         info['reference_mass'] = "initial_mass"
         info['initial_mass'] = sample.info['initial_mass']
         times = [0] + list(
-            sample.tga.index[sample.tga["reference_temp"].isin(sample.info.step_temp)]
+            sample.tga.index[sample.tga["sample_temp"].isin(sample.info.step_temp)]
         )
         names = sample.info.mass_steps
 
@@ -132,7 +132,7 @@ def dry_weight(
         (how_dry == "H2O") or (how_dry == "sample_mass") or (type(how_dry) != str)
     ):  # turns to be true everytime
         times = [0, dry_point] + list(
-            sample.tga.index[sample.tga["reference_temp"].isin(sample.info.step_temp)]
+            sample.tga.index[sample.tga["sample_temp"].isin(sample.info.step_temp)]
         )
         names = ["dry"] + sample.info.mass_steps
         info['reference_mass'] = "dry_mass"
@@ -152,7 +152,7 @@ def dry_weight(
         info["ML_" + name] = ml
         info["rel_ML_" + name] = ml / info[ref_mass]
 
-    info['step_temp'] = sample.tga["reference_temp"][sample.tga.index.isin(times)].unique()
+    info['step_temp'] = sample.tga["sample_temp"][sample.tga.index.isin(times)].unique()
     info['step_time'] = times
     info['mass_steps'] = names
     sample.info.update(info)
