@@ -86,7 +86,7 @@ def fitting(
         data.calculate_molar_mass()
 
     # calculate summarized groups
-    data.summarize()
+    #data.summarize()
 
     if stats is not None:
         check_LODQ_frame(data.peaks, stats)
@@ -119,10 +119,11 @@ def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs
     # cycling through samples
     for sample in worklist:
         # writing data to output DataFrames
-        results[sample.alias] = sample.fit(
+        results[sample.name] = sample.fit(
             reference, presets=presets, mod_sample=mod_sample, **kwargs, save=False
         )
 
+    return results
     # return results
     collection = pd.concat([item for item in results.values()])
 

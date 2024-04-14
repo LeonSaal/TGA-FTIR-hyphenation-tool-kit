@@ -25,27 +25,16 @@ def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
 
     # update existing samplelog file
     if info != None:
-        name = info["name"]
-        data = pd.DataFrame.from_dict(info, orient="index", columns=[name]).T.drop(
-            ["name"], axis=1
-        )
-        data.index.name = "name"
+        data = pd.DataFrame.from_dict(info)
+        data.set_index("name", inplace=True)
 
-        for key in data.columns:
-            if key not in samplelog.columns:
-                samplelog[key] = np.nan
-        if name in samplelog.index:
-            if overwrite == False:
-                samplelog = samplelog.fillna(data)
-            else:
-                samplelog.loc[[name]] = data
-        else:
-            samplelog = pd.concat([samplelog, data])
+        samplelog = pd.concat([samplelog, data])
+        samplelog = samplelog[~samplelog.index.duplicated("last" if overwrite else "first")]
 
         try:
             samplelog.to_excel(path, merge_cells=MERGE_CELLS)
             logger.info("Successfully updated 'Samplelog.xlsx'.")
-        except:
+        except PermissionError:
             logger.error(
                 "Unable to write on 'Samplelog.xlsx'. Please close file and try again!"
             )

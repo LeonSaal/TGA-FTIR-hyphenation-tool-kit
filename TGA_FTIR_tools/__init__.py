@@ -1,4 +1,4 @@
-from .calibration import calibrate, linreg, stats
+from .calibration import calibrate
 from .classes import Baseline, Sample, Worklist
 from .config import PLOTTING, fit_references
 from .fitting import bar_plot_results, concatenate, fits, robustness, summarize

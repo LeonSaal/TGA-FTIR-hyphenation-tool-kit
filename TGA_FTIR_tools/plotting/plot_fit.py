@@ -7,13 +7,13 @@ from ..utils import gaussian, multi_gauss
 from .plotting import get_label, make_title
 
 
-def plot_fit(sample, title=False, y_axis="orig", **kwargs):
+def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
     if y_axis == "rel":
         ir_values = "mmol_per_mg"
     else:
         ir_values = "area"
 
-    fit_data = sample.results["fit"][["center", "height", "hwhm"]].dropna()
+    fit_data = sample.results["fit"][reference][["center", "height", "hwhm"]].dropna()
 
     for gas, params in fit_data.groupby("gas"):
         fig = plt.figure(constrained_layout=True)
@@ -38,12 +38,18 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
 
         x, y_data = sample.ir.sample_temp, sample.ir[gas]
 
-        yall = multi_gauss(x, *params.height, *params.center, *params.hwhm)
+        yall = multi_gauss(
+            x.values, *params.height.values, *params.center.values, *params.hwhm.values
+        )
         fitting.plot(x, yall, label="fit", lw=2, zorder=num_curves + 2)
-        for i, ((group, gas), row) in enumerate(params.iterrows()):
-            y = gaussian(x, row.height, row.center, row.hwhm)
+
+        for i, ((sample_name, alias, run, group, gas), row) in enumerate(params.iterrows()):
+            y = gaussian(x.values, row.height, row.center, row.hwhm)
             fitting.text(
-                row.center, row.height, group, zorder=num_curves + 3 + i,
+                row.center,
+                row.height,
+                group,
+                zorder=num_curves + 3 + i,
             )
             fitting.plot(x, y, linestyle="dashed", zorder=i)  #
 
@@ -68,10 +74,12 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
 
         # plotting of absolute difference
         abs_max = 0.05 * max(y_data)
-        sqerr = sample.results["fit"].loc[("total", gas), "sumsqerr"]
-        total = sample.results["fit"].loc[("total", gas), ir_values]
+        sqerr = sample.results["fit"][reference].loc[(sample_name, alias, run, "total", gas), "sumsqerr"]
+        total = sample.results["fit"][reference].loc[(sample_name, alias, run, "total", gas), ir_values]
         error.text(
-            0, abs_max, f"SQERR: {sqerr:.2e} ({100 * sqerr / total:.2f} %)",
+            0,
+            abs_max,
+            f"SQERR: {sqerr:.2e} ({100 * sqerr / total:.2f} %)",
         )  # percentage SQERR
 
         diff = y_data - yall

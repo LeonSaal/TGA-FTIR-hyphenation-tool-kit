@@ -7,7 +7,8 @@ from ..config import COUPLING
 @dataclass
 class SampleInfo:
     name: Optional[str]
-    initial_mass: Optional[float]
+    alias: str = None
+    initial_mass: float = None
     reference_mass: Optional[str] = "initial_mass"
     background_delay: float = int(COUPLING["background_delay"])
     step_temp: list = field(default_factory=list)

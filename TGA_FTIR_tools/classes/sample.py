@@ -32,9 +32,9 @@ class Sample:
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
     reference: str = field(default=None)
-    info = None
+    _info = None
     baseline = None
-    results: dict = field(default_factory=dict)
+    results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = COUPLING["profile"]
 
@@ -51,10 +51,10 @@ class Sample:
                 )
                 # deriving TG info
                 try:
-                    self.info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
+                    self._info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
                 except PermissionError:
                     logger.info("Failed to derive TG info. Using default values.")
-                    self.info = TGA.default_info(self.name, self.tga)
+                    self._info = TGA.default_info(self.name, self.tga)
                 try:
                     self.dry_weight(self, plot=False, **kwargs)
                 except:
@@ -63,7 +63,7 @@ class Sample:
             if self.ir is not None:
                 from ..calibration import calibrate
 
-                self.info["gases"] = set(self.ir.columns[1:].to_list())
+                self._info["gases"] = set(self.ir.columns[1:].to_list())
                 # load calibration
                 self.linreg, self.stats = calibrate(mode="load")
                 logger.info(
@@ -78,19 +78,19 @@ class Sample:
                                     and gas in self.linreg.index
                                     else ""
                                 )
-                                for gas in self.info["gases"]
+                                for gas in self._info["gases"]
                             ]
                         ),
                     )
                 )
                 # deriving IR info
                 try:
-                    self.info.update(FTIR.FTIR_info(self))
+                    self._info.update(FTIR.FTIR_info(self))
                 except:
                     pass
                 try:
                     self.ir["time"] = (
-                        self.ir["time"] + 60 * self.info["background_delay"]
+                        self.ir["time"] + 60 * self._info["background_delay"]
                     )
                     self.ir = pd.merge(
                         self.tga.filter(
@@ -119,6 +119,7 @@ class Sample:
                     self.alias = self.name
             else:
                 self.alias = str(self.alias)
+            self._info.alias = self.alias
 
             if match := re.match(r"(?P<sample>.+)_(?P<run>\d{,3})$", self.name):
                 self.sample = match.group("sample")
@@ -145,12 +146,17 @@ class Sample:
         )
         return f"Sample({attr_vals})"
 
+    @property
+    def info(self):
+        self._info.alias = self.alias
+        return self._info
+
     def corr(
         self,
         reference: NoneType | str = None,
         plot: Mapping | bool = False,
         update=False,
-        dry_args = {},
+        dry_args={},
         ir_args={},
     ):
         "correction of TG and IR data"
@@ -203,7 +209,7 @@ class Sample:
 
             # filling TG_IR.info
             try:
-                if self.info["reference_mass"] == "initial_mass":
+                if self._info["reference_mass"] == "initial_mass":
                     # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
                     # kwargs = dict(kwargs, how_dry=None)
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
@@ -211,7 +217,7 @@ class Sample:
 
                 self.dry_weight(plot=plot["dry_weight"], **dry_args)
                 logger.info(
-                    f'".info" of {self.info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
+                    f'".info" of {self._info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
                 )
                 success = True
             except PermissionError:
@@ -228,7 +234,7 @@ class Sample:
                 logger.error("Failed to correct IR data.")
 
             try:
-                self.info.update(FTIR.FTIR_info(self))
+                self._info.update(FTIR.FTIR_info(self))
                 if not success:
                     logger.info(
                         "'.info' was updated. To store these in Samplelog.xlsx run '.save()'"
@@ -299,12 +305,12 @@ class Sample:
         elif plot == "DIR":
             temp = copy.deepcopy(self)
             temp.ir.update(
-                self.ir.filter(self.info["gases"], axis=1).diff().ewm(span=10).mean()
+                self.ir.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
             )
             plot_FTIR(temp, **kwargs)
         elif plot == "cumsum":
             temp = copy.deepcopy(self)
-            temp.ir.update(self.ir.filter(self.info["gases"], axis=1).cumsum())
+            temp.ir.update(self.ir.filter(self._info["gases"], axis=1).cumsum())
             plot_FTIR(temp, **kwargs)
 
         if (self.tga is None) and (
@@ -322,8 +328,8 @@ class Sample:
                 logger.warn("No heat flow data available!")
         elif plot == "mass_steps":
             if "steps" not in kwargs:
-                if self.info and "step_temp" in self.info:
-                    steps = self.info.step_temp.astype(int).tolist()
+                if self._info and "step_temp" in self._info:
+                    steps = self._info.step_temp.astype(int).tolist()
                 else:
                     logger.warn(f'Supply {"steps=[]"!r} or update self.info.step_temp')
             else:
@@ -337,8 +343,23 @@ class Sample:
             return
 
         if plot == "fit":
-            if "fit" in self.results:
-                plot_fit(self, **kwargs)
+            if self.results["fit"] != {}:
+                if "reference" in kwargs:
+                    reference = kwargs["reference"]
+                    if reference not in self.results["fit"]:
+                        logger.warn(
+                            f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
+                        )
+                        return
+                else:
+                    if len(self.results["fit"].keys()) == 1:
+                        reference = list(self.results["fit"].keys())[0]
+                    else:
+                        logger.warn(
+                            f"Multiple fitting results available. Specify with keyword 'reference'= one of {[self.results['fit'].keys()]}"
+                        )
+                        return
+                plot_fit(self, reference, **kwargs)
             else:
                 logger.warn(
                     'No fitting results available for plotting. Run ".fit()" first.'
@@ -380,7 +401,9 @@ class Sample:
 
         # setting up output directory
         if save:
-            path = PATHS["fitting"] / f'{general.time()}{reference}_{self.info["name"]}'
+            path = (
+                PATHS["fitting"] / f'{general.time()}{reference}_{self._info["name"]}'
+            )
             os.makedirs(path)
             os.chdir(path)
 
@@ -397,16 +420,20 @@ class Sample:
             os.chdir(PATHS["home"])
 
         logger.info("Fitting finished!")
+
+        results = pd.concat(
+            [peaks],
+            keys=[(self.sample, self.alias, self.run)],
+            names=["sample", "alias", "run"],
+        )
         if mod_sample:
-            self.results["fit"] = peaks
+            self.results["fit"].update({reference: results})
 
         # plotting
         if plot:
             self.plot("fit", **kwargs)
 
-        return pd.concat(
-            [peaks], keys=[(self.sample, self.run)], names=["sample", "run"]
-        )
+        return self.results["fit"]
 
     def robustness(ref, **kwargs):
         logger.warn("Robustness only available for multiple Samples.")
@@ -419,7 +446,7 @@ class Sample:
             return
 
         # update samplelog
-        samplelog(self.info.__dict__, create=True, **kwargs)
+        samplelog(self._info.__dict__, create=True, **kwargs)
         path_output = PATHS["output"]
         if how == "samplelog":
             return
@@ -432,12 +459,12 @@ class Sample:
             with open(path_output / f"{self.name}.pkl", "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         elif how == "excel":
-            path = path_output / f'{self.info["name"]}.xlsx'
+            path = path_output / f'{self._info["name"]}.xlsx'
             with pd.ExcelWriter(path) as writer:
                 try:
-                    pd.DataFrame.from_dict(self.info.__dict__, orient="index").to_excel(
-                        writer, sheet_name="info"
-                    )
+                    pd.DataFrame.from_dict(
+                        self._info.__dict__, orient="index"
+                    ).to_excel(writer, sheet_name="info")
                 except PermissionError:
                     logger.warn(
                         f"Unable to write on {path=} as the file is opened by another program."
@@ -465,7 +492,7 @@ class Sample:
 
     @property
     def reference_mass(self):
-        return self.info[self.info["reference_mass"]]
+        return self._info[self._info["reference_mass"]]
 
 
 class Baseline(Sample):

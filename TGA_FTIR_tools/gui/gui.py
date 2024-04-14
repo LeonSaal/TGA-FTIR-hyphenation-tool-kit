@@ -355,14 +355,14 @@ def gui():
                             eval(
                                 "&".join(
                                     [
-                                        repr(set(sample.info.gases))
+                                        repr(set(sample._info.gases))
                                         for sample in subset
                                     ]
                                 )
                             )
                         )
                     else:
-                        gases = subset.info.gases
+                        gases = subset._info.gases
 
                     plot = corr_window(gases)   
                     print(plot)
@@ -404,7 +404,7 @@ def gui():
                         eval(
                             "&".join(
                                 [
-                                    repr(set(sample.info.gases))
+                                    repr(set(sample._info.gases))
                                     for sample in subset
                                 ]
                             )
@@ -413,7 +413,7 @@ def gui():
 
                     one_gas = True
                 else:
-                    gases = subset.info.gases
+                    gases = subset._info.gases
                     one_gas = False
                 settings = plot_set_window(plot, gases, one_gas=one_gas)
                 if settings:

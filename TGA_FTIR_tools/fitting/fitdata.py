@@ -20,7 +20,7 @@ class FitData:
 
     def __post_init__(self):
         self.ir = self.sample.ir
-        self.info = self.sample.info
+        self.info = self.sample._info
         self.linreg = self.sample.linreg
         self.gases, self.gas_links, self.links = link_groups(self.presets)
         index = pd.MultiIndex.from_tuples(

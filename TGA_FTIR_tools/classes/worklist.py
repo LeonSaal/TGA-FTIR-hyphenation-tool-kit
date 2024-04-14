@@ -2,13 +2,14 @@ import logging
 import pickle
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import pandas as pd
 
 from ..classes import Sample
 from ..config import PATHS
-from ..fitting import fits, robustness
+from ..fitting import fits, get_presets, robustness
+from ..input_output import samplelog, time
 from ..plotting import bar_plot_results, plot_robustness, plots
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,16 @@ import os
 @dataclass
 class Worklist:
     samples: List[Sample] = field(default_factory=list)
-    name: Optional[str] = 'worklist'
-    results: dict = field(default_factory=dict)
+    name: Optional[str] = "worklist"
+    _results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
 
     def __add__(self, other):
         if isinstance(other, Sample):
-            return Worklist(self.samples + [other], name = f'{self.name}+{other.name}')
+            return Worklist(self.samples + [other], name=f"{self.name}+{other.name}")
         elif isinstance(other, Worklist):
-            return Worklist(self.samples + other.samples, name = f'{self.name}+{other.name}')    
+            return Worklist(
+                self.samples + other.samples, name=f"{self.name}+{other.name}"
+            )
         else:
             logger.warn("Can only add samples to Worklist")
 
@@ -42,7 +45,9 @@ class Worklist:
         if type(i) == int:
             return self.samples[i]
         elif type(i) == slice:
-            return Worklist(samples = self.samples[i], name= f"{self.name} [{i.start}:{i.stop}]")
+            return Worklist(
+                samples=self.samples[i], name=f"{self.name}_({i.start}-{i.stop})"
+            )
         elif type(i) == str:
             if i in (d := {sample.name: sample for sample in self.samples}):
                 return d[i]
@@ -52,20 +57,19 @@ class Worklist:
                 samples.append(self.__getitem__(elem))
             if len(samples) == 1:
                 return samples[0]
-            return Worklist(samples = samples, name= f"{self.name} {repr(i)}")
+            return Worklist(samples=samples, name=f"{self.name} {repr(i)}")
 
     def __iter__(self):
         yield from self.samples
 
     def get(self, key: str, attr: str = "name"):
         return Worklist(
-            samples = 
-            [
+            samples=[
                 sample
                 for sample in self.samples
                 if re.search(key, sample.__dict__[attr])
             ],
-            name = key,
+            name=key,
         )
 
     def append(self, other) -> None:
@@ -74,33 +78,82 @@ class Worklist:
         if isinstance(other, Sample):
             self.samples.append(other)
 
-    def fit(self, reference: str, **kwargs) -> pd.DataFrame:
-        if fits(self, reference, **kwargs):
-            return self.results["fit"]
+    def fit(
+        self, reference: str, save=True, mod_samples=True, presets=None, **kwargs
+    ) -> pd.DataFrame:
 
-    def robustness(self, reference: str, plot=True, **kwargs)-> pd.DataFrame:
-        self.results["robustness"] = robustness(self, reference, **kwargs)
+        # load default presets
+        if not presets:
+            presets = get_presets(reference)
+
+        if presets is None:
+            return
+
+        # make subdirectory to save data
+        if save:
+            path = PATHS["fitting"] / f"{time()}{reference}_{self.name}"
+            os.makedirs(path)
+            os.chdir(path)
+
+        # cycling through samples
+        for sample in self.samples:
+            # writing data to output DataFrames
+            if reference not in sample.results["fit"]:
+                sample.fit(
+                    reference,
+                    presets=presets,
+                    mod_sample=mod_samples,
+                    **kwargs,
+                    save=False,
+                )
+        os.chdir(PATHS["home"])
+        return self.results
+
+    @property
+    def results(self):
+        out = {"fit": None, "robustness": None}
+
+        out["fit"] = pd.concat(
+            [
+                pd.concat(
+                    [
+                        pd.concat([v], keys=[k], names=["reference"])
+                        for k, v in s.results["fit"].items()
+                    ]
+                )
+                for s in self
+            ]
+        )
+
+        return out
+
+    def robustness(self, reference: str, plot=True, **kwargs) -> pd.DataFrame:
+        self._results["robustness"] = robustness(self, reference, **kwargs)
         if plot:
-            self.plot('robustness')
-        return self.results["robustness"]
+            self.plot("robustness")
+        return self._results["robustness"]
 
-    def plot(self, plot, **kwargs)-> None:
-        if plot == "robustness" and "robustness" in self.results:
-            plot_robustness(self.results["robustness"][0])
+    def plot(self, plot, **kwargs) -> None:
+        if plot == "robustness" and "robustness" in self._results:
+            logger.warn("Under Maintenance")
+            #plot_robustness(self._results["robustness"][0])
         elif plot == "results":
-            bar_plot_results(self, **kwargs)
+            logger.warn("Under Maintenance")
+            #bar_plot_results(self, **kwargs)
         else:
             plots(self.samples, plot, **kwargs)
 
     def __len__(self) -> int:
         return len(self.samples)
 
-    def corr(self,references=None, plot=False, **kwargs) -> None:
+    def corr(self, references=None, plot=False, **kwargs) -> None:
         if type(references) == list:
-            if (ls:=len(self)) != (lr:=len(references)):
-                logger.error(f'Lengths of samples ({ls}) and references ({lr}) do not match.')
+            if (ls := len(self)) != (lr := len(references)):
+                logger.error(
+                    f"Lengths of samples ({ls}) and references ({lr}) do not match."
+                )
                 return
-        elif type(references)==str:
+        elif type(references) == str:
             references = [references for _ in self.samples]
 
         elif not references:
@@ -112,21 +165,33 @@ class Worklist:
     def pop(self, i: int) -> None:
         self.samples.pop(i)
 
-    def save(self, fname:str=None, **kwargs) -> None:
-        path_output = PATHS["output"]
-        if not path_output.exists() :
-            os.makedirs(path_output)
-        if not fname:
-            fname= self.name
-        path = path_output/ f'{fname}.wkl'
-        with open(path, "wb") as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-        # for sample in self.samples:
+    def save(
+        self,
+        fname: str = None,
+        how: Literal["samplelog", "pickle"] = "samplelog",
+        **kwargs,
+    ) -> None:
+        if how == "samplelog":
+            info = pd.DataFrame.from_dict(
+                {i: sample.info.__dict__ for i, sample in enumerate(self.samples)},
+                orient="index",
+            ).to_dict()
+            samplelog(info, create=True, **kwargs)
+        elif how == "pickle":
+            path_output = PATHS["output"]
+            if not path_output.exists():
+                os.makedirs(path_output)
+            if not fname:
+                fname = self.name
+            path = path_output / f"{fname}.wkl"
+            with open(path, "wb") as output:
+                pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+            # for sample in self.samples:
         #     sample.save(**kwargs)
 
-    def load(self, fname:str) -> None:
-        with open(PATHS["output"]/ f'{fname}.wkl', "rb") as inp:
+    def load(self, fname: str) -> None:
+        with open(PATHS["output"] / f"{fname}.wkl", "rb") as inp:
             obj = pickle.load(inp)
         for key in obj.__dict__:
             self.__dict__[key] = obj.__dict__[key]
-
