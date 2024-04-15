@@ -8,7 +8,7 @@ import pandas as pd
 
 from ..config import BOUNDS, MERGE_CELLS, PATHS
 from ..input_output.general import time
-from .fitting import fits, get_presets
+from .fitting import get_presets
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def robustness(
         presets=presets_rob,
         plot=False,
         **kwargs,
-    )["fit"]["mmol_per_mg"]
+    )["mmol_per_mg"]
     t_fit = tm.time() - start
     results["init"] = res.rename("init")
     del res
@@ -116,7 +116,7 @@ def robustness(
                             **kwargs,
                         )
                         results[run].update(
-                            res["fit"].loc[
+                            res.loc[
                                 (
                                     slice(None),
                                     slice(None),
@@ -160,14 +160,14 @@ def robustness(
                     presets=temp_presets,
                     mod_sample=False,
                     **kwargs,
-                )["fit"]["mmol_per_mg"]
+                )["mmol_per_mg"]
                 results[run] = res.rename(run)
 
     logger.info("Fittings finished!")
     logger.info("Calculationg statistic values.")
     # make subdirectory to save data
     if save:
-        path = PATHS["robustness"] / (time() + reference + f"_{var_T}_{var_rel}")
+        path = PATHS["robustness"] / "_".join([time(), reference, f"_{var_T}_{var_rel}"])
         os.makedirs(path)
         os.chdir(path)
 

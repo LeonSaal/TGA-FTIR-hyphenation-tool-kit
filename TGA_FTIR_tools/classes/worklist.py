@@ -8,7 +8,7 @@ import pandas as pd
 
 from ..classes import Sample
 from ..config import PATHS
-from ..fitting import fits, get_presets, robustness
+from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
 from ..plotting import bar_plot_results, plot_robustness, plots
 
@@ -107,23 +107,16 @@ class Worklist:
                     save=False,
                 )
         os.chdir(PATHS["home"])
-        return self.results
+        return self.results["fit"]
 
     @property
     def results(self):
         out = {"fit": None, "robustness": None}
 
         out["fit"] = pd.concat(
-            [
-                pd.concat(
-                    [
-                        pd.concat([v], keys=[k], names=["reference"])
-                        for k, v in s.results["fit"].items()
-                    ]
-                )
-                for s in self
-            ]
+            [pd.concat([res for res in s.results["fit"].values()]) for s in self]
         )
+        out["robustness"] = self._results["robustness"]
 
         return out
 
@@ -133,13 +126,13 @@ class Worklist:
             self.plot("robustness")
         return self._results["robustness"]
 
-    def plot(self, plot, **kwargs) -> None:
+    def plot(self, plot=None, **kwargs) -> None:
         if plot == "robustness" and "robustness" in self._results:
             logger.warn("Under Maintenance")
-            #plot_robustness(self._results["robustness"][0])
+            # plot_robustness(self._results["robustness"][0])
         elif plot == "results":
             logger.warn("Under Maintenance")
-            #bar_plot_results(self, **kwargs)
+            # bar_plot_results(self, **kwargs)
         else:
             plots(self.samples, plot, **kwargs)
 

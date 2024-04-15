@@ -278,7 +278,7 @@ class Sample:
             **kwargs,
         )
 
-    def plot(self, plot, **kwargs):
+    def plot(self, plot=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
@@ -423,8 +423,8 @@ class Sample:
 
         results = pd.concat(
             [peaks],
-            keys=[(self.sample, self.alias, self.run)],
-            names=["sample", "alias", "run"],
+            keys=[(reference, self.sample, self.alias, self.run)],
+            names=["reference", "sample", "alias", "run"],
         )
         if mod_sample:
             self.results["fit"].update({reference: results})
@@ -433,10 +433,13 @@ class Sample:
         if plot:
             self.plot("fit", **kwargs)
 
-        return self.results["fit"]
+        return results
 
-    def robustness(ref, **kwargs):
-        logger.warn("Robustness only available for multiple Samples.")
+    def robustness(self, ref, **kwargs):
+        from ..fitting import robustness
+        data, summary = robustness(self, ref, **kwargs)
+        self.results["robustness"].update({ref: {"data":data,"summary":summary}})
+        return data, summary
 
     def save(self, how: Literal["samplelog", "excel", "pickle"], **kwargs):
         "save object or its contents as pickle file or excel"

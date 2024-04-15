@@ -43,7 +43,9 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         )
         fitting.plot(x, yall, label="fit", lw=2, zorder=num_curves + 2)
 
-        for i, ((sample_name, alias, run, group, gas), row) in enumerate(params.iterrows()):
+        for i, ((ref, sample_name, alias, run, group, gas), row) in enumerate(
+            params.iterrows()
+        ):
             y = gaussian(x.values, row.height, row.center, row.hwhm)
             fitting.text(
                 row.center,
@@ -74,8 +76,12 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
 
         # plotting of absolute difference
         abs_max = 0.05 * max(y_data)
-        sqerr = sample.results["fit"][reference].loc[(sample_name, alias, run, "total", gas), "sumsqerr"]
-        total = sample.results["fit"][reference].loc[(sample_name, alias, run, "total", gas), ir_values]
+        sqerr = sample.results["fit"][reference].loc[
+            (ref,sample_name, alias, run, "total", gas), "sumsqerr"
+        ]
+        total = sample.results["fit"][reference].loc[
+            (ref,sample_name, alias, run, "total", gas), ir_values
+        ]
         error.text(
             0,
             abs_max,
