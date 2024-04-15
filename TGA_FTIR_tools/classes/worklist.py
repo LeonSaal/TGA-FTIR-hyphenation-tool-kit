@@ -129,4 +129,10 @@ class Worklist:
             obj = pickle.load(inp)
         for key in obj.__dict__:
             self.__dict__[key] = obj.__dict__[key]
-
+    
+    def info(self, type: str = "df") -> pd.DataFrame | dict :
+        out = {sample.name: sample.info for sample in self.samples}
+        if type=="df":
+            return pd.DataFrame.fromdict(out)
+        elif type=="dict":
+            return out

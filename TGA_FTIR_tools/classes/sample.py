@@ -163,11 +163,13 @@ class Sample:
             plot["ir"] = True
             plot["tga"] = True
             plot["dry_weight"] = True
-        if plot == False:
+        elif plot == False:
             plot = {}
             plot["ir"] = False
             plot["tga"] = False
             plot["dry_weight"] = False
+        elif isinstance(plot, dict):
+            plot = {key: False for key in ["ir", "tga", "dry_weight"] if key not in plot}
 
         if self.reference and not update:
             logger.warning(

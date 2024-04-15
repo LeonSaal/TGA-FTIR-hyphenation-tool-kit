@@ -16,3 +16,4 @@ TGA_FTIR_tools/settings/*.xlsx
 
 *.egg-info
 */__pycache__/
+2DO.md
