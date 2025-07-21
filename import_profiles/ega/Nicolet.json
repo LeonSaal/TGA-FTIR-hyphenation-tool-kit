@@ -1,0 +1,20 @@
+{
+    "spec": {
+        "manufacturer": "ThermoFisher",
+        "device": "Nicolet iS50",
+        "software": "OMNIC",
+        "version": "9"
+    },
+    "ext": "_(?P<suffix>.+).csv",
+    "kwargs": {
+        "delimiter": ";",
+        "decimal": ",",
+        "names": [
+            "time",
+            "suffix"
+        ],
+        "converters": {
+            "time": "lambda x: int(60*float(x.replace(',','.')))"
+        }
+    }
+}

@@ -18,6 +18,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    install_requires=["scipy", "pandas", "matplotlib", "scikit-learn", "openpyxl", "requests", "PySimpleGUI","pint","chempy", "ipykernel","numba", "seaborn"],
+    install_requires=["pandas[excel, performance, plot, output-formatting, computation]", "scikit-learn", "requests","pint", "ipykernel", "seaborn", "molmass"],
     python_requires=">=3.10.4",
 )
