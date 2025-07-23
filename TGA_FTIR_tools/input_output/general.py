@@ -9,7 +9,7 @@ from typing import List, Mapping
 import pandas as pd
 
 from ..config import COUPLING, PATH_SET, PATHS
-from ..links import download_supplementary
+from ..utils import download_supplementary
 
 logger = logging.getLogger(__name__)
 
@@ -29,25 +29,29 @@ def find_files_re(file: str, suffix: str, parent_dir: str) -> List[str]:
 
 
 def read_profile_json(profile: str) -> Mapping:
-    filename = f"{profile}.json"
-    path = PATH_SET/ filename
-    if not path.exists():
-        download_supplementary(directory='import_profiles', filename=filename, dst=path)
+    path = PATH_SET/ "import_profiles"/ "profiles"
+    filename = path / f"{profile}.json"
 
-    if not path.exists():
-        logger.error(f"Cannot find '{profile}.json' in {PATH_SET!r}")
+    # if not path.exists():
+    #     download_supplementary(directory='import_profiles', filename=filename, dst=path)
+
+    if not filename.exists():
+        logger.error(f"Cannot find '{profile}.json' in {path!r}")
     else:
-        return json.load(open(path, encoding="UTF-8"))
+        logger.debug(f"Reading {profile}.json from {path!r}")
+        with open(filename, encoding="UTF-8") as json_file:
+            return json.load(json_file)
 
 
 def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
     out = {}
-    profile = read_profile_json(profile)
-    if not profile:
+    profile_specs = read_profile_json(profile)
+    if not profile_specs:
+        logger.error(f"Profile {profile!r} not found or empty.")
         return out
 
     # iterate over devices
-    for key, values in profile.items():
+    for key, values in profile_specs.items():
         paths = find_files_re(sample_name, values["ext"], PATHS["data"])
         
         if not paths:
@@ -87,6 +91,9 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
         # concatenate data and remove duplicate columns
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
+        if values["rename"]:
+            rename = eval(values["rename"][3:]) if values.rename.startswith("fn:") else values["rename"]
+            concat.rename(columns=rename, inplace=True)
         out[key] = concat
 
     return out

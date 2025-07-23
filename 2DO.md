@@ -4,12 +4,18 @@
 - saving of `Worklist` doesn't seem to update the samplelog
 
 # Further Improvements
+## Config
+- make config a function that reads from / writes to each time
+
 ## Import
 - make _"atomic"_ import profile for device and a combined profile for the hyphenation (with prompt)
 - add `Worklist.info` (
     - `dict` of `dicts`
     -  `pd.DataFrame`)
 -  get unit from header with `re`
+
+## Mass Step
+- Error
 
 ## Calibration
 - make calibration per device available
@@ -40,10 +46,11 @@
 - don't log `Baseline`
 - add automated testing
 - let `pint` and `molmass` handle units
+    - `pint-pandas` for unit inside `pd.DataFrame`
 - use minutes internally
 - rename *IR* to *EGA*
 - add `**kwargs` to every function for flexibility
-- make profile-folder in settings
+- [x] make profile-folder in settings
 - remove functions / REs specific to BAM-devices
 
 ## Other

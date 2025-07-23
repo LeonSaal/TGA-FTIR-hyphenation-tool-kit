@@ -7,6 +7,7 @@ from dataclasses import InitVar, dataclass, field
 from types import NoneType
 from typing import Any, Literal, Mapping, Optional
 
+import configparser
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
@@ -16,6 +17,7 @@ from ..config import COUPLING, PATHS, SAVGOL
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog)
 from ..plotting import plot_dweight, plot_mass_steps
+from ..utils import select_import_profile
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
@@ -41,8 +43,20 @@ class Sample:
     def __post_init__(self, mode, profile, **kwargs):
         if mode == "construct":
             logger.info(f"Initializing '{self.name}'")
+
+            # check if profile is supplied
+            if not self.profile and not profile:
+                self.profile = select_import_profile()
+                cfg = configparser.ConfigParser()
+                cfg.read(PATHS["ini"], encoding='ANSI')
+                cfg["coupling"]["profile"] = self.profile
+                with open(PATHS["ini"].name, "w", encoding='latin-1') as configfile:
+                    cfg.write(configfile)
+                logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
+            logger.debug(f"Using profile {self.profile!r}.")
+
             # load data
-            self.__dict__.update(read_data(self.name, profile=profile))
+            self.__dict__.update(read_data(self.name, profile=self.profile))
 
             if self.tga is not None:
                 logger.info("TGA data found.")
@@ -55,6 +69,8 @@ class Sample:
                 except PermissionError:
                     logger.info("Failed to derive TG info. Using default values.")
                     self._info = TGA.default_info(self.name, self.tga)
+                except Exception as e:
+                    logger.error(e)
                 try:
                     self.dry_weight(self, plot=False, **kwargs)
                 except:

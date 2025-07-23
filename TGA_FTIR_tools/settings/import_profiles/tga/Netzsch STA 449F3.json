@@ -1,4 +1,4 @@
-{"tga": {
+{
         "spec": {
         "manufacturer": "Netzsch",
         "device": "STA 449 F3",
@@ -16,4 +16,4 @@
         },
         "units":"(?P<name>[\\w\\s.:|()]+)/?(?P<unit>\\.+)?",
         "rename":{}
-    }}
+    }

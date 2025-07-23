@@ -5,13 +5,60 @@ import logging
 import os
 import shutil as sh
 from pathlib import Path
-
-from .links import download_supplementary
+from typing import Literal, Union, Dict, Any
+from os import PathLike
+import requests
 
 fmt = "[{levelname:^7s}] {module:}.{funcName}: {message}"
 logging.basicConfig(level=logging.INFO, format=fmt, style="{")
 
 logger = logging.getLogger(__name__)
+
+# Define links to GitHub repository and wiki
+class LINKS():
+    API = 'https://api.github.com/repos/LeonSaal/TGA-FTIR-hyphenation-tool-kit/contents'
+    WIKI = 'https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/wiki'
+    REPO = 'https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit#readme'
+
+# Download supplementary files from the GitHub repository
+def download_supplementary(directory: str, filename: str, dst: str|PathLike):
+    base_url = f'{LINKS.API}/{directory}'
+    resp = requests.get(base_url)
+    if not resp.ok:
+        return
+    
+    contents = resp.json()
+    for file in contents:
+        if file['name']==filename:
+            download_url = file['download_url']
+            if (resp:=requests.get(download_url)).ok:
+                with open(dst, "wb") as file:
+                    file.write(resp.content)
+                    logger.info(f"Downloaded {filename!r} from repository and stored in {dst!r}.")
+            break
+    
+    else:
+        logger.error(f"Unable to download {filename!r} from repository.")
+
+# List all import profiles available in the GitHub repository
+def list_gh_profiles(device: str):
+    base_url = f'{LINKS.API}/{device}'
+    response = requests.get(base_url)
+    profiles = {}
+    if not response.ok:
+        return
+    
+    contents = response.json()
+    for file in contents:
+        download_url = file.get('download_url', None)
+        if not download_url:
+            continue
+        if (resp:=requests.get(download_url)).ok:
+            profiles.update({file["name"]: resp.json()})
+
+    return profiles
+
+
 
 names = ["ini", "fitting_params"]
 config_files = ["settings.ini", "Fitting_parameter.xlsx"]
@@ -51,8 +98,10 @@ if PATHS["data"] == Path() or not PATHS["data"].exists():
     )
     if not os.path.exists(cfg["paths"]["data"]):
         logger.error(
-            f"Supplied directory does not exist. Revise path in {config['ini']!r} prior to continue."
+            f"Supplied directory does not exist. Revise path in {config['ini']!r} before continuing"
         )
+    else:
+        logger.info(f"Data path set to {cfg['paths']['data']!r}.")
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
