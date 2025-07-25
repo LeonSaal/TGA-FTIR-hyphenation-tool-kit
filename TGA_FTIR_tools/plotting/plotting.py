@@ -118,7 +118,7 @@ def plot_FTIR(
     title=True,
 ):
     "plot IR data"
-    gases = set([gas.upper() for gas in gases])
+    #gases = set([gas.upper() for gas in gases])
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     x = copy.deepcopy(sample.ir[x_axis])

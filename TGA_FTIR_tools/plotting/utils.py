@@ -34,6 +34,8 @@ def get_label(key):
         return f'${substance.latex_name}$'
     except ParseException:
         return str(key)
+    except ValueError:
+        return str(key)
 
 def make_title(sample):
     alias = sample.alias

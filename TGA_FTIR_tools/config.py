@@ -59,7 +59,6 @@ def list_gh_profiles(device: str):
     return profiles
 
 
-
 names = ["ini", "fitting_params"]
 config_files = ["settings.ini", "Fitting_parameter.xlsx"]
 config = dict(zip(names, config_files))
@@ -110,7 +109,7 @@ with open(config["ini"], "w", encoding='latin-1') as configfile:
 
 UNITS = cfg["units"]
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
-units = ["mg", "min", "°C", "mmol", "mW", "mg\,min^{{-1}}"]
+units = ["mg", "min", "°C", "mmol", "mW", "mg\\,min^{{-1}}"]
 for key, val in zip(keys, units):
     UNITS[key] = val
 
@@ -137,3 +136,23 @@ def fit_references(open=False):
     if open:
         os.startfile(path.as_posix())
     return path
+
+def read_config(cfg_file: Union[str, PathLike] = config["ini"]) -> configparser.ConfigParser:
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_file, encoding='ANSI')
+    return cfg
+
+def write_config(cfg) -> configparser.ConfigParser:
+    with open(config["ini"], "w", encoding='latin-1') as configfile:
+        cfg.write(configfile)
+    logger.info(f"Configuration written to {config['ini']!r}.")
+    return cfg
+
+def update_config(section: str, key: str, value: Union[str, int, float, bool]):
+    cfg = read_config()
+    if section not in cfg:
+        cfg[section] = {}
+    cfg[section][key] = str(value)
+    write_config(cfg)
+    logger.info(f"Updated {section!r} section: {key} = {value!r}.")
+    return cfg[section][key]

@@ -20,9 +20,6 @@ def integrate_peaks(
 ):
     "integrating IR signal in between given bounds"
     gases = list(gases)
-    # adsjusting step starts according to coupling delay
-    step_start = step_start + int(60 * COUPLING.getfloat("coupling_delay"))
-    step_end = step_end + int(60 * COUPLING.getfloat("coupling_delay"))
     integrals = pd.DataFrame(index=range(len(step_start)), columns=gases)
 
     # plotting
@@ -143,7 +140,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return stats
 
 
-def calibrate(plot=False, mode="load", method="max"):
+def calibrate(plot=False, mode="load", method="max", profile=None):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warn(f'{method=} not in {methods=}.')
@@ -488,7 +485,7 @@ def calibrate(plot=False, mode="load", method="max"):
             plt.text(
                 max(x),
                 min(y),
-                f'y = {linreg["slope"][gas]:.3f} $\cdot$ x {linreg["intercept"][gas]:+.3f}, $R^2$ = {linreg["r_value"][gas] ** 2:.5}',
+                rf'y = {linreg["slope"][gas]:.3f} $\cdot$ x {linreg["intercept"][gas]:+.3f}, $R^2$ = {linreg["r_value"][gas] ** 2:.5}',
                 horizontalalignment="right",
             )
             plt.xlabel(UNITS["molar_amount"])

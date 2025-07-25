@@ -9,7 +9,6 @@ from typing import List, Mapping
 import pandas as pd
 
 from ..config import COUPLING, PATH_SET, PATHS
-from ..utils import download_supplementary
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,15 @@ def read_profile_json(profile: str) -> Mapping:
         logger.error(f"Cannot find '{profile}.json' in {path!r}")
     else:
         logger.debug(f"Reading {profile}.json from {path!r}")
+
         with open(filename, encoding="UTF-8") as json_file:
-            return json.load(json_file)
-
-
+            definition = json.load(json_file)
+        profile ={}
+        for device, file in definition.items():
+            with open(file) as json_file:
+                profile[device] = json.load(json_file)
+        return profile
+            
 def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
     out = {}
     profile_specs = read_profile_json(profile)
@@ -67,16 +71,22 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
         for path in paths:
             filename = Path(path).name
 
-            # extract suffix from filename
-            pat = f'{re.escape(sample_name)}{values["ext"]}'
-            if m := re.match(pat, filename, flags=re.I):
-                suffix = m.group("suffix")
-
             # load data from path
             try:
                 data = pd.read_csv(path, **kwargs)
 
-                # rename columns
+            except PermissionError:
+                logger.error(f"Failed to read {key}-data from {path}")
+
+            # rename columns
+            if "(?P<suffix>" in values["ext"]:
+                # extract suffix from filename
+                pat = f'{re.escape(sample_name)}{values["ext"]}'
+                if m := re.match(pat, filename, flags=re.I):
+                    suffix = m.group("suffix")
+                else:
+                    break
+
                 if "map_suffix" in values:
                     data.rename(
                         {"suffix": values["map_suffix"][suffix]}, axis=1, inplace=True
@@ -84,16 +94,36 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
                 else:
                     data.rename({"suffix": suffix.upper()}, axis=1, inplace=True)
 
-            except PermissionError:
-                logger.error(f"Failed to read {key}-data from {path}")
             frames.append(data)
 
         # concatenate data and remove duplicate columns
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
-        if values["rename"]:
-            rename = eval(values["rename"][3:]) if values.rename.startswith("fn:") else values["rename"]
+
+        # rename columns if specified
+        if values.get("rename"):
+    
+            # handle different formats for rename
+            match values["rename"]:
+                case dict():
+                    rename = values["rename"]
+                case str():
+                    rename = eval(values["rename"])
+                case list():
+                    if len(values["rename"]) != concat.columns.size:
+                        logger.error(f"Rename list for {key} in profile {profile!r} does not match number of columns.")
+                    else:
+                        rename = {col: new_col if new_col else col for col, new_col in zip(concat.columns, values["rename"])}
+                case _:
+                    logger.error(f"Invalid rename format for {key} in profile {profile!r}.")
+                    rename = {}
+        
             concat.rename(columns=rename, inplace=True)
+
+        # select specific columns if specified
+        if "usecols" in values and isinstance(values["usecols"], list):
+            usecols = concat.columns[values["usecols"]]
+            concat = concat[usecols]
         out[key] = concat
 
     return out

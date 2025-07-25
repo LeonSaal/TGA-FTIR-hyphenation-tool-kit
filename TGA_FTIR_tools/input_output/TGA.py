@@ -2,6 +2,7 @@ import logging
 import re
 
 import numpy as np
+import pandas as pd
 import scipy as sp
 
 from ..config import COUPLING, PATHS, SAVGOL
@@ -21,17 +22,29 @@ def TGA_info(file, TGA, profile=COUPLING["profile"]):
 
     "extract TG info e.g. measurement time, initial mass... from TG file"
     # open file from TGA in given directory and make a DataFrame from it
-    path = find_files_re(file, profile["ext"], PATHS["data"])[0]
-    with open(path, encoding='latin-1') as f:
+    path = find_files_re(file, profile["ext"], PATHS["data"])[0] 
+    with open(path, encoding=profile.get("kwargs").get("encoding", "utf-8")) as f:
         text = f.readlines()
 
     text = "".join(text)
-    info = SampleInfo(file, initial_mass=TGA["sample_mass"].iloc[0])
+    info = SampleInfo(file)
 
     for key, pat in profile['info_pattern'].items():
-        if m := re.search(pat, text):
-            info[key] = m.group(key)
-        
+        if m := re.findall(pat, text):
+            for (k, val) in m:
+                try:
+                    val = pd.to_numeric(val)
+                except ValueError:
+                    val = val
+
+                if len(m)> 1:
+                    info[k] = val
+                else:
+                    info[key]=val
+            
+    if not info["initial_mass"] and "sample_mass" in TGA.columns:
+        info["initial_mass"]=TGA["sample_mass"].iloc[0]
+
     return info
 
 
@@ -40,7 +53,7 @@ def default_info(name, tga):
 
     info = SampleInfo(
         name=name,
-        initial_mass=tga.loc[0, "sample_mass"],
+        initial_mass=tga.loc[0, "sample_mass"] if "sample_mass" in tga.columns else None,
         step_temp=[max(tga["reference_temp"])],
     )
     return info

@@ -14,7 +14,7 @@
             "suffix"
         ],
         "converters": {
-            "time": "lambda x: int(60*float(x.replace(',','.')))"
+            "time": "lambda x: int(60*float(x.replace(',','.')))+5"
         }
     }
 }

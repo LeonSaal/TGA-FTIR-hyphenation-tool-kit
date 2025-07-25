@@ -6,9 +6,9 @@
 # Further Improvements
 ## Config
 - make config a function that reads from / writes to each time
+    - use it everytime
 
 ## Import
-- make _"atomic"_ import profile for device and a combined profile for the hyphenation (with prompt)
 - add `Worklist.info` (
     - `dict` of `dicts`
     -  `pd.DataFrame`)
@@ -19,7 +19,7 @@
 
 ## Calibration
 - make calibration per device available
-- pass samples as argument
+- pass `Worklist` as argument
 - add possibility to improve integration of DTG-peaks
   - consider Wavelet-peak detection
 

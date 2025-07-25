@@ -10,7 +10,6 @@ class SampleInfo:
     alias: str = None
     initial_mass: float = None
     reference_mass: Optional[str] = "initial_mass"
-    background_delay: float = int(COUPLING["background_delay"])
     step_temp: list = field(default_factory=list)
     mass_steps: list = field(default_factory=list)
 

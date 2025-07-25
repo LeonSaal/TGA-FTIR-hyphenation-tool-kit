@@ -13,11 +13,12 @@ import pandas as pd
 import scipy.stats as sp
 from scipy.signal import savgol_filter
 
-from ..config import COUPLING, PATHS, SAVGOL
+from ..config import COUPLING, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog)
 from ..plotting import plot_dweight, plot_mass_steps
-from ..utils import select_import_profile
+from ..utils import select_import_profile, check_profile_exists
+from .info import SampleInfo
 
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
@@ -34,24 +35,21 @@ class Sample:
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
     reference: str = field(default=None)
-    _info = None
+    _info = None 
     baseline = None
     results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = COUPLING["profile"]
 
-    def __post_init__(self, mode, profile, **kwargs):
+    def __post_init__(self, mode, profile="default", **kwargs):
+        
         if mode == "construct":
             logger.info(f"Initializing '{self.name}'")
 
             # check if profile is supplied
-            if not self.profile and not profile:
+            if profile == "set" or not check_profile_exists(self.profile):
                 self.profile = select_import_profile()
-                cfg = configparser.ConfigParser()
-                cfg.read(PATHS["ini"], encoding='ANSI')
-                cfg["coupling"]["profile"] = self.profile
-                with open(PATHS["ini"].name, "w", encoding='latin-1') as configfile:
-                    cfg.write(configfile)
+                update_config(section="coupling",key="profile", value=self.profile)
                 logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
             logger.debug(f"Using profile {self.profile!r}.")
 
@@ -60,9 +58,8 @@ class Sample:
 
             if self.tga is not None:
                 logger.info("TGA data found.")
-                self.tga["dtg"] = -savgol_filter(
-                    self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
-                )
+                logger.debug("Checking required columns in TGA data.")
+                
                 # deriving TG info
                 try:
                     self._info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
@@ -73,17 +70,33 @@ class Sample:
                     logger.error(e)
                 try:
                     self.dry_weight(self, plot=False, **kwargs)
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Failed to derive dry weight: {e}")
+
+                if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
+                    if "initial_mass" in self._info:
+                        self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
+
+                if missing:=self.missing_tga_columns():
+                    logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
+                else:   
+                    self.tga["dtg"] = -savgol_filter(
+                        self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
+                    )
+            else:
+                logger.error(f"No TGA data found for {self.name!r}.")
+                self._info = SampleInfo(name=self.name, alias=self.alias)
 
             if self.ir is not None:
                 from ..calibration import calibrate
 
                 self._info["gases"] = set(self.ir.columns[1:].to_list())
                 # load calibration
-                self.linreg, self.stats = calibrate(mode="load")
+                self.linreg, self.stats = calibrate(mode="load", profile=self.profile)
+
+
                 logger.info(
-                    "IR data found{} for gases {}.".format(
+                    "EGA data found{} for {}.".format(
                         " (* and calibrated) " if self.linreg is not None else "",
                         ", ".join(
                             [
@@ -105,9 +118,6 @@ class Sample:
                 except:
                     pass
                 try:
-                    self.ir["time"] = (
-                        self.ir["time"] + 60 * self._info["background_delay"]
-                    )
                     self.ir = pd.merge(
                         self.tga.filter(
                             ["time", "sample_temp", "reference_temp"], axis=1
@@ -115,7 +125,7 @@ class Sample:
                         self.ir,
                         how="left",
                         on="time",
-                    ).dropna(axis=0)
+                    )#.dropna(axis=0)
                 except:
                     logger.info("No IR data found.")
 
@@ -166,6 +176,16 @@ class Sample:
     def info(self):
         self._info.alias = self.alias
         return self._info
+
+    def missing_tga_columns(self):
+        "check if required columns are present in TGA data"
+        required_columns = [
+            "sample_mass",
+            "sample_temp",
+            "time"
+        ]
+        missing = [col for col in required_columns if col not in self.tga.columns]
+        return missing if missing else None
 
     def corr(
         self,

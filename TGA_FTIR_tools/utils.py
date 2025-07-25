@@ -39,6 +39,24 @@ def read_json(file: str|PathLike) -> dict:
     with open(file) as f:
         return json.load(f)
 
+def check_profile_exists(profile: str, directory: Path=PATH_SET / "import_profiles") -> bool:
+    """
+    Check if a profile exists in the specified directory.
+    
+    Args:
+        profile (str): The name of the profile to check.
+        directory (Path): The directory where profiles are stored.
+        
+    Returns:
+        bool: True if the profile exists, False otherwise.
+    """
+    path = directory / "profiles" / f"{profile}.json"
+
+    if not path.exists():
+        logger.error(f"Profile '{profile}' does not exist in {path.parent.as_posix()!r}")
+        return False
+    return path.exists() and path.is_file()
+
 # Select an import profile from the local or remote directory
 def select_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Literal["local", "remote"]="local"):
     profiledir = directory / "profiles"
@@ -102,7 +120,7 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
                 file = df.file[int(inp)]
                 if not (folder / file).exists():
                     download_supplementary(f"import_profiles/{device}", filename=file, dst=f"import_profiles/{file}")
-                profile[device] = read_json(folder / file)
+                profile[device] = (folder / file).as_posix()
                 break
             elif inp == "n":
                 print("make new")
