@@ -31,6 +31,7 @@
 - make plot interactive
   - measure mass-, temperature- or time-differences
 - plotting of calibration data
+- add DTG to mass-stops (optional)
 
 ## General
 - reduce amount of logging
@@ -43,6 +44,7 @@
 - rename *IR* to *EGA*
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
+- use root-folder names as profiles?
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
