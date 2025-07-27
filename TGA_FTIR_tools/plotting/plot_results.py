@@ -30,12 +30,12 @@ def bar_plot_results(
     dev = "stddev"
     if res == "robustness":
         if res not in worklist.results:
-            logger.warn(f"No results to plot. Run .robustness().")
+            logger.warning(f"No results to plot. Run .robustness().")
         data = worklist.results["robustness"][1]
 
     elif res == "fit":
         if "fit" not in worklist.results:
-            logger.warn(f"No results to plot. Run .fit().")
+            logger.warning(f"No results to plot. Run .fit().")
 
         data = worklist.results["fit"]
         use_cols = ["mean", "err_dev", "stddev"]
@@ -48,7 +48,7 @@ def bar_plot_results(
         )
     else:
         options = ["fit", "robutsness"]
-        logger.warn(f"{res=} not in {options=}.")
+        logger.warning(f"{res=} not in {options=}.")
         return
 
     if show_groups:
@@ -75,7 +75,7 @@ def bar_plot_results(
         grouped = groups
     else:
         options = ["sample", "group"]
-        logger.warn(f"{group_by=} not in {options=}.")
+        logger.warning(f"{group_by=} not in {options=}.")
         return
 
     N = len(labels)
@@ -119,7 +119,7 @@ def bar_plot_results(
     ax.set_ylabel(f"SOG in {y_unit}")
     if title:
         ax.set_title(f"summary plot with errors from {res}")
-    plt.show()
+
     if save:
         path_plots_eval = PATHS["plots"]/ "Evaluation"
         if path_plots_eval.exists() == False:

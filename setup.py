@@ -18,6 +18,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    install_requires=["pandas[excel, performance, plot, output-formatting, computation]", "scikit-learn", "requests","pint", "ipykernel", "seaborn", "molmass"],
+    install_requires=["pandas[excel, performance, plot, output-formatting, computation]", "scikit-learn", "requests","pint", "ipykernel", "seaborn", "molmass", "chempy"],
     python_requires=">=3.10.4",
 )

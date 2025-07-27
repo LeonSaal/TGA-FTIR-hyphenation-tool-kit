@@ -216,7 +216,7 @@ def link_groups(presets):
         gas_links.dropna(axis=1).empty
         and not links.replace("0", np.nan).dropna(thresh=1).empty
     ):
-        logger.warn("You cannnot predefine fitting parameters for all supplied gases!")
+        logger.warning("You cannnot predefine fitting parameters for all supplied gases!")
         gas_links = pd.DataFrame()
         links = pd.DataFrame()
     gases = [key for key in presets]

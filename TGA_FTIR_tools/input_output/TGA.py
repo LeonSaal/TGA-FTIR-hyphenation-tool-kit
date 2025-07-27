@@ -80,7 +80,7 @@ def dry_weight(
         ):
             how_dry = None
             dry_point = 1
-            logger.warn(
+            logger.warning(
                 "Supplied value is out of range. 'how_dry' is set to None. Be aware that 'reference_mass' is also set to 'initial_mass'."
             )
         else:
@@ -91,7 +91,7 @@ def dry_weight(
             if dry_point == 0:
                 how_dry = None
                 dry_point = 1
-                logger.warn(
+                logger.warning(
                     "Supplied value is out of range. 'how_dry' is set to None. Be aware that 'reference_mass' is also set to 'initial_mass'."
                 )
 

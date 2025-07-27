@@ -101,4 +101,4 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         fitting.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         error.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         fig.savefig(f'{sample.info["name"]}_{gas}.png')
-    plt.show()
+

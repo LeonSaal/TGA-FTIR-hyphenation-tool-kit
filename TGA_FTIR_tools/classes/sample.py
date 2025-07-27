@@ -5,7 +5,8 @@ import pickle
 import re
 from dataclasses import InitVar, dataclass, field
 from types import NoneType
-from typing import Any, Literal, Mapping, Optional
+from typing import Any, Literal, Mapping, Optional, List
+import matplotlib.pyplot as plt
 
 import configparser
 import numpy as np
@@ -302,10 +303,11 @@ class Sample:
             logger.error("Failed to derive TG info.")
 
     def mass_step(
-        self, plot=True, height=0, width=100, prominence=0, rel_height=0.9, **kwargs
+        self, ax=None, plot=True, height=0, width=100, prominence=0, rel_height=0.9,**kwargs
     ):
-        w_T = width / sp.mode(np.diff(self.tga.reference_temp)).mode[0]
-        return mass_step(
+        w_T = width / sp.mode(np.diff(self.tga.sample_temp)).mode
+        #self.plot("mass_steps", steps=self._info["step_temp"], **kwargs)
+        step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
             self,
             height=height,
             width=w_T,
@@ -313,8 +315,18 @@ class Sample:
             rel_height=rel_height,
             **kwargs,
         )
+        steps = self.tga.sample_temp[[step_starts_idx[0], *step_ends_idx, self.tga.index.size-1]]
+        self._info.step_temp = steps
+        if plot:
+            self.plot(
+                "mass_steps",
+                ax=ax,
+                steps=steps,
+                y_axis="orig",
+            )
+        return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=None, **kwargs):
+    def plot(self, plot=None, ax=None, save=False, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
@@ -330,52 +342,51 @@ class Sample:
             "fit",
         ]
         if plot not in options:
-            logger.warn(f"{plot} not in supported {options=}.")
+            logger.warning(f"{plot} not in supported {options=}.")
 
         if self.ir is None and (plot in ["IR", "DIR", "cumsum", "IR_to_DTG"]):
-            logger.warn("Option unavailable without IR data.")
+            logger.warning("Option unavailable without IR data.")
             return
+        if not isinstance(ax, plt.Axes):
+            fig, ax = plt.subplots()
 
         if plot == "IR":
-            plot_FTIR(self, **kwargs)
+            plot_FTIR(self, ax, **kwargs)
         elif plot == "DIR":
             temp = copy.deepcopy(self)
             temp.ir.update(
                 self.ir.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
             )
-            plot_FTIR(temp, **kwargs)
+            plot_FTIR(temp, ax, **kwargs)
         elif plot == "cumsum":
             temp = copy.deepcopy(self)
             temp.ir.update(self.ir.filter(self._info["gases"], axis=1).cumsum())
-            plot_FTIR(temp, **kwargs)
+            plot_FTIR(temp, ax, **kwargs)
 
         if (self.tga is None) and (
             plot in ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
         ):
-            logger.warn("Option unavailable without TGA data.")
+            logger.warning("Option unavailable without TGA data.")
             return
 
         if plot == "TG":
-            plot_TGA(self, "sample_mass", **kwargs)
+            plot_TGA(self,"sample_mass", ax, **kwargs)
         elif plot == "heat_flow":
             if "heat_flow" in self.tga.columns:
-                plot_TGA(self, plot, **kwargs)
+                plot_TGA(self, plot, ax, **kwargs)
             else:
-                logger.warn("No heat flow data available!")
+                logger.warning("No heat flow data available!")
         elif plot == "mass_steps":
             if "steps" not in kwargs:
-                if self._info and "step_temp" in self._info:
-                    steps = self._info.step_temp.astype(int).tolist()
-                else:
-                    logger.warn(f'Supply {"steps=[]"!r} or update self.info.step_temp')
-            else:
-                steps = kwargs["steps"]
-            plot_mass_steps(self, steps)
+                self.mass_step(plot=False)
+                kwargs["steps"] = self._info.step_temp
+    
+            plot_mass_steps(self,ax,**kwargs)
 
         if (self.linreg is not None) and (plot == "IR_to_DTG"):
-            FTIR_to_DTG(self, **kwargs)
+            FTIR_to_DTG(self, save=save, **kwargs)
         elif (self.linreg is None) and (plot == "IR_to_DTG"):
-            logger.warn("Option unavailable without calibration!")
+            logger.warning("Option unavailable without calibration!")
             return
 
         if plot == "fit":
@@ -383,7 +394,7 @@ class Sample:
                 if "reference" in kwargs:
                     reference = kwargs["reference"]
                     if reference not in self.results["fit"]:
-                        logger.warn(
+                        logger.warning(
                             f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
                         )
                         return
@@ -391,15 +402,26 @@ class Sample:
                     if len(self.results["fit"].keys()) == 1:
                         reference = list(self.results["fit"].keys())[0]
                     else:
-                        logger.warn(
+                        logger.warning(
                             f"Multiple fitting results available. Specify with keyword 'reference'= one of {[self.results['fit'].keys()]}"
                         )
                         return
                 plot_fit(self, reference, **kwargs)
             else:
-                logger.warn(
+                logger.warning(
                     'No fitting results available for plotting. Run ".fit()" first.'
                 )
+
+        if save:
+            path_plots = PATHS["plots"]/ plot
+            if not path_plots.exists():
+                path_plots.mkdir(parents=True)
+
+            path_pic = path_plots / f"{self.name}_{'_'.join(kwargs.keys())}"
+            ax.get_figure().savefig(path_pic)
+
+        
+        return ax
 
     def fit(
         self,
@@ -419,7 +441,7 @@ class Sample:
         if T_max is None:
             T_max = max(self.tga["sample_temp"])
         elif T_max > (T_max_data := max(self.tga["sample_temp"])):
-            logger.warn(f"{T_max=} exceeds maximum temperature of data ({T_max_data}).")
+            logger.warning(f"{T_max=} exceeds maximum temperature of data ({T_max_data}).")
             T_max = max(self.tga["sample_temp"])
             logger.info(f'"T_max" has been set to {T_max_data}.')
 
@@ -481,7 +503,7 @@ class Sample:
         "save object or its contents as pickle file or excel"
         options = ["samplelog", "excel", "pickle"]
         if how not in options:
-            logger.warn(f"{how=} not in {options=}")
+            logger.warning(f"{how=} not in {options=}")
             return
 
         # update samplelog
@@ -505,7 +527,7 @@ class Sample:
                         self._info.__dict__, orient="index"
                     ).to_excel(writer, sheet_name="info")
                 except PermissionError:
-                    logger.warn(
+                    logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
                     )
                 for key in ["tga", "ir"]:
@@ -513,15 +535,15 @@ class Sample:
                         if self.__dict__[key] is not None:
                             self.__dict__[key].to_excel(writer, sheet_name=key)
                     except PermissionError:
-                        logger.warn(
+                        logger.warning(
                             f"Unable to write on {path=} as the file is opened by another program."
                         )
 
-    def calibrate(self, **kwargs):
+    def calibrate(self,**kwargs):
         "calibrate object"
         from ..calibration import calibrate
 
-        self.linreg, self.stats = calibrate(**kwargs)
+        self.linreg, self.stats = calibrate(profile=self.profile, **kwargs)
 
     def __len__(self) -> int:
         return 1

@@ -91,7 +91,7 @@ if PATHS["home"] == Path() or not PATHS["home"].exists():
     logger.info(f"No valid home path was supplied in {config['ini']!r}. home was set to {cwd!r}")
     cfg["paths"]["home"] = cwd
 if PATHS["data"] == Path() or not PATHS["data"].exists():
-    logger.warn(f"No valid data path was supplied in {config['ini']!r}.")
+    logger.warning(f"No valid data path was supplied in {config['ini']!r}.")
     cfg["paths"]["data"] = input("Supply directory of Data:").replace(
         os.sep, os.altsep
     )

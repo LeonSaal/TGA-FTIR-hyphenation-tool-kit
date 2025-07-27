@@ -16,21 +16,21 @@ logger = logging.getLogger(__name__)
 def plots(
     samples,
     plot: Literal["TG", "IR", "DTG", "heat_flow"],
+    ax=None,
     x_axis="sample_temp",
     y_axis="orig",
     ylim="auto",
     xlim=[None, None],
     gas=None,
-    save=False,
     legend=True,
     reference_mass="reference_mass",
     linewidth=1,
     **kwargs,
 ):
-    "overlay plots from different sampleects"
+    "overlay plots from different samples"
     options = ["TG", "IR", "DTG", "heat_flow"]
     if plot not in options:
-        logger.warn(f"{plot=} not in {options=}")
+        logger.warning(f"{plot=} not in {options=}")
         return
 
     # setting up axis-labels and catching possible input errors
@@ -40,12 +40,12 @@ def plots(
         ylabel = plot.lower()
     if plot == "IR":
         if gas == None:
-            logger.warn("Supply 'gas = '")
+            logger.warning("Supply 'gas = '")
             return
         else:
             gas = gas.upper()
             if gas not in samples[0].ir.columns:
-                logger.warn(f"{gas} was not found in IR data.")
+                logger.warning(f"{gas} was not found in IR data.")
                 return
 
         # just to see if supplied gas is calibrated or not
@@ -55,15 +55,15 @@ def plots(
                 calibrated.update(set(TG_IR.linreg.index))
             except AttributeError:
                 if y_axis == "rel":
-                    logger.warn(f"{gas} is not calibrated for {TG_IR.name}")
+                    logger.warning(f"{gas} is not calibrated for {TG_IR.name}")
 
         if y_axis == "rel":
             if calibrated == set():
-                logger.warn(
+                logger.warning(
                     f"{gas} is not calibrated. Change y_axis to 'orig' and rerun command."
                 )
                 return
-    fig, ax = plt.subplots()
+
     ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
     if plot != "IR":
         if y_axis == "orig":
@@ -181,12 +181,4 @@ def plots(
     )  # switch on minor ticks on each axis
     ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
 
-    plt.show()
 
-    if save:
-        path_plots = PATHS["plots"]
-        if not path_plots.exists() :
-            path_plots.mkdir()
-        if gas == None:
-            gas = ""
-        fig.savefig(path_plots /"_".join([time(), plot, gas, y_axis, '.png']))

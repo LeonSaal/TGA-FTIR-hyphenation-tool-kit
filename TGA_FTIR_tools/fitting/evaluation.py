@@ -158,6 +158,7 @@ def concatenate(dfs, sample_order=[]):
 
 def bar_plot_results(
     df,
+    ax = None,
     show_groups=[],
     group_by="samples",
     y_unit="mymol_per_g",
@@ -178,8 +179,6 @@ def bar_plot_results(
     for sample in samples:
         df.loc[df.loc[:, (sample, "label")] != "", (sample, "mmol_per_mg")] = 0.0
         df.loc[df.loc[:, (sample, "label")] != "", (sample, "stddev")] = 0.0
-
-    fig, ax = plt.subplots()
 
     if group_by == "samples":
         x = samples  # samples as x-ticks
@@ -276,22 +275,20 @@ def bar_plot_results(
     ax.set_xticks(np.arange(len(x)))
     ax.set_xticklabels(x)
 
-    fig.tight_layout()
-    plt.show()
 
-    if save:
-        path_plots_eval = PATHS["plots"]/ "Evaluation"
-        if not path_plots_eval.exists():
-            os.makedirs(path_plots_eval)
-        sample_names = "".join(
-            [x if (x.isalnum() or x in "._- ") else "" for x in str(samples)]
-        )  # to catch invalide sample names
-        # check path length and if necessary shorten file name by list of samples
-        path_save = path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png"
-        if len(path_save) > 260:
-            sample_names = sample_names[: (len(sample_names) - (len(path_save) - 259))]
-        fig.savefig(path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png",
+    # if save:
+    #     path_plots_eval = PATHS["plots"]/ "Evaluation"
+    #     if not path_plots_eval.exists():
+    #         os.makedirs(path_plots_eval)
+    #     sample_names = "".join(
+    #         [x if (x.isalnum() or x in "._- ") else "" for x in str(samples)]
+    #     )  # to catch invalide sample names
+    #     # check path length and if necessary shorten file name by list of samples
+    #     path_save = path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png"
+    #     if len(path_save) > 260:
+    #         sample_names = sample_names[: (len(sample_names) - (len(path_save) - 259))]
+    #     fig.savefig(path_plots_eval/ f"{time()}_{sample_names}_by_{group_by}.png",
             
-        )
+    #     )
 
     return

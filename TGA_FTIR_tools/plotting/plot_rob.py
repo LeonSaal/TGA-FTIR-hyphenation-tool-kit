@@ -70,7 +70,7 @@ def plot_robustness(data, save=False, ylim=[0, None], **kwargs):
             plt.legend()
             plt.xticks(rotation=45, ha="right")
             plt.tight_layout()
-            plt.show()
+      
 
             if save:
                 sample_name = "".join(

@@ -63,7 +63,6 @@ def plot_dweight(
         ax.set(title="Dry mass and mass steps determination")
 
     plt.legend()
-    plt.show()
     if save:
         path_plots = PATHS["plots"]
         if not path_plots.exists():

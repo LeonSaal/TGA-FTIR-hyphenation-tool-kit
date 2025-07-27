@@ -9,20 +9,19 @@ from .plotting import get_label
 from .utils import make_title
 
 
-def plot_mass_steps(sample, steps:None, y_axis:Literal['rel','orig']='rel', x_axis='sample_temp', title=False):
+def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig']='rel', x_axis='sample_temp', title=False):
     """
     steps: (start, stop)
     """
     # get steps
-    if 0 not in steps:
-        steps = [0, *steps]
+    # if 0 not in steps:
+    #     steps = [0, *steps]
     matches = sample.get_value(*steps, at=x_axis).T
-    step_masses = matches.sample_mass
+    step_masses = matches.sample_mass.values
     steps = matches.index
     step_heights = np.diff(step_masses)
     
     # set up plot
-    fig, ax = plt.subplots()
     x,y = sample.tga[x_axis], sample.tga.sample_mass
     if y_axis =='rel':
         unit = '%'
@@ -33,7 +32,7 @@ def plot_mass_steps(sample, steps:None, y_axis:Literal['rel','orig']='rel', x_ax
     # plot steps
     ax.hlines(
         step_masses[:-1],
-        np.zeros(len(step_masses) - 1),
+        np.zeros(len(step_masses)-1),
         steps[1:],
         linestyle="dashed",
     )
@@ -46,7 +45,7 @@ def plot_mass_steps(sample, steps:None, y_axis:Literal['rel','orig']='rel', x_ax
         if y_axis =='orig':
             label = f'{step_height:.2f} {unit} ({step_height / step_masses[0]:.2%})'
         else:
-            label = f'{step_height/y.max():.2%}'
+            label = f'{step_height/y.max():.1%}'
         ax.text(step_end+ 5, y_mean ,label)
 
     #plot data and set axes labels
@@ -56,8 +55,6 @@ def plot_mass_steps(sample, steps:None, y_axis:Literal['rel','orig']='rel', x_ax
 
     if title:
         ax.set_title(make_title(sample))
-
-    plt.show()
 
 # def plot_dtg_mass_step(x:pd.Series, y:pd.Series, steps:Tuple, peaks):
 #     # plotting of DTG

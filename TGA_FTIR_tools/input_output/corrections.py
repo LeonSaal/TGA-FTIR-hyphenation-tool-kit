@@ -111,7 +111,7 @@ def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_o
                 # shifting the baseline in x direction
                 c = []
                 for x_offs in range(-1, len_period % x_shift + 1):
-                    peaks, props = sp.signal.find_peaks(
+                    peaks, _ = sp.signal.find_peaks(
                         FTIR["CO2"]
                         - co2_baseline[x_shift + x_offs : len(FTIR) + x_shift + x_offs],
                         height=[None, None],
@@ -130,7 +130,7 @@ def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_o
                 ) + min(FTIR[gas].subtract(co2_baseline))
 
             except:
-                logger.warn("Unable to align CO2 baseline with measurement.")
+                logger.warning("Unable to align CO2 baseline with measurement.")
                 corr_data[gas] = np.zeros(len(FTIR))
                 corr_data[gas] += const_baseline(
                     FTIR[gas] - min(FTIR[gas]), thresh

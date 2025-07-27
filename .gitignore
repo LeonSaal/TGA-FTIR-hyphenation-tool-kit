@@ -11,11 +11,9 @@ Calibration/
 Fitting/
 *.pyc
 
-TGA_FTIR_tools/settings/*.json
 TGA_FTIR_tools/settings/*.xlsx
 
 *.egg-info
 */__pycache__/
-3.1
 TGA-FTIR-hyphenation-tool-kit.code-workspace
-TGA_FTIR_tools\settings\import_profiles\profiles\*
+TGA_FTIR_tools/settings/import_profiles/profiles/*

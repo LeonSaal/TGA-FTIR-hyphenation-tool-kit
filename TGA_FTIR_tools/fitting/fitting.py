@@ -97,26 +97,26 @@ def fitting(
 
     return data.peaks
 
-def get_presets(reference):
+def get_presets(reference, file = config["fitting_params"]):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets = dict()
 
-    if not os.path.exists(config["fitting_params"]):
+    if not os.path.exists(file):
         if PATHS["fitting_params"].exists():
-            sh.copy(PATHS["fitting_params"], config["fitting_params"])
+            sh.copy(PATHS["fitting_params"], file)
         else:
-            logger.warn("Unable to get default settings.")
+            logger.warning("Unable to get default settings.")
 
     references = pd.read_excel(
-        config["fitting_params"], index_col=0, header=[0, 1], sheet_name=None,
+        file, index_col=0, header=[0, 1], sheet_name=None,
     )
 
     if (
         reference not in (options := references["center_0"].index.to_list())
         and reference is not None
     ):
-        logger.warn(f"{reference=} is an invalid option. {options=} ")
+        logger.warning(f"{reference=} is an invalid option. {options=} ")
         return
     elif reference is None:
         return options

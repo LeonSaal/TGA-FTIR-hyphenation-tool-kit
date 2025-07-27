@@ -3,6 +3,7 @@ import pickle
 import re
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
+import matplotlib.pyplot as plt
 
 import pandas as pd
 
@@ -30,7 +31,7 @@ class Worklist:
                 self.samples + other.samples, name=f"{self.name}+{other.name}"
             )
         else:
-            logger.warn("Can only add samples to Worklist")
+            logger.warning("Can only add samples to Worklist")
 
     def __repr__(self) -> str:
         return (
@@ -126,15 +127,28 @@ class Worklist:
             self.plot("robustness")
         return self._results["robustness"]
 
-    def plot(self, plot=None, **kwargs) -> None:
+    def plot(self, plot=None, ax=None, save=False,**kwargs) -> None:
+        if not ax:
+            fig, ax = plt.subplots()
+
         if plot == "robustness" and "robustness" in self._results:
-            logger.warn("Under Maintenance")
+            logger.warning("Under Maintenance")
             # plot_robustness(self._results["robustness"][0])
         elif plot == "results":
-            logger.warn("Under Maintenance")
+            logger.warning("Under Maintenance")
             # bar_plot_results(self, **kwargs)
         else:
-            plots(self.samples, plot, **kwargs)
+            plots(self.samples, plot,ax, **kwargs)
+
+        if save:
+            path_plot = PATHS["plots"] / plot
+            if not path_plot.exists() :
+                path_plot.mkdir(parents=True)
+
+            path_pic = path_plot / "_".join([time(), self.name])
+            fig.savefig(path_pic)
+
+
 
     def __len__(self) -> int:
         return len(self.samples)

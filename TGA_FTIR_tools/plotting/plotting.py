@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def plot_TGA(
     sample,
     plot,
-    save=False,
+    ax,
     x_axis="sample_temp",
     y_axis="orig",
     ylim="auto",
@@ -32,12 +32,7 @@ def plot_TGA(
 ):
     "plot TG data"
 
-    # setting up plot
-    fig, TGA = plt.subplots()
-
-    fig.subplots_adjust(right=0.8)
-
-    DTG = TGA.twinx()
+    DTG = ax.twinx()
 
     x = copy.deepcopy(sample.tga[x_axis])
 
@@ -59,12 +54,12 @@ def plot_TGA(
         ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS['sample_mass']}\\,min^{{-1}}$"
         ylabel = f"{get_label(plot)} {SEP} ${UNITS[plot]}$"
 
-    TGA.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
 
     # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis == "time":
         x = x / 60
-        temp = TGA.twinx()
+        temp = ax.twinx()
         temp.plot(
             x,
             sample.tga["sample_temp"],
@@ -82,34 +77,26 @@ def plot_TGA(
         x, yDTG, ylim = ylim_auto(x, yDTG, xlim)
 
     # actual plotting
-    (gTGA,) = TGA.plot(x, y, ls="-", color='C0',label=ylabel)
+    (gTGA,) = ax.plot(x, y, ls="-", color='C0',label=ylabel)
     (gDTG,) = DTG.plot(x, yDTG, ls="--", color='C1',label="DTG")
 
-    TGA.set_ylabel(ylabel)
-    TGA.set_ylim(ylim)
-    TGA.set_xlim(xlim)
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(ylim)
+    ax.set_xlim(xlim)
     DTG.set_ylabel(ylabelDTG)
 
-    TGA.yaxis.label.set_color(gTGA.get_color())
+    ax.yaxis.label.set_color(gTGA.get_color())
     DTG.yaxis.label.set_color(gDTG.get_color())
 
-    DTG.set_yticks(np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(TGA.get_yticks())))
-    TGA.set_yticks(np.linspace(TGA.get_yticks()[0], TGA.get_yticks()[-1], len(DTG.get_yticks())))
+    DTG.set_yticks(np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(ax.get_yticks())))
+    ax.set_yticks(np.linspace(ax.get_yticks()[0], ax.get_yticks()[-1], len(DTG.get_yticks())))
     if title == True:
-        TGA.set_title(make_title(sample))
-
-    plt.show()
-
-    if save:
-        path_plots_tga = PATHS["plots"]/ "TGA"
-        if not path_plots_tga.exists():
-            path_plots_tga.mkdir()
-        fig.savefig(path_plots_tga/ f"{sample.name}_TG_{y_axis}.png")
+        ax.set_title(make_title(sample))
 
 
 def plot_FTIR(
     sample,
-    save=False,
+    ax,
     gases=[],
     x_axis="sample_temp",
     y_axis="orig",
@@ -144,7 +131,7 @@ def plot_FTIR(
             gases = set(gases)
             intersection = calibrated & on_axis & gases
             if len(gases - calibrated) != 0:
-                logger.warn(
+                logger.warning(
                     f"{' and '.join([gas for gas in gases - calibrated])} not calibrated."
                 )
             if len(intersection) != 0:
@@ -161,7 +148,7 @@ def plot_FTIR(
             gases = set(gases)
             intersection = on_axis & gases
             if len(gases - on_axis) != 0:
-                logger.warn(
+                logger.warning(
                     f"{' and '.join([gas for gas in gases - on_axis])} not found in IR data."
                 )
             if len(intersection) != 0:
@@ -176,9 +163,7 @@ def plot_FTIR(
 
     # setup figure
     graphs = []
-    fig, g0 = plt.subplots()
-    fig.subplots_adjust(right=0.8)
-    graphs.append(g0)
+    graphs.append(ax)
     graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
 
     if x_axis == "time":
@@ -215,22 +200,13 @@ def plot_FTIR(
             graphs[0].plot(x, y, label=get_label(gas))
 
     if legend and y_axis == "rel":
-        fig.legend()
+        ax.legend()
 
 
     if title == True:
         graphs[0].set_title(make_title(sample))
 
     graphs[0].set_xlim(xlim)
-    plt.show()
-
-    if save:
-        path_plots_ir = PATHS["plots"]/ "IR"
-        if not path_plots_ir.exists():
-            path_plots_ir.mkdir()
-            
-        fig.savefig(path_plots_ir/ f"{sample.name}_IR_{y_axis}.png")
-
 
 def FTIR_to_DTG(
     sample,
@@ -254,7 +230,7 @@ def FTIR_to_DTG(
     if len(gases) == 0:
         intersection = calibrated & on_axis
         if calibrated != on_axis:
-            logger.warn(
+            logger.warning(
                 f"{' and '.join([gas for gas in list(on_axis - calibrated)])} not calibrated. "
             )
             logger.info(
@@ -265,7 +241,7 @@ def FTIR_to_DTG(
     else:
         intersection = calibrated & on_axis & gases_temp
         if len(gases_temp - calibrated) != 0:
-            logger.warn(
+            logger.warning(
                 "{} not calibrated.".format(
                     " and ".join([gas for gas in (gases_temp - calibrated)])
                 )
@@ -300,7 +276,7 @@ def FTIR_to_DTG(
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
-            * Substance.from_formula(gas).mass
+            * sample.linreg["molmass"][gas]
         )
         y[i][:] = sample.ir[gas] / tot_area * tot_mass
         out[gas] = y[i][:]
@@ -344,7 +320,6 @@ def FTIR_to_DTG(
     error.hlines(0, min(x), max(x), ls="dashed")
     error.set_ylabel(f"$\\Delta$ {get_label('dtg')}")
     stack.set_xlim(xlim)
-    plt.show()
 
     if save:
         path_plot_irdtg = PATHS["plots"]/ "IRDTG"
