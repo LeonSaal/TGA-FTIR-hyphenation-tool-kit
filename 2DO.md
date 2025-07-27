@@ -1,5 +1,5 @@
 # Errors
-- _mass\_steps_ in `.info` are erraneous
+- `dry_weight`
 - `.corr(...)` if `plot=dict`, fill missing keys
 - saving of `Worklist` doesn't seem to update the samplelog
 
@@ -13,15 +13,7 @@
     - `dict` of `dicts`
     -  `pd.DataFrame`)
 -  get unit from header with `re`
-
-## Mass Step
-- Error
-
-## Calibration
-- make calibration per device available
-- pass `Worklist` as argument
-- add possibility to improve integration of DTG-peaks
-  - consider Wavelet-peak detection
+- initialize ``Worklist`` from list of names to pass to ``Sample``
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -34,11 +26,11 @@
 - parallelize computations
 
 ## Plotting
-- `.plot()` `ax=...` keyword-argument
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
 - add better summary plots for fitting and robustness-results (e.g. with tidy data in combination with `seaborn`)
 - make plot interactive
   - measure mass-, temperature- or time-differences
+- plotting of calibration data
 
 ## General
 - reduce amount of logging
@@ -50,12 +42,10 @@
 - use minutes internally
 - rename *IR* to *EGA*
 - add `**kwargs` to every function for flexibility
-- [x] make profile-folder in settings
 - remove functions / REs specific to BAM-devices
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
-- pass locations to `.mass_step()` manually
 - ? shift `Baseline` 
 
 # Documentation
@@ -64,3 +54,4 @@
     - `Sample`+`Sample`=`Worklist`
     - `Sample`+`Worklist`=`Worklist`
     - `Worklist`+`Worklist`=`Worklist`
+- calibration
