@@ -269,9 +269,9 @@ def bar_plot_results(
         ax.set(title="summary plot with errors from robustness testing")
 
     if y_unit == "mymol_per_g":
-        ax.set_ylabel("surface oxygen groups in $\mu mol\,g^{-1}$")
+        ax.set_ylabel(r"surface oxygen groups in $\mu mol\,g^{-1}$")
     else:
-        ax.set_ylabel("surface oxygen groups in $mmol\,mg^{-1}$")
+        ax.set_ylabel(r"surface oxygen groups in $mmol\,mg^{-1}$")
     ax.set_xticks(np.arange(len(x)))
     ax.set_xticklabels(x)
 

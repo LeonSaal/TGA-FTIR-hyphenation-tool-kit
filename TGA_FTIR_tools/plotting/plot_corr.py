@@ -22,6 +22,6 @@ def plot_corr(originalData: pd.DataFrame, BaselineData:pd.DataFrame, label: str)
         ax.set_xlabel(f"{get_label('time')} {SEP} {UNITS['time']}")
     elif x.name == "sample_temp":
         ax.set_xlabel(f"{get_label('sample_temp')} {SEP} {UNITS['sample_temp']}")
-    ax.set_ylabel(f"{get_label(label)} {SEP} {UNITS['IR' if label not in UNITS else label]}")
+    ax.set_ylabel(f"{get_label(label)} {SEP} {UNITS['EGA' if label not in UNITS else label]}")
     ax.set(title=f"{get_label(label)} baseline correction")
 

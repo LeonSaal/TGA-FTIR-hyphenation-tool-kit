@@ -8,7 +8,7 @@ def FTIR_info(TG_IR):
 
     # calculate total area of each gas
     for gas in TG_IR.info["gases"]:
-        info[f"area_{gas}"] = np.sum(TG_IR.ir[gas])
+        info[f"area_{gas}"] = np.sum(TG_IR.ega[gas])
 
     if TG_IR.linreg is not None:
         # calculate molar amount of calibrated gases

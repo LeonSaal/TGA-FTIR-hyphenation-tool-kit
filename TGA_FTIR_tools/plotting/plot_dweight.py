@@ -22,7 +22,7 @@ def plot_dweight(
 
     if how_dry == "H2O":
         try:
-            ref = sample.ir.filter(items=["sample_temp", "H2O"])
+            ref = sample.ega.filter(items=["sample_temp", "H2O"])
             ylabel = get_label(how_dry)
         except:
             how_dry = "sample_mass"

@@ -13,7 +13,20 @@
     - `dict` of `dicts`
     -  `pd.DataFrame`)
 -  get unit from header with `re`
-- initialize ``Worklist`` from list of names to pass to ``Sample``
+- helper to determine `kwargs` for `read_csv`
+	- auto 
+		- encoding from chardet, python-magic
+		- read first n lines
+		- count delimiter, quotes, \\t
+			- guess delim and skiprows
+		- count numbers and seps to guess header length
+			- after skiprows guess first numerical row
+			- merge multiindex header to single row afterwards
+	- CLI?
+        - first ask for required kwargs
+        - only if not successful ask for other kwargs 
+		- update preview or errors
+    - combination of above
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -30,7 +43,6 @@
 - add better summary plots for fitting and robustness-results (e.g. with tidy data in combination with `seaborn`)
 - make plot interactive
   - measure mass-, temperature- or time-differences
-- plotting of calibration data
 - add DTG to mass-stops (optional)
 
 ## General
@@ -38,13 +50,19 @@
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
 - add automated testing
-- let `pint` and `molmass` handle units
+- let `pint` handle units
     - `pint-pandas` for unit inside `pd.DataFrame`
 - use minutes internally
 - rename *IR* to *EGA*
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
+- ``setup.py`` $\rightarrow$ ``pyproject.toml``
+- testing with ``pytest`` (+`tox`?)
+- debug level in ``__init__`` oder settings?
+- clean up `Sample`, `calibration.py`
+  - reduce if statements
+  - combine code blocks to and or move functions to separate .py-files 
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments

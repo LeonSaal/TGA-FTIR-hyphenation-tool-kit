@@ -17,7 +17,7 @@ from scipy.signal import savgol_filter
 from ..config import COUPLING, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog)
-from ..plotting import plot_dweight, plot_mass_steps
+from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined
 from ..utils import select_import_profile, check_profile_exists
 from .info import SampleInfo
 
@@ -42,16 +42,11 @@ class Sample:
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = COUPLING["profile"]
 
-    def __post_init__(self, mode, profile="default", **kwargs):
-        
+    def __post_init__(self, mode, profile, **kwargs):
         if mode == "construct":
             logger.info(f"Initializing '{self.name}'")
 
-            # check if profile is supplied
-            if profile == "set" or not check_profile_exists(self.profile):
-                self.profile = select_import_profile()
-                update_config(section="coupling",key="profile", value=self.profile)
-                logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
+            self.check_profile()
             logger.debug(f"Using profile {self.profile!r}.")
 
             # load data
@@ -88,12 +83,10 @@ class Sample:
                 logger.error(f"No TGA data found for {self.name!r}.")
                 self._info = SampleInfo(name=self.name, alias=self.alias)
 
-            if self.ir is not None:
-                from ..calibration import calibrate
-
-                self._info["gases"] = set(self.ir.columns[1:].to_list())
+            if self.ega is not None:
+                self._info["gases"] = set(self.ega.columns[1:].to_list())
                 # load calibration
-                self.linreg, self.stats = calibrate(mode="load", profile=self.profile)
+                self.calibrate(mode="load", profile=self.profile)
 
 
                 logger.info(
@@ -119,18 +112,18 @@ class Sample:
                 except:
                     pass
                 try:
-                    self.ir = pd.merge(
+                    self.ega = pd.merge(
                         self.tga.filter(
                             ["time", "sample_temp", "reference_temp"], axis=1
                         ),
-                        self.ir,
+                        self.ega,
                         how="left",
                         on="time",
                     )#.dropna(axis=0)
                 except:
                     logger.info("No IR data found.")
 
-                if self.ir is None and self.tga is None:
+                if self.ega is None and self.tga is None:
                     logger.error(f"Failed to initialize '{self.name}'.")
                 else:
                     logger.info(f"'{self.name}' successfully initialiazed.")
@@ -173,10 +166,26 @@ class Sample:
         )
         return f"Sample({attr_vals})"
 
+    def __add__(self, other):
+        from .worklist import Worklist
+        if isinstance(other, Sample):
+            return Worklist([self, other], name=f"{self.name}+{other.name}")
+        elif isinstance(other, Worklist):
+            return other + self
+        else:
+            logger.warning("Can only add to Sample- or Worklist-type")
+
     @property
     def info(self):
         self._info.alias = self.alias
         return self._info
+
+    def check_profile(self):
+        # check if profile is supplied
+        if self.profile == "set" or not check_profile_exists(self.profile):
+            self.profile = select_import_profile()
+            update_config(section="coupling",key="profile", value=self.profile)
+            logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
 
     def missing_tga_columns(self):
         "check if required columns are present in TGA data"
@@ -194,21 +203,21 @@ class Sample:
         plot: Mapping | bool = False,
         update=False,
         dry_args={},
-        ir_args={},
+        ega_args={},
     ):
         "correction of TG and IR data"
-        if self.ir is None and self.tga is None:
+        if self.ega is None and self.tga is None:
             logger.error("There is no data to correct.")
             return
 
         if plot == True:
             plot = {}
-            plot["ir"] = True
+            plot["ega"] = True
             plot["tga"] = True
             plot["dry_weight"] = True
         if plot == False:
             plot = {}
-            plot["ir"] = False
+            plot["ega"] = False
             plot["tga"] = False
             plot["dry_weight"] = False
 
@@ -260,11 +269,11 @@ class Sample:
             except PermissionError:
                 logger.error("Failed to derive TG info.")
 
-        if (self.ir is not None) and (self.baseline.ir is not None):
+        if (self.ega is not None) and (self.baseline.ega is not None):
             try:
-                self.ir.update(
+                self.ega.update(
                     corrections.corr_FTIR(
-                        self.raw, self.baseline, plot=plot["ir"], **ir_args
+                        self.raw, self.baseline, plot=plot['ega'], **ega_args
                     )
                 )
             except PermissionError:
@@ -330,70 +339,75 @@ class Sample:
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
-
         options = [
             "TG",
             "mass_steps",
             "heat_flow",
-            "IR",
+            "EGA",
             "DIR",
             "cumsum",
             "IR_to_DTG",
             "fit",
+            "calibration"
         ]
         if plot not in options:
             logger.warning(f"{plot} not in supported {options=}.")
 
-        if self.ir is None and (plot in ["IR", "DIR", "cumsum", "IR_to_DTG"]):
-            logger.warning("Option unavailable without IR data.")
-            return
-        if not isinstance(ax, plt.Axes):
-            fig, ax = plt.subplots()
-
-        if plot == "IR":
-            plot_FTIR(self, ax, **kwargs)
-        elif plot == "DIR":
-            temp = copy.deepcopy(self)
-            temp.ir.update(
-                self.ir.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
-            )
-            plot_FTIR(temp, ax, **kwargs)
-        elif plot == "cumsum":
-            temp = copy.deepcopy(self)
-            temp.ir.update(self.ir.filter(self._info["gases"], axis=1).cumsum())
-            plot_FTIR(temp, ax, **kwargs)
-
-        if (self.tga is None) and (
-            plot in ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
-        ):
+        needs_tg = ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
+        needs_ega = ["EGA", "DIR", "cumsum", "IR_to_DTG"]
+        needs_cali = [ "IR_to_DTG","calibration"]
+        
+        # check requisites
+        if (self.tga is None) and (plot in needs_tg):
             logger.warning("Option unavailable without TGA data.")
             return
-
-        if plot == "TG":
-            plot_TGA(self,"sample_mass", ax, **kwargs)
-        elif plot == "heat_flow":
-            if "heat_flow" in self.tga.columns:
-                plot_TGA(self, plot, ax, **kwargs)
-            else:
-                logger.warning("No heat flow data available!")
-        elif plot == "mass_steps":
-            if "steps" not in kwargs:
-                self.mass_step(plot=False)
-                kwargs["steps"] = self._info.step_temp
-    
-            plot_mass_steps(self,ax,**kwargs)
-
-        if (self.linreg is not None) and (plot == "IR_to_DTG"):
-            FTIR_to_DTG(self, save=save, **kwargs)
-        elif (self.linreg is None) and (plot == "IR_to_DTG"):
-            logger.warning("Option unavailable without calibration!")
+        if self.ega is None and (plot in needs_ega):
+            logger.warning("Option unavailable without EGA data.")
+            return
+        if self.linreg is None and (plot in needs_cali):
+            logger.warning("Option unavailable without calibration.")
             return
 
-        if plot == "fit":
-            if self.results["fit"] != {}:
-                if "reference" in kwargs:
+        if not isinstance(ax, plt.Axes) and plot not in ["IR_to_DTG", "calibration", "fit"]:
+            fig, ax = plt.subplots()
+
+        match plot:
+            case "EGA":
+                plot_FTIR(self, ax, **kwargs)
+            case "DIR":
+                temp = copy.deepcopy(self)
+                temp.ega.update(
+                    self.ega.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
+                )
+                plot_FTIR(temp, ax, **kwargs)
+            case "cumsum":
+                temp = copy.deepcopy(self)
+                temp.ega.update(self.ega.filter(self._info["gases"], axis=1).cumsum())
+                plot_FTIR(temp, ax, **kwargs)
+            case "TG":
+                plot_TGA(self,"sample_mass", ax, **kwargs)
+            case"heat_flow":
+                if "heat_flow" in self.tga.columns:
+                    plot_TGA(self, plot, ax, **kwargs)
+                else:
+                    logger.warning("No heat flow data available!")
+            case"mass_steps":
+                if "steps" not in kwargs:
+                    self.mass_step(plot=False)
+                    kwargs["steps"] = self._info.step_temp
+        
+                plot_mass_steps(self,ax,**kwargs)
+            case "IR_to_DTG":
+                FTIR_to_DTG(self, save=save, **kwargs)
+            case "fit":
+                if self.results["fit"] == {}:
+                    logger.warning(
+                        'No fitting results available for plotting. Run ".fit()" first.'
+                    )
+                    return
+                if kwargs.get("reference"):
                     reference = kwargs["reference"]
-                    if reference not in self.results["fit"]:
+                    if not self.results["fit"].get(reference):
                         logger.warning(
                             f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
                         )
@@ -402,15 +416,23 @@ class Sample:
                     if len(self.results["fit"].keys()) == 1:
                         reference = list(self.results["fit"].keys())[0]
                     else:
-                        logger.warning(
-                            f"Multiple fitting results available. Specify with keyword 'reference'= one of {[self.results['fit'].keys()]}"
-                        )
+                        avail_refs = [self.results['fit'].keys()]
+                        warn_msg = f"Multiple fitting results available. Specify with keyword 'reference'= one of {avail_refs}"
+                        logger.warning(warn_msg)
                         return
                 plot_fit(self, reference, **kwargs)
-            else:
-                logger.warning(
-                    'No fitting results available for plotting. Run ".fit()" first.'
-                )
+                    
+            case "calibration":
+                if (gas := kwargs.get("gas")) and kwargs.get("gas") in self._info["gases"]:
+                    x = self.xcali.get(gas)
+                    y = self.ycali.get(gas)
+                    linreg = self.linreg.loc[gas, :]
+
+                    fig, axs = plt.subplots(1,2)
+                    plot_calibration_single(x, y, linreg, axs[0])
+                    plot_residuals_single(x, y, linreg, axs[1])
+                else:
+                    plot_calibration_combined(self.xcali, self.ycali, self.linreg, self._info["gases"], ax)
 
         if save:
             path_plots = PATHS["plots"]/ plot
@@ -419,8 +441,6 @@ class Sample:
 
             path_pic = path_plots / f"{self.name}_{'_'.join(kwargs.keys())}"
             ax.get_figure().savefig(path_pic)
-
-        
         return ax
 
     def fit(
@@ -471,7 +491,7 @@ class Sample:
         )
         temp = copy.deepcopy(self)
         temp.tga = temp.tga[temp.tga["sample_temp"] < T_max]
-        temp.ir = temp.ir[temp.ir["sample_temp"] < T_max]
+        temp.ega = temp.ega[temp.ega["sample_temp"] < T_max]
         peaks = fitting(temp, presets, save=save, **kwargs)
         if save:
             logger.info(f"Plots and results are saved.\n'{path=}'.")
@@ -530,7 +550,7 @@ class Sample:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
                     )
-                for key in ["tga", "ir"]:
+                for key in ["tga", 'ega']:
                     try:
                         if self.__dict__[key] is not None:
                             self.__dict__[key].to_excel(writer, sheet_name=key)
@@ -539,11 +559,13 @@ class Sample:
                             f"Unable to write on {path=} as the file is opened by another program."
                         )
 
-    def calibrate(self,**kwargs):
+    def calibrate(self, profile=None,**kwargs):
         "calibrate object"
         from ..calibration import calibrate
+        if not profile:
+            profile=self.profile
 
-        self.linreg, self.stats = calibrate(profile=self.profile, **kwargs)
+        self.linreg, self.stats, self.xcali, self.ycali = calibrate(profile=profile, **kwargs)
 
     def __len__(self) -> int:
         return 1

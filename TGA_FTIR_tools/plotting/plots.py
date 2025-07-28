@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def plots(
     samples,
-    plot: Literal["TG", "IR", "DTG", "heat_flow"],
+    plot: Literal["TG", "EGA", "DTG", "heat_flow"],
     ax=None,
     x_axis="sample_temp",
     y_axis="orig",
@@ -28,7 +28,7 @@ def plots(
     **kwargs,
 ):
     "overlay plots from different samples"
-    options = ["TG", "IR", "DTG", "heat_flow"]
+    options = ["TG", "EGA", "DTG", "heat_flow"]
     if plot not in options:
         logger.warning(f"{plot=} not in {options=}")
         return
@@ -38,13 +38,13 @@ def plots(
         ylabel = "sample_mass"
     else:
         ylabel = plot.lower()
-    if plot == "IR":
+    if plot == "EGA":
         if gas == None:
             logger.warning("Supply 'gas = '")
             return
         else:
             gas = gas.upper()
-            if gas not in samples[0].ir.columns:
+            if gas not in samples[0].ega.columns:
                 logger.warning(f"{gas} was not found in IR data.")
                 return
 
@@ -65,7 +65,7 @@ def plots(
                 return
 
     ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
-    if plot != "IR":
+    if plot != "EGA":
         if y_axis == "orig":
             ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS[ylabel]}$")
         elif y_axis == "rel":
@@ -73,7 +73,7 @@ def plots(
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
             else:
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
-    elif plot == "IR":
+    elif plot == "EGA":
         if y_axis == "orig":
             ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS[ylabel]}$")
         elif y_axis == "rel":
@@ -141,12 +141,12 @@ def plots(
                 y,
                 linewidth=linewidth,
                 label=label)
-        if plot == "IR":
-            x = copy.deepcopy(sample.ir[x_axis])
+        if plot == "EGA":
+            x = copy.deepcopy(sample.ega[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = sample.ir[gas]
+                y = sample.ega[gas]
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis
@@ -157,7 +157,7 @@ def plots(
                     linewidth=linewidth,
                     label=label)
             elif y_axis == "rel":
-                y = sample.ir[gas] / sample.linreg["slope"][gas] / ref_mass
+                y = sample.ega[gas] / sample.linreg["slope"][gas] / ref_mass
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis

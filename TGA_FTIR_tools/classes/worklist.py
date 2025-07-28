@@ -4,7 +4,6 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 import matplotlib.pyplot as plt
-
 import pandas as pd
 
 from ..classes import Sample
@@ -19,9 +18,20 @@ import os
 
 @dataclass
 class Worklist:
-    samples: List[Sample] = field(default_factory=list)
+    samples: List[Sample|str]|str|Sample = field(default_factory=list)
     name: Optional[str] = "worklist"
     _results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
+
+    def __post_init__(self):
+        match self.samples:
+            case str():
+                self.samples = [Sample(self.samples)]
+            case list():
+                self.samples = [sample if isinstance(sample, Sample) else Sample(sample) for sample in self.samples]
+            case Sample():
+                self.samples = [self.samples]
+            case _:
+                logger.warning(f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample].")
 
     def __add__(self, other):
         if isinstance(other, Sample):
@@ -31,7 +41,7 @@ class Worklist:
                 self.samples + other.samples, name=f"{self.name}+{other.name}"
             )
         else:
-            logger.warning("Can only add samples to Worklist")
+            logger.warning("Can only add Sample or other Worklist")
 
     def __repr__(self) -> str:
         return (

@@ -9,9 +9,9 @@ from .plotting import get_label, make_title
 
 def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
     if y_axis == "rel":
-        ir_values = "mmol_per_mg"
+        ega_values = "mmol_per_mg"
     else:
-        ir_values = "area"
+        ega_values = "area"
 
     fit_data = sample.results["fit"][reference][["center", "height", "hwhm"]].dropna()
 
@@ -25,18 +25,18 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         # fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
 
         # plotting of fit
-        # x, data = sample.ir.sample_temp, sample.ir[gas]
+        # x, data = sample.ega.sample_temp, sample.ega[gas]
 
         num_curves = params.index.size
         fitting.plot(
-            sample.ir.sample_temp,
-            sample.ir[gas],
+            sample.ega.sample_temp,
+            sample.ega[gas],
             label="data",
             lw=2,
             zorder=num_curves + 1,
         )  # ,ls='',marker='x',markevery=2,c='cyan')
 
-        x, y_data = sample.ir.sample_temp, sample.ir[gas]
+        x, y_data = sample.ega.sample_temp, sample.ega[gas]
 
         yall = multi_gauss(
             x.values, *params.height.values, *params.center.values, *params.hwhm.values
@@ -58,7 +58,7 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         fitting.legend()
         fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if y_axis == "orig":
-            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ir']}$")
+            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ega']}$")
         elif y_axis == "rel":
             fitting.set_ylabel(
                 f"{get_label(gas)} {SEP} ${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
@@ -80,7 +80,7 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
             (ref,sample_name, alias, run, "total", gas), "sumsqerr"
         ]
         total = sample.results["fit"][reference].loc[
-            (ref,sample_name, alias, run, "total", gas), ir_values
+            (ref,sample_name, alias, run, "total", gas), ega_values
         ]
         error.text(
             0,

@@ -8,59 +8,25 @@ import scipy as sp
 from chempy import Substance
 from sklearn import linear_model
 
-from .classes import Sample
-from .config import COUPLING, MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
-from .plotting import get_label
+from .config import MERGE_CELLS, PATHS, SEP, UNITS
+from .plotting import plot_integration, plot_calibration_single, plot_calibration_combined, plot_residuals_single
 
 logger = logging.getLogger(__name__)
 
 
 def integrate_peaks(
-    FTIR_data, step_start_idx, step_end_idx, peaks_idx, corr_baseline=None, plot=False, ax=None, gases=None
+    ega_data, step_starts_idx, step_ends_idx, peaks_idx, corr_baseline=None, plot=False, ax=None, gases=None
 ):
     "integrating IR signal in between given bounds"
     gases = list(gases)
-    integrals = pd.DataFrame(index=range(len(step_start_idx)), columns=gases)
-
-    # plotting
-    if plot:
-        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-        x = FTIR_data["time"]
-        y = FTIR_data[gases[0]]
-        step_starts = x[step_start_idx]
-        step_ends = x[step_end_idx]
-        peaks = x[peaks_idx]
-        # setup figure and plot first gas
-        graph = []
-        #fig.subplots_adjust(right=0.8)
-        graph.append(ax)
-        graph[0].set_xlabel(f'{get_label("time")} {SEP} { UNITS["time"]}')
-        graph[0].set_ylabel(f'{get_label(gases[0])} {SEP} {UNITS["ir"]}')
-        graph[0].yaxis.label.set_color(colors[0])
-        graph[0].plot(x, y)
-        graph[0].set_ylim(0 - (max(y) / 20), max(y))
-        for step_start, step_end in zip(step_starts, step_ends):
-            graph[0].axvspan(step_start, step_end, alpha=.5)
-        graph[0].vlines(peaks, 0, max(y), linestyle="dotted")
-
-        # append secondary, third... y-axis on right side
-        for i, gas in enumerate(gases[1:]):
-            y = FTIR_data[gas]
-
-            graph.append(graph[0].twinx())
-            graph[i + 1].spines["right"].set_position(("axes", 1 + i * 0.1))
-            graph[i + 1].plot(x, y, color=colors[i + 1])
-
-            graph[i + 1].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ir']}")
-            graph[i + 1].yaxis.label.set_color(colors[i + 1])
-            graph[i + 1].set_ylim(0 - (max(y) / 20), max(y))
+    integrals = pd.DataFrame(index=range(len(step_starts_idx)), columns=gases)
 
     # integration
+    baselines = {}
     for gas in gases:
-        for i in range(len(step_end_idx)):
-            subset = FTIR_data[gas].iloc[step_start_idx[i]:step_end_idx[i]]
-            
+        baselines[gas] = {}
+        for i in range(len(step_ends_idx)):
+            subset = ega_data[gas].iloc[step_starts_idx[i]:step_ends_idx[i]]
 
             # baseline correction
             if corr_baseline == "linear":
@@ -76,14 +42,11 @@ def integrate_peaks(
 
             integral = sp.integrate.simpson(subset - baseline)
             integrals.loc[i, gas] = integral
+            baselines[gas][i] = baseline
 
-            if plot:
-                x = (
-                    FTIR_data["time"].iloc[step_start_idx[i]:step_end_idx[i]]
-                )
-                graph[gases.index(gas)].plot(
-                    x, baseline, color=colors[gases.index(gas)], linestyle="dashed"
-                )
+    if plot:
+        plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax)
+
 
     return integrals
 
@@ -136,7 +99,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return stats
 
 
-def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, corr_baseline=None, rel_height=.95, **fig_args):
+def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, corr_baseline="linear", rel_height=.95, **fig_args):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warning(f'{method=} not in {methods=}.')
@@ -178,7 +141,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         # setting up output DataFrames
         
-        names = ["linreg","stats",f"x in {UNITS['molar_amount']}",f"y in {UNITS['int_ir']}","data"]
+        names = ["linreg","stats",f"x in {UNITS['molar_amount']}",f"y in {UNITS['int_ega']}","data"]
         cali = {name: pd.DataFrame() for name in names}
 
         if not worklist:
@@ -205,7 +168,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 rel_height=rel_height,
             )
             integrals = integrate_peaks(
-                sample_data.ir,
+                sample_data.ega,
                 step_starts_idx,
                 step_ends_idx,
                 peaks_idx,
@@ -255,14 +218,14 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 for gas in gases:
                     if gas not in cali[f"x in {UNITS['molar_amount']}"].columns:
                         cali[f"x in {UNITS['molar_amount']}"][gas] = np.nan
-                        cali[f"y in {UNITS['int_ir']}"][gas] = np.nan
+                        cali[f"y in {UNITS['int_ega']}"][gas] = np.nan
                     if sample not in cali[f"x in {UNITS['molar_amount']}"].index:
                         cali[f"x in {UNITS['molar_amount']}"] = pd.concat([cali[f"x in {UNITS['molar_amount']}"], pd.DataFrame(index=[sample])])
-                        cali[f"y in {UNITS['int_ir']}"] = pd.concat([cali[f"y in {UNITS['int_ir']}"], pd.DataFrame(index=[sample])])
+                        cali[f"y in {UNITS['int_ega']}"] = pd.concat([cali[f"y in {UNITS['int_ega']}"], pd.DataFrame(index=[sample])])
                     cali[f"x in {UNITS['molar_amount']}"].loc[sample, gas] = step
-                    cali[f"y in {UNITS['int_ir']}"].loc[sample, gas] = integrals.loc[i, gas]
+                    cali[f"y in {UNITS['int_ega']}"].loc[sample, gas] = integrals.loc[i, gas]
 
-        cols = ["molmass", "slope", "intercept", "r_value", "p_value", "std_error"]
+        cols = ["molecular_formula","molmass", "slope", "intercept", "r_value", "p_value", "std_error"]
         gases = cali[f"x in {UNITS['molar_amount']}"].columns
 
         logger.info(f"Performing calibration based on {method=}")
@@ -270,7 +233,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             for gas in gases:
                 # slope, intercept, r_value, p_value, std_err=sp.stats.linregress(x_cali[gas].dropna(axis=0).astype(float),y_cali[gas].dropna(axis=0).astype(float))
                 x = cali[f"x in {UNITS['molar_amount']}"][gas].dropna(axis=0).astype(float)
-                y = cali[f"y in {UNITS['int_ir']}"][gas].dropna(axis=0).astype(float)
+                y = cali[f"y in {UNITS['int_ega']}"][gas].dropna(axis=0).astype(float)
                 regression = pd.DataFrame(
                     [sp.stats.linregress(x, y)], index=[gas], columns=cols
                 )
@@ -330,9 +293,9 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 continue
             cali[f"x in {UNITS['molar_amount']}"].update(cali[f"x in {UNITS['molar_amount']}"][gas] / molar_mass)
             x = cali[f"x in {UNITS['molar_amount']}"][gas].dropna(axis=0).astype(float)
-            y = cali[f"y in {UNITS['int_ir']}"][gas].dropna(axis=0).astype(float)
+            y = cali[f"y in {UNITS['int_ega']}"][gas].dropna(axis=0).astype(float)
             regression = pd.DataFrame(
-                [[molar_mass]+list(sp.stats.linregress(x, y))], index=[gas], columns=cols
+                [[molecular_formula, molar_mass]+list(sp.stats.linregress(x, y))], index=[gas], columns=cols
             )
 
             if gas not in cali["linreg"].index:
@@ -360,7 +323,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     cali[f"x in {UNITS['molar_amount']}"].loc[j, "CO"] = cali[f"x in {UNITS['molar_amount']}"].loc[j, "CO"] - co_corr[i]
 
             x = cali[f"x in {UNITS['molar_amount']}"]["CO"].dropna(axis=0).astype(float)
-            y = cali[f"y in {UNITS['int_ir']}"]["CO"].dropna(axis=0).astype(float)
+            y = cali[f"y in {UNITS['int_ega']}"]["CO"].dropna(axis=0).astype(float)
             regression = pd.DataFrame(
                 [sp.stats.linregress(x, y)], index=["CO"], columns=cols
             )
@@ -383,7 +346,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     ):  # if the correction would be negative, this is due to the intercept and should not be applied!
                         X_cali.loc[k, "CO"] = cali[f"x in {UNITS['molar_amount']}"].loc[k, "CO"] - co_corr[j]
                 x = X_cali["CO"].dropna(axis=0).astype(float)
-                y = cali[f"y in {UNITS['int_ir']}"]["CO"].dropna(axis=0).astype(float)
+                y = cali[f"y in {UNITS['int_ega']}"]["CO"].dropna(axis=0).astype(float)
                 regression = pd.DataFrame(
                     [sp.stats.linregress(x, y)], index=["CO"], columns=cols
                 )
@@ -402,7 +365,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     ):  # if the correction would be negative, this is due to the intercept and should not be applied!
                         X_cali.loc[k, "CO2"] = cali[f"x in {UNITS['molar_amount']}"].loc[k, "CO2"] - co2_corr[j]
                 x = X_cali["CO2"].dropna(axis=0).astype(float)
-                y = cali[f"y in {UNITS['int_ir']}"]["CO2"].dropna(axis=0).astype(float)
+                y = cali[f"y in {UNITS['int_ega']}"]["CO2"].dropna(axis=0).astype(float)
                 regression = pd.DataFrame(
                     [sp.stats.linregress(x, y)], index=["CO2"], columns=cols
                 )
@@ -458,13 +421,13 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     cali[f"x in {UNITS['molar_amount']}"].loc[(slice(None), step), gas] = (
                         X_cali[(slice(None), step)].values * step_gas / step_sums
                     ) / cali["linreg"]["molmass"][gas]
-            cali[f"y in {UNITS['int_ir']}"] = Y_cali
+            cali[f"y in {UNITS['int_ega']}"] = Y_cali
 
             # from new x_cali and y_cali a linear regression is calculated
             # comment this lines out to get the result of mlr only
             for gas in gases:
                 x = cali[f"x in {UNITS['molar_amount']}"][gas].dropna(axis=0).astype(float)
-                y = cali[f"y in {UNITS['int_ir']}"][gas].dropna(axis=0).astype(float)
+                y = cali[f"y in {UNITS['int_ega']}"][gas].dropna(axis=0).astype(float)
                 regression = pd.DataFrame(
                     [sp.stats.linregress(x, y)], index=[gas], columns=cols
                 )
@@ -474,7 +437,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 else:
                     cali["linreg"].loc[[gas]] = regression
 
-        cali["stats"] = calibration_stats(cali[f"x in {UNITS['molar_amount']}"], cali[f"y in {UNITS['int_ir']}"], cali["linreg"])
+        cali["stats"] = calibration_stats(cali[f"x in {UNITS['molar_amount']}"], cali[f"y in {UNITS['int_ega']}"], cali["linreg"])
         logger.info("Calibration finished.")
         # saving of
         try:
@@ -489,74 +452,27 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
     # plotting
     if plot:
-        
         plot_gases = [gas for gas in gases if gas in cali["linreg"].index]
         fig, axs = plt.subplots(len(plot_gases),2 ,gridspec_kw = {"hspace":.5, "wspace":.25}, **fig_args)
         for i,gas in enumerate(plot_gases):
-            fig = plt.figure()
             x = cali[f"x in {UNITS['molar_amount']}"][gas]
-            y = cali[f"y in {UNITS['int_ir']}"][gas]
+            y = cali[f"y in {UNITS['int_ega']}"][gas]
+            plot_calibration_single(x, y, cali["linreg"].loc[gas,:], axs[i, 0])
+            plot_residuals_single(x, y, cali["linreg"].loc[gas,:], axs[i, 1])
 
-            axs[i, 0].scatter(x, y, label=f"data (N = {len(x)})")
-
-            x_bounds = np.array((min(x), max(x)))
-            axs[i, 0].plot(
-                x_bounds,
-                x_bounds * cali["linreg"]["slope"][gas] + cali["linreg"]["intercept"][gas],
-                label="regression",
-                ls="dashed",
-            )
-            axs[i, 0].text(
-                max(x),
-                min(y),
-                rf'y={cali["linreg"]["slope"][gas]:.1e}x{cali["linreg"]["intercept"][gas]:+.1e}, $R^2$={cali["linreg"]["r_value"][gas] ** 2:.3}',
-                horizontalalignment="right",
-            )
-            label_mf = get_label(gas) if gas not in molecular_formulas else get_label(molecular_formulas[gas])
-            label = f"{label_mf}" if gas not in molecular_formulas else f"{gas}\n({label_mf})"
-            axs[i, 0].set_ylabel(label)
-            axs[i, 0].set_xlim(0, max(x) + abs(min(x)))
-
-            Y_cali = x.mul(cali["linreg"]["slope"][gas]).add(cali["linreg"]["intercept"][gas])
-            axs[i, 1].scatter(Y_cali, y - Y_cali, label=f"data (N = {len(x)})")
-            axs[i, 1].hlines(0, min(Y_cali), max(Y_cali))
-            
-            axs[i, 1].set_ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS['int_ir']}")
+            # set labels, titles only at borders
             if i == 0:
                 axs[i, 0].set_title("Regression")
                 axs[i, 1].set_title("Residuals")
             if i == len(plot_gases)-1:
                 axs[i, 0].set_xlabel(UNITS["molar_amount"])
-                axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ir']}")
-            
+                axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ega']}")
 
-            #axs[i, 1].set_title(f"Residual plot: {get_label(gas)}")
-
-
-        for gas in gases:
-            if gas not in cali["linreg"].index:
-                continue
-            x = cali[f"x in {UNITS['molar_amount']}"][gas]
-            y = cali[f"y in {UNITS['int_ir']}"][gas]
-
-            plt.scatter(x, y, label=f"data {get_label(gas)} (N = {len(x)})")
-
-            x = np.array((min(x), max(x)))
-            plt.plot(
-                x,
-                x * cali["linreg"]["slope"][gas] + cali["linreg"]["intercept"][gas],
-                label=f"regression {get_label(gas)}",
-                ls="dashed",
-            )
-            plt.xlabel(UNITS["molar_amount"])
-            plt.ylabel(UNITS["int_ir"])
-            plt.xlim(0, max(x) + abs(min(x)))
-            plt.legend(loc=0)
-        plt.show()
+        fig, ax = plt.subplots()
+        x = cali[f"x in {UNITS['molar_amount']}"]
+        y = cali[f"y in {UNITS['int_ega']}"]
+        plot_calibration_combined(x, y, cali["linreg"], plot_gases, ax)
 
     os.chdir(PATHS["home"])
-    return cali["linreg"], cali["stats"]
+    return cali["linreg"], cali["stats"], cali[f"x in {UNITS['molar_amount']}"], cali[f"y in {UNITS['int_ega']}"]
 
-
-# try loading calibration data
-linreg, stats = calibrate()

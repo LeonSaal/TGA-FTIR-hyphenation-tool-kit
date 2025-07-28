@@ -108,7 +108,7 @@ def plot_FTIR(
     #gases = set([gas.upper() for gas in gases])
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    x = copy.deepcopy(sample.ir[x_axis])
+    x = copy.deepcopy(sample.ega[x_axis])
 
     # catching possible input errors
     if sample.linreg is not None:
@@ -169,7 +169,7 @@ def plot_FTIR(
     if x_axis == "time":
         x = x / 60
     if y_axis == "orig":
-        graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['ir']}$")
+        graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['ega']}$")
         graphs[0].yaxis.label.set_color(colors[0])
     elif y_axis == "rel":
         graphs[0].set_ylabel(
@@ -179,24 +179,24 @@ def plot_FTIR(
     # plot data and append secondary, third... y-axis on right side if necessary
     for i, gas in enumerate(gases):
         if y_axis == "orig":
-            y = sample.ir[gas]
+            y = sample.ega[gas]
 
             if i > 0:
                 graphs.append(graphs[0].twinx())
                 graphs[i].spines["right"].set_position(("axes", 1 + (i - 1) * 0.1))
             graphs[i].plot(x, y, color=colors[i])
-            graphs[i].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ir']}")
+            graphs[i].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ega']}")
             graphs[i].yaxis.label.set_color(colors[i])
             graphs[i].set_yticks(np.linspace(graphs[i].get_yticks()[0], graphs[i].get_yticks()[-1], len(graphs[0].get_yticks())))
 
         elif y_axis == "rel":
-            tot_area = np.sum(sample.ir[gas])
+            tot_area = np.sum(sample.ega[gas])
             tot_mol = (
                 (tot_area - sample.linreg["intercept"][gas])
                 / sample.linreg["slope"][gas]
                 / sample.info[sample.info["reference_mass"]]
             )
-            y = sample.ir[gas] / tot_area * tot_mol
+            y = sample.ega[gas] / tot_area * tot_mol
             graphs[0].plot(x, y, label=get_label(gas))
 
     if legend and y_axis == "rel":
@@ -259,26 +259,26 @@ def FTIR_to_DTG(
     # setup IR data and calculating DTG
     gases = gases_temp
     data = pd.merge(
-        sample.tga, sample.ir, how="left", on=["time", "sample_temp"]
+        sample.tga, sample.ega, how="left", on=["time", "sample_temp"]
     ).dropna()
     DTG = -sp.signal.savgol_filter(data["sample_mass"], 13, 3, deriv=1)
 
     x = data[x_axis]
-    y = np.zeros((len(gases), len(sample.ir)))
+    y = np.zeros((len(gases), len(sample.ega)))
     out = pd.DataFrame()
     out["time"] = data["time"]
     out["sample_temp"] = data["sample_temp"]
-    cumul = np.zeros(len(sample.ir))
+    cumul = np.zeros(len(sample.ega))
 
     # calibrating IR data
     for i, gas in enumerate(gases):
-        tot_area = np.sum(sample.ir[gas])
+        tot_area = np.sum(sample.ega[gas])
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
             * sample.linreg["molmass"][gas]
         )
-        y[i][:] = sample.ir[gas] / tot_area * tot_mass
+        y[i][:] = sample.ega[gas] / tot_area * tot_mass
         out[gas] = y[i][:]
         cumul += y[i][:]
 

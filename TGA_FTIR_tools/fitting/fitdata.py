@@ -19,7 +19,7 @@ class FitData:
     peaks: pd.DataFrame = field(default=None)
 
     def __post_init__(self):
-        self.ir = self.sample.ir
+        self.ega = self.sample.ega
         self.info = self.sample._info
         self.linreg = self.sample.linreg
         self.gases, self.gas_links, self.links = link_groups(self.presets)
@@ -45,14 +45,14 @@ class FitData:
         del self.sample
 
     def xy(self, gas):
-        return self.ir.sample_temp, self.ir[gas]
+        return self.ega.sample_temp, self.ega[gas]
 
     def get_bounds(self, gas, sample, predef_tol):
         param_keys = {'c': 'center', 'w':'hwhm', 'h':'height'}
 
         for key in ["0", "min", "max"]:
             self.presets[gas].loc[:, f"height_{key}"] = (
-                self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ir[gas]))
+                self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ega[gas]))
             )
         if gas in self.gas_links:
             df = self.links.dropna(thresh=2).replace("0", np.nan).dropna(thresh=1)

@@ -127,7 +127,7 @@ SAVGOL = cfg["savgol"]
 
 BOUNDS = cfg["fitting"]
 
-IR_NOISE = cfg["correction"]
+EGA_NOISE = cfg["correction"]
 
 MERGE_CELLS = False
 

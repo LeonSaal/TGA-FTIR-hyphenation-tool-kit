@@ -99,7 +99,7 @@ def dry_weight(
     else:
         if how_dry == "H2O":
             try:
-                ref = sample.ir.filter(items=["sample_temp", "H2O"])
+                ref = sample.ega.filter(items=["sample_temp", "H2O"])
             except:
                 how_dry = "sample_mass"
 

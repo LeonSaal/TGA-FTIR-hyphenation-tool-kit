@@ -1,3 +1,12 @@
+## 2025-07-28
+- mostly renamed *IR* to *EGA* (`Sample.ir`, "IR" as arg)
+- moved calibration plots to separate files
+- add option 'calibration' to `Sample.plot`
+- add possibility to initialize `Worklist` with name or list of names in addition to list of `Sample`
+- add possibility to add `Sample` + `Sample` | `Worklist` 
+- cleaned up `Sample.plot`
+- cleaned up dependencies
+
 ## 2022-10-13
 - fixed bug in linked groups
 - changed output path of worklist.fit to ~/worklist.name

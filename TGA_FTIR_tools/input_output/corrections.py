@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 
-from ..config import IR_NOISE
+from ..config import EGA_NOISE
 from ..plotting import plot_corr
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def corr_TGA_Baseline(TGA: pd.DataFrame, baseline, plot: bool = False) -> pd.Dat
 
 def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_offs = 0):
     "corrects IR data by setting minimal adsorption to 0 "
-    FTIR = Sample.ir
+    FTIR = Sample.ega
     # setting up output DataFrame
     corr_data = pd.DataFrame(
         index=FTIR.index,
@@ -38,7 +38,7 @@ def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_o
         ),
     )
     # opens FTIR data of the baseline
-    baseline = baselineData.ir
+    baseline = baselineData.ega
     gases = baselineData.info.gases
 
     # cycling through gases
@@ -50,8 +50,8 @@ def corr_FTIR(Sample, baselineData, plot: bool | Iterable | Mapping=False, co2_o
     for gas in gases:
 
         # load threshold of noise from settings.ini or determine it from baseline
-        if gas.lower() in IR_NOISE:
-            thresh = IR_NOISE.getfloat(gas.lower())
+        if gas.lower() in EGA_NOISE:
+            thresh = EGA_NOISE.getfloat(gas.lower())
         else:
             try:
                 thresh = np.median(baseline[gas] - min(baseline[gas]))

@@ -49,31 +49,31 @@ def fitting(
     for gas in data.gases:
         # correction of water-signal drift
         if gas == "H2O":
-            data.ir[gas] -= baseline_als(data.ir[gas])
+            data.ega[gas] -= baseline_als(data.ega[gas])
 
         # molar desorption
-        tot_area = np.sum(data.ir[gas])
+        tot_area = np.sum(data.ega[gas])
 
         if gas == "H2O":
             # total area of water is calculated above dry-point, if this exists (therefore, try)
             if "dry_temp" in data.info:
                 minimum_temp = data.info["dry_temp"]
             else:
-                minimum_temp = data.ir[gas].min()
-            tot_area = np.sum(data.ir[gas][data.ir.sample_temp > minimum_temp])
+                minimum_temp = data.ega[gas].min()
+            tot_area = np.sum(data.ega[gas][data.ega.sample_temp > minimum_temp])
 
         if y_axis == "rel" and data.linreg is not None:
             tot_mol = (tot_area - data.linreg.intercept[gas]) / data.linreg.slope[gas]
-            data.ir.update(data.ir[gas] / tot_area * tot_mol)
+            data.ega.update(data.ega[gas] / tot_area * tot_mol)
 
         # predefining guesses and bounds
         params_0, params_min, params_max = data.get_bounds(gas, sample, predef_tol)
 
         # actual fitting
-        x, y = data.ir.sample_temp.to_numpy(dtype=np.float64), data.ir[gas].to_numpy(dtype=np.float64)
+        x, y = data.ega.sample_temp.to_numpy(dtype=np.float64), data.ega[gas].to_numpy(dtype=np.float64)
         try:
             popt, _ = sp.optimize.curve_fit(
-                func, x, data.ir[gas], p0=params_0, bounds=(params_min, params_max)
+                func, x, data.ega[gas], p0=params_0, bounds=(params_min, params_max)
             )
         except ValueError:
             logger.error(f"Failed to fit {gas} signal")
