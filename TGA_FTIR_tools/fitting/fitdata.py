@@ -156,7 +156,7 @@ class FitData:
         )
         self.peaks.mmol = self.peaks.area / tot_area * tot_mmol
         self.peaks.mmol_per_mg = (
-            self.peaks.mmol / self.info[self.info["reference_mass"]]
+            self.peaks.mmol / self.info[self.sample.reference_mass]
         )
 
     def summarize(self):

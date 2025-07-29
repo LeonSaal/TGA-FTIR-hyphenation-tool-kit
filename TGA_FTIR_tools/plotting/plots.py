@@ -23,7 +23,7 @@ def plots(
     xlim=[None, None],
     gas=None,
     legend=True,
-    reference_mass="reference_mass",
+    reference_mass_name=None,
     linewidth=1,
     **kwargs,
 ):
@@ -83,10 +83,15 @@ def plots(
 
     # actual plotting
     for sample in samples:
-        if reference_mass == "reference_mass":
-            ref_mass = sample.info[sample.info[reference_mass]]
+        if reference_mass_name:
+            step_data = sample.step_data()
+            if reference_mass_name in step_data.step:
+                ref_mass = step_data[step_data.step==reference_mass_name].sample_mass
+            else:
+                logger.error(f"{reference_mass_name!r} is no valid option. Choose one of {step_data.step.to_list()!r}")
+                continue
         else:
-            ref_mass = sample.info[reference_mass]
+            ref_mass = sample.reference_mass
 
         label = make_title(sample)
         if plot == "TG":

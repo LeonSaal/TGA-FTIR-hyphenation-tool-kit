@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import os
 import pickle
@@ -14,9 +15,9 @@ import pandas as pd
 import scipy.stats as sp
 from scipy.signal import savgol_filter
 
-from ..config import COUPLING, PATHS, SAVGOL, update_config
+from ..config import COUPLING, PATHS, SAVGOL, update_config, PATH_SET
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
-                            read_data, samplelog)
+                            read_data, samplelog, read_profile_json)
 from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined
 from ..utils import select_import_profile, check_profile_exists
 from .info import SampleInfo
@@ -47,6 +48,7 @@ class Sample:
             logger.info(f"Initializing '{self.name}'")
 
             self.check_profile()
+            self.profile_data = read_profile_json(self.profile)
             logger.debug(f"Using profile {self.profile!r}.")
 
             # load data
@@ -59,26 +61,24 @@ class Sample:
                 # deriving TG info
                 try:
                     self._info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
-                except PermissionError:
-                    logger.info("Failed to derive TG info. Using default values.")
+                except Exception as e:
+                    logger.info(f"Failed to derive TG info. Using default values. {e}")
                     self._info = TGA.default_info(self.name, self.tga)
-                except Exception as e:
-                    logger.error(e)
-                try:
-                    self.dry_weight(self, plot=False, **kwargs)
-                except Exception as e:
-                    logger.error(f"Failed to derive dry weight: {e}")
 
+                # calculate sample mass with mass loss and initial mass
                 if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
                     if "initial_mass" in self._info:
                         self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
 
+                # check required columns
                 if missing:=self.missing_tga_columns():
                     logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
                 else:   
                     self.tga["dtg"] = -savgol_filter(
                         self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
                     )
+
+
             else:
                 logger.error(f"No TGA data found for {self.name!r}.")
                 self._info = SampleInfo(name=self.name, alias=self.alias)
@@ -87,53 +87,53 @@ class Sample:
                 self._info["gases"] = set(self.ega.columns[1:].to_list())
                 # load calibration
                 self.calibrate(mode="load", profile=self.profile)
-
-
-                logger.info(
-                    "EGA data found{} for {}.".format(
-                        " (* and calibrated) " if self.linreg is not None else "",
-                        ", ".join(
-                            [
-                                gas
-                                + (
-                                    "*"
-                                    if self.linreg is not None
-                                    and gas in self.linreg.index
-                                    else ""
-                                )
-                                for gas in self._info["gases"]
+                gases = self._info["gases"]
+                if self.linreg is not None:
+                    calibrated_gases = self.linreg.index 
+                    gases_annotated = [gas+ ("*"if  gas in calibrated_gases else "")
+                                for gas in gases
                             ]
-                        ),
-                    )
+                    cali_msg = " (* and calibrated) "
+                else:
+                    gases_annotated = gases
+                    cali_msg = ""
+                logger.info(
+                    "EGA data found{} for {}.".format(cali_msg,", ".join(gases_annotated))
                 )
+
                 # deriving IR info
                 try:
                     self._info.update(FTIR.FTIR_info(self))
-                except:
-                    pass
-                try:
-                    self.ega = pd.merge(
-                        self.tga.filter(
-                            ["time", "sample_temp", "reference_temp"], axis=1
-                        ),
-                        self.ega,
-                        how="left",
-                        on="time",
-                    )#.dropna(axis=0)
-                except:
-                    logger.info("No IR data found.")
+                except Exception as e:
+                    logger.error(f"Unable to derive EGA-info. {e}")
+                    raise e
+                
+                if "sample_temp" not in self.ega and "time" in self.ega:
+                    try:
+                        self.ega = pd.merge(
+                            self.tga.filter(
+                                ["time", "sample_temp", "reference_temp"], axis=1
+                            ),
+                            self.ega,
+                            how="left",
+                            on="time",
+                        )#.dropna(axis=0)
+                    except Exception as e:
+                        logger.info(f"Unable to merge temperature data. {e}")
+            try:
+                self.dry_weight(plot=False, **kwargs)
+            except Exception as e:
+                logger.error(f"Failed to derive dry weight: {e}")
 
-                if self.ega is None and self.tga is None:
-                    logger.error(f"Failed to initialize '{self.name}'.")
-                else:
-                    logger.info(f"'{self.name}' successfully initialiazed.")
+            if self.ega is None and self.tga is None:
+                logger.error(f"Failed to initialize '{self.name}'.")
+            else:
+                logger.info(f"'{self.name}' successfully initialiazed.")
 
             # assigning alias
             if not self.alias:
-                if (
-                    "alias" in (log := samplelog(create=False))
-                    and self.name in log.index
-                ):
+                log  = samplelog(create=False)
+                if self.name in log.index:
                     self.alias = log.loc[self.name, "alias"]
                 else:
                     self.alias = self.name
@@ -180,12 +180,33 @@ class Sample:
         self._info.alias = self.alias
         return self._info
 
+    @property
+    def reference_mass(self):
+        ref_mass_name=self.info.reference_mass_name
+        step_data = self.step_data()
+        return step_data[step_data.step == ref_mass_name].sample_mass
+
+    def step_data(self, ref_mass_name=None):
+        idxs = self.info.steps_idx
+        step_data = self.tga.iloc[list(idxs.values()),:].assign(step= idxs.keys()).sort_index()
+        step_data["mass_loss"] = step_data.sample_mass.diff()
+        
+        # calc relative mass loss 
+        if not ref_mass_name:
+            ref_mass_name=self.info.reference_mass_name
+        if ref_mass_name in step_data.step:
+            ref_mass = step_data[step_data.step==ref_mass_name].sample_mass
+            step_data["mass_loss_rel"] = step_data.mass_loss / ref_mass
+
+        return step_data
+
     def check_profile(self):
         # check if profile is supplied
-        if self.profile == "set" or not check_profile_exists(self.profile):
+        if not check_profile_exists(self.profile):
             self.profile = select_import_profile()
             update_config(section="coupling",key="profile", value=self.profile)
             logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
+        
 
     def missing_tga_columns(self):
         "check if required columns are present in TGA data"
@@ -255,7 +276,7 @@ class Sample:
 
             # filling TG_IR.info
             try:
-                if self._info["reference_mass"] == "initial_mass":
+                if self._info['reference_mass_name'] == "initial_mass":
                     # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
                     # kwargs = dict(kwargs, how_dry=None)
                     # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
@@ -308,8 +329,9 @@ class Sample:
             if plot:
                 plot_dweight(self, **kwargs)
 
-        except:
-            logger.error("Failed to derive TG info.")
+        except Exception as e:
+            raise e
+            logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(
         self, ax=None, plot=True, height=0, width=100, prominence=0, rel_height=0.9,**kwargs
@@ -324,13 +346,13 @@ class Sample:
             rel_height=rel_height,
             **kwargs,
         )
-        steps = self.tga.sample_temp[[step_starts_idx[0], *step_ends_idx, self.tga.index.size-1]]
-        self._info.step_temp = steps
+        steps = {f"Step {i}": idx for i, idx in enumerate(step_ends_idx, start=1)}
+        self._info.steps_idx.update(steps)
         if plot:
             self.plot(
                 "mass_steps",
                 ax=ax,
-                steps=steps,
+                steps=self.step_data().sample_temps,
                 y_axis="orig",
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
@@ -573,9 +595,6 @@ class Sample:
     def __iter__(self):
         yield self
 
-    @property
-    def reference_mass(self):
-        return self._info[self._info["reference_mass"]]
 
 
 class Baseline(Sample):

@@ -87,7 +87,7 @@ def select_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
 
 # Create a new import profile by selecting devices and their respective files
 def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Literal["local", "remote"]="local"):
-    profile = {}
+    data = {}
     logger.info(f"Creating new import profile in {directory.as_posix()!r}.")
 
     # iterate over devices
@@ -120,22 +120,24 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
                 file = df.file[int(inp)]
                 if not (folder / file).exists():
                     download_supplementary(f"import_profiles/{device}", filename=file, dst=f"import_profiles/{file}")
-                profile[device] = (folder / file).as_posix()
+                data[device] = (folder / file).as_posix()
                 break
             elif inp == "n":
-                print("make new")
                 raise NotImplementedError
             elif inp == "s":
                 break
 
-    if not profile:
+    if not data:
         logger.error("No profile selected. Aborting.")
         return  
     
+    # make profile from parts
+    profile = {"data": data}
+    fields = ["name_pattern"]
+    profile["supplementary"] = {field: "" for field in fields}
     # save profile
     while True:
         name = input("Enter profile name!")
-        
         if name:
             fname = name + ".json"
             path = directory / "profiles" 

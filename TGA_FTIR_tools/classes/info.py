@@ -1,17 +1,19 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
-
+import pandas as pd
 from ..config import COUPLING
 
 
 @dataclass
 class SampleInfo:
     name: Optional[str]
+    reference: str = None
     alias: str = None
+    corrected: bool = False
     initial_mass: float = None
-    reference_mass: Optional[str] = "initial_mass"
-    step_temp: list = field(default_factory=list)
-    mass_steps: list = field(default_factory=list)
+    final_mass: float=None
+    reference_mass_name: Optional[str] = "initial_mass"
+    steps_idx: list = field(default_factory=dict)
 
     def __post_init__(self):
         self.alias = self.name

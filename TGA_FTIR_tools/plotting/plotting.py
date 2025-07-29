@@ -40,8 +40,8 @@ def plot_TGA(
 
     # adjusting y data and setting axis labels according to y_axis
     if y_axis == "rel":
-        y = (sample.tga[plot] / sample.info[sample.info["reference_mass"]]) * 100
-        yDTG = sample.tga["dtg"] * 60 / sample.info[sample.info["reference_mass"]] * 100
+        y = (sample.tga[plot] / sample.reference_mass) * 100
+        yDTG = sample.tga["dtg"] * 60 / sample.reference_mass * 100
         ylabelDTG = rf'{get_label("dtg")} {SEP} $ \%\,min^{{-1}}$'
         if plot == "sample_mass":
             ylabel = f"{get_label('sample_mass')} {SEP} $\\%$"
@@ -194,7 +194,7 @@ def plot_FTIR(
             tot_mol = (
                 (tot_area - sample.linreg["intercept"][gas])
                 / sample.linreg["slope"][gas]
-                / sample.info[sample.info["reference_mass"]]
+                / sample.reference_mass
             )
             y = sample.ega[gas] / tot_area * tot_mol
             graphs[0].plot(x, y, label=get_label(gas))

@@ -39,8 +39,9 @@ def get_label(key):
 
 def make_title(sample):
     alias = sample.alias
-    type_ref_mass = sample.info['reference_mass']
-    reference_mass = sample.info[type_ref_mass]
+    type_ref_mass = sample.info['reference_mass_name']
+    reference_mass = sample.reference_mass
+    print(reference_mass)
     label_ref_mass = get_label(type_ref_mass)
     unit = UNITS['sample_mass']
     

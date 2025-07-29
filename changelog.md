@@ -1,4 +1,11 @@
 ## 2025-07-28
+- initial setup for testing
+- refactor ``dry_weight``
+- refactor ``Sample.info``
+- refactor ``Sample.__post_init__``
+- restructured import profile
+
+## 2025-07-28
 - mostly renamed *IR* to *EGA* (`Sample.ir`, "IR" as arg)
 - moved calibration plots to separate files
 - add option 'calibration' to `Sample.plot`

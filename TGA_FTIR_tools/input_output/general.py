@@ -40,11 +40,10 @@ def read_profile_json(profile: str) -> Mapping:
         logger.debug(f"Reading {profile}.json from {path!r}")
 
         with open(filename, encoding="UTF-8") as json_file:
-            definition = json.load(json_file)
-        profile ={}
-        for device, file in definition.items():
+            profile = json.load(json_file)
+        for device, file in profile["data"].items():
             with open(file) as json_file:
-                profile[device] = json.load(json_file)
+                profile["data"][device] = json.load(json_file)
         return profile
             
 def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
@@ -55,7 +54,7 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
         return out
 
     # iterate over devices
-    for key, values in profile_specs.items():
+    for key, values in profile_specs["data"].items():
         paths = find_files_re(sample_name, values["ext"], PATHS["data"])
         
         if not paths:

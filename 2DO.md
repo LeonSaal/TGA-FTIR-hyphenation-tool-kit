@@ -27,6 +27,13 @@
         - only if not successful ask for other kwargs 
 		- update preview or errors
     - combination of above
+  - move device specific settings to profile (e.g. mass resolution)
+    - move fields specific to ``Sample``-level to combined profile
+  - fix released molar masses of elements
+
+## Correction
+- add synthetic baseline
+- make correction of $CO_2$ more flexible / less specific to first device
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -49,7 +56,6 @@
 - reduce amount of logging
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
-- add automated testing
 - let `pint` handle units
     - `pint-pandas` for unit inside `pd.DataFrame`
 - use minutes internally
@@ -62,11 +68,25 @@
 - debug level in ``__init__`` oder settings?
 - clean up `Sample`, `calibration.py`
   - reduce if statements
-  - combine code blocks to and or move functions to separate .py-files 
+  - combine code blocks to and or move functions to separate .py-files
+- formatting of code 
+
+## Testing
+- add automated testing for
+  - inititialization
+  - plotting
+  - correction
+  - fitting
+- for different input data
+- all possible args, kwargs
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
 - ? shift `Baseline` 
+
+## Calibration
+- add sample labels to points (if specified)
+- 
 
 # Documentation
 - for _import profiles_

@@ -41,7 +41,7 @@ def plot_dweight(
         ax.text(
             x[times[i + 1]] + 20,
             (y[times[i]] + y[times[i + 1]]) / 2,
-            f"$ML$ {get_label(names[i])}: {mass_loss[i]:.2f} mg ({mass_loss[i] / sample.info[sample.info['reference_mass']] * 100:.1f} %)",
+            f"$ML$ {get_label(names[i])}: {mass_loss[i]:.2f} mg ({mass_loss[i] / sample.reference_mass * 100:.1f} %)",
         )
     ax.hlines(weights[:-1], x[times[:-1]], x[times[1:]], color="black")
     ax.set_ylabel(f"{get_label('sample_mass')} {SEP} {UNITS['sample_mass']}")
