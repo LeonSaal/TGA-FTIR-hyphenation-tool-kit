@@ -15,7 +15,7 @@
         },
         "info_pattern": {"initial_mass":"#(SAMPLE MASS) /mg:\\s+;([\\d.]+)", "any":"#([\\w\\s:/]+?)\\s*;(.*?)\\s+"
         },
-        "units":"(?P<name>[\\w\\s.:|()]+)/?(?P<unit>\\.+)?",
-        "rename": ["sample_temp", "time", "mass_loss", null, null, null, null, null, "sensitivity"],
-        "usecols":[0,1,2,-1]
+        "usecols": [0,1,2,-1],
+        "units":"(?:[\\w\\s.:|()#]+)/?(?P<unit>.+)?",
+        "rename": ["sample_temp", "time", "mass_loss", "sensitivity"]
     }

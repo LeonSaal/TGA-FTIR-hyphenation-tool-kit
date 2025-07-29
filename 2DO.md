@@ -1,5 +1,4 @@
 # Errors
-- `dry_weight`
 - `.corr(...)` if `plot=dict`, fill missing keys
 - saving of `Worklist` doesn't seem to update the samplelog
 
@@ -29,7 +28,6 @@
     - combination of above
   - move device specific settings to profile (e.g. mass resolution)
     - move fields specific to ``Sample``-level to combined profile
-  - fix released molar masses of elements
 
 ## Correction
 - add synthetic baseline
@@ -48,7 +46,7 @@
 ## Plotting
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
 - add better summary plots for fitting and robustness-results (e.g. with tidy data in combination with `seaborn`)
-- make plot interactive
+- make plot interactive?
   - measure mass-, temperature- or time-differences
 - add DTG to mass-stops (optional)
 
@@ -58,8 +56,8 @@
 - don't log `Baseline`
 - let `pint` handle units
     - `pint-pandas` for unit inside `pd.DataFrame`
+    - add unit annotations where possible
 - use minutes internally
-- rename *IR* to *EGA*
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
@@ -95,3 +93,4 @@
     - `Sample`+`Worklist`=`Worklist`
     - `Worklist`+`Worklist`=`Worklist`
 - calibration
+- add docstrings for every function

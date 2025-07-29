@@ -1,8 +1,6 @@
 
 import pandas as pd
-from chempy import Substance
-from pyparsing.exceptions import ParseException
-
+import re
 from ..config import LABELS, UNITS
 
 
@@ -20,28 +18,43 @@ def ylim_auto(x, y, xlim):
 
     return x, y, ylim
 
+def format_mf_latex(mf: str) -> str:
+    """_summary_
 
-def get_label(key):
-    "get labels to put in plots"
-    
+    Args:
+        mf (str): _description_
+
+    Returns:
+        str: _description_
+    """    
+    pattern = "([A-Z][a-z]?)(\\d*)?"
+    replacement = "\\1_{\\2}"
+    return re.sub(pattern, replacement, mf).replace("_{}", "")
+
+
+def get_label(key:str) -> str:
+    """_summary_
+
+    Args:
+        key (str): _description_
+
+    Returns:
+        str: _description_
+    """
     if key in LABELS:
         return LABELS[key]
     elif key.isdigit():
         if int(key) in LABELS:
             return LABELS[int(key)]
-    try:
-        substance = Substance.from_formula(key)
-        return f'${substance.latex_name}$'
-    except ParseException:
-        return str(key)
-    except ValueError:
-        return str(key)
+
+    mf_latex = format_mf_latex(key)
+    return f'${mf_latex}$'
+
 
 def make_title(sample):
     alias = sample.alias
     type_ref_mass = sample.info['reference_mass_name']
     reference_mass = sample.reference_mass
-    print(reference_mass)
     label_ref_mass = get_label(type_ref_mass)
     unit = UNITS['sample_mass']
     

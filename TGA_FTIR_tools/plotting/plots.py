@@ -50,12 +50,12 @@ def plots(
 
         # just to see if supplied gas is calibrated or not
         calibrated = set()
-        for TG_IR in samples:
+        for sample in samples:
             try:
-                calibrated.update(set(TG_IR.linreg.index))
+                calibrated.update(set(sample.linreg.index))
             except AttributeError:
                 if y_axis == "rel":
-                    logger.warning(f"{gas} is not calibrated for {TG_IR.name}")
+                    logger.warning(f"{gas} is not calibrated for {sample.name}")
 
         if y_axis == "rel":
             if calibrated == set():

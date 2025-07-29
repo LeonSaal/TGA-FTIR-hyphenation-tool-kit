@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import List, Mapping
 
 import pandas as pd
+import pint_pandas
 
-from ..config import COUPLING, PATH_SET, PATHS
+from ..config import DEFAULTS, PATH_SET, PATHS
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def read_profile_json(profile: str) -> Mapping:
                 profile["data"][device] = json.load(json_file)
         return profile
             
-def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
+def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
     out = {}
     profile_specs = read_profile_json(profile)
     if not profile_specs:
@@ -99,9 +100,36 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
 
+        # select specific columns if specified
+        if "usecols" in values and isinstance(values["usecols"], list):
+            usecols = concat.columns[values["usecols"]]
+            concat = concat[usecols]
+        
+        # get units
+        if values.get("units"):
+            match values["units"]:
+                # determine units from columns via regex
+                case str():
+                    pat = values["units"]
+                    units = {col: re.match(pat, col).group("unit") for col in concat.columns if re.match(pat, col)}
+                
+                # pass units as list alongside columns
+                case list():
+                    if len(units:=values["units"]) != concat.columns.size:
+                        logger.warning(f"Length of supplied units ({len(units)}) doesn't match length of columns ({concat.columns.size})!")
+                        logger.warning(f"You must supply units for {concat.columns!r}.")
+                        units= {}
+                    else:
+                        units = {col:unit for col, unit in zip(concat.columns, units)}
+                    
+                # map units to columns
+                case dict():
+                    units = {name: value for name, value in values["units"].items() if name in concat.columns}
+                case _:
+                    units={}
+
         # rename columns if specified
         if values.get("rename"):
-    
             # handle different formats for rename
             match values["rename"]:
                 case dict():
@@ -116,13 +144,17 @@ def read_data(sample_name: str, profile=COUPLING["profile"]) -> pd.DataFrame:
                 case _:
                     logger.error(f"Invalid rename format for {key} in profile {profile!r}.")
                     rename = {}
-        
+            oldnames = concat.columns
             concat.rename(columns=rename, inplace=True)
+            
+            # rename unit indices
+            newnames = concat.columns
+            mapper = {old:new for old, new in zip(oldnames, newnames)}
+            units = {mapper[oldname]:unit for oldname, unit in units.items()}
 
-        # select specific columns if specified
-        if "usecols" in values and isinstance(values["usecols"], list):
-            usecols = concat.columns[values["usecols"]]
-            concat = concat[usecols]
+        # assign units to columns
+        concat = concat.transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) if unit else (lambda y: y) for col, unit in units.items()})
+
         out[key] = concat
 
     return out

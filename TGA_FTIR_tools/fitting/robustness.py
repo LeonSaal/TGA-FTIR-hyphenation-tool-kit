@@ -22,7 +22,7 @@ def robustness(
     var_rel=0.3,
     **kwargs,
 ):
-    "perform robustness test on multiple TG_IR objects"
+    "perform robustness test on multiple Sample objects"
 
     # load default presets
     presets_rob = get_presets(reference)

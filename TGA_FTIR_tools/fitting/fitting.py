@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 
-from ..config import BOUNDS, COUPLING, MERGE_CELLS, PATHS, config
+from ..config import BOUNDS, PATHS, config
 from ..input_output.general import time
 from ..utils import multi_gauss
 from .fitdata import FitData

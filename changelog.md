@@ -1,9 +1,16 @@
 ## 2025-07-28
+### 1
 - initial setup for testing
 - refactor ``dry_weight``
 - refactor ``Sample.info``
 - refactor ``Sample.__post_init__``
 - restructured import profile
+### 2
+- remove unmaintained chempy from dependencies and replace with molmass
+- fix calculation of total amount per element
+- clean up ``config.py``
+- added unit support in import_profile
+- added ``pint_pandas`` to handly unit annotation
 
 ## 2025-07-28
 - mostly renamed *IR* to *EGA* (`Sample.ir`, "IR" as arg)

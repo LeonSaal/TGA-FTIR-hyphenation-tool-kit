@@ -12,10 +12,12 @@ import matplotlib.pyplot as plt
 import configparser
 import numpy as np
 import pandas as pd
+import pint_pandas
+from pint import DimensionalityError
 import scipy.stats as sp
 from scipy.signal import savgol_filter
 
-from ..config import COUPLING, PATHS, SAVGOL, update_config, PATH_SET
+from ..config import DEFAULTS, PATHS, SAVGOL, update_config, PATH_SET
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog, read_profile_json)
 from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined
@@ -41,7 +43,7 @@ class Sample:
     baseline = None
     results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
-    profile: InitVar[str] = COUPLING["profile"]
+    profile: InitVar[str] = DEFAULTS["profile"]
 
     def __post_init__(self, mode, profile, **kwargs):
         if mode == "construct":
@@ -66,9 +68,12 @@ class Sample:
                     self._info = TGA.default_info(self.name, self.tga)
 
                 # calculate sample mass with mass loss and initial mass
-                if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
-                    if "initial_mass" in self._info:
-                        self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
+                try:
+                    if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
+                        if "initial_mass" in self._info:
+                            self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
+                except DimensionalityError:
+                    logger.error("Failed")
 
                 # check required columns
                 if missing:=self.missing_tga_columns():
@@ -106,7 +111,7 @@ class Sample:
                     self._info.update(FTIR.FTIR_info(self))
                 except Exception as e:
                     logger.error(f"Unable to derive EGA-info. {e}")
-                    raise e
+                    #raise e
                 
                 if "sample_temp" not in self.ega and "time" in self.ega:
                     try:
@@ -204,7 +209,7 @@ class Sample:
         # check if profile is supplied
         if not check_profile_exists(self.profile):
             self.profile = select_import_profile()
-            update_config(section="coupling",key="profile", value=self.profile)
+            update_config(section="defaults",key="profile", value=self.profile)
             logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
         
 
@@ -274,7 +279,7 @@ class Sample:
             except PermissionError:
                 logger.error("Failed to correct TG data.")
 
-            # filling TG_IR.info
+            # filling Sample.info
             try:
                 if self._info['reference_mass_name'] == "initial_mass":
                     # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.

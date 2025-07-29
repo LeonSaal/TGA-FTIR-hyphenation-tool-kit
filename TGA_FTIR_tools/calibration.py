@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy as sp
-from chempy import Substance
+from .utils import validate_mf
 from sklearn import linear_model
 
 from .config import MERGE_CELLS, PATHS, SEP, UNITS
@@ -286,9 +286,9 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
         invalid_mfs = []
         for gas in gases:
             molecular_formula = gas if gas not in molecular_formulas else molecular_formulas[gas]
-            try:
-                molar_mass = Substance.from_formula(molecular_formula).mass
-            except ValueError:
+            if validate_mf(molecular_formula):
+                molar_mass = Formula(molecular_formula).mass
+            else:
                 invalid_mfs.append(molecular_formula)
                 continue
             cali[f"x in {UNITS['molar_amount']}"].update(cali[f"x in {UNITS['molar_amount']}"][gas] / molar_mass)
@@ -394,7 +394,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 cali["linreg"].loc[[gas]] = pd.DataFrame(
                     [
                         [
-                            1 / mlr.coef_[i] * Substance(gas).mass,
+                            1 / mlr.coef_[i] * Formula(gas).mass,
                             0,
                             np.nan,
                             np.nan,

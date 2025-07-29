@@ -13,6 +13,7 @@
             "encoding": "utf-16",
             "skipinitialspace":true
         },
-        "rename": ["sample_temp", "time", "mass_loss", null, null, null, null, null, "sensitivity"],
-        "usecols":[0,1,3,4,5,6,7]
+        "usecols":[0,1,3,4,5,6,7],
+        "units":"(?:[\\w\\s.:|()#]+)/?(?P<unit>.+)?",
+        "rename": ["sample_temp", "time", null, null, null, null, null]
     }

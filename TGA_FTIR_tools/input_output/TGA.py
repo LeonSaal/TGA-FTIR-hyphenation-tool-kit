@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 
-from ..config import COUPLING, PATHS, SAVGOL
+from ..config import DEFAULTS, PATHS, SAVGOL
 from .general import find_files_re, read_profile_json
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
 
 
-def TGA_info(file, TGA, profile=COUPLING["profile"]):
+def TGA_info(file, TGA, profile=DEFAULTS["profile"]):
     from ..classes import SampleInfo
 
     profile = read_profile_json(profile)["data"]['tga']

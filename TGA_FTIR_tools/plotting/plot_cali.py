@@ -1,7 +1,7 @@
 from .utils import get_label
 import matplotlib.pyplot as plt
 import numpy as np
-from ..config import COUPLING, MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
+from ..config import SEP, UNITS
 
 def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax):        
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]

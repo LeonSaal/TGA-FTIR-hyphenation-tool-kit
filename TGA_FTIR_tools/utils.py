@@ -11,6 +11,7 @@ from functools import lru_cache
 from tabulate import tabulate
 import pandas as pd
 from .config import list_gh_profiles, download_supplementary
+from molmass import Formula, ELEMENTS
 
 logger = logging.getLogger(__name__)
 ln2 = np.log(2)
@@ -133,7 +134,7 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
     
     # make profile from parts
     profile = {"data": data}
-    fields = ["name_pattern"]
+    fields = ["name_pattern", "mass_resolution_ug"]
     profile["supplementary"] = {field: "" for field in fields}
     # save profile
     while True:
@@ -148,3 +149,8 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
             logger.info(f"Saved profile {name!r} to {path.as_posix()!r}")
             break
     return fname
+
+def validate_mf(mf:str) -> bool:
+    symbols = [e.symbol for e in ELEMENTS]
+    pattern = f"(({'|'.join(symbols)})\\d*)+"
+    return re.match(pattern, mf) is not None

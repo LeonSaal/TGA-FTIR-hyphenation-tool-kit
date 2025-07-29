@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 import pandas as pd
-from ..config import COUPLING
+from ..config import DEFAULTS
 
 
 @dataclass
