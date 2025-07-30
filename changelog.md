@@ -1,4 +1,11 @@
-## 2025-07-28
+## 2025-07-30
+- make info derived from raw data more flexible
+- added unit support for info derived from file
+- make calibration compliant with units
+- begin refactoring of ``calibrate``
+- 
+
+## 2025-07-29
 ### 1
 - initial setup for testing
 - refactor ``dry_weight``

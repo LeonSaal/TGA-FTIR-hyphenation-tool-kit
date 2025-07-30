@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import List, Mapping
 
 import pandas as pd
+
 import pint_pandas
+import pint
+ureg = pint.get_application_registry()
+Q_ = ureg.Quantity
 
 from ..config import DEFAULTS, PATH_SET, PATHS
 
@@ -46,9 +50,53 @@ def read_profile_json(profile: str) -> Mapping:
             with open(file) as json_file:
                 profile["data"][device] = json.load(json_file)
         return profile
+    
+def read_info(path:str, profile:dict):
+    kwargs = profile.get("kwargs")
+    info_pattern = profile.get('info_pattern')
+    if kwargs and info_pattern:
+        skiprows = kwargs.get("skiprows")
+        skipfooter = kwargs.get("skipfooter")
+    else: 
+        return {}
+
+    if not skiprows and not skipfooter:
+        return {}
+    
+    with open(path, encoding=profile.get("kwargs").get("encoding", "utf-8")) as f:
+        if skipfooter:
+            text = f.readlines()
+        elif skiprows:
+            text = [f.readline() for _ in range(skiprows)]
+
+    text = "".join(text)
+    info = {}
+
+    for key, pat in info_pattern.items():
+        req_groups = ["name", "value", "unit"]
+        pat_comp = re.compile(pat)
+        mapper = pat_comp.groupindex
+        if len(req_groups & mapper.keys()) != 3:
+            logger.warning(f"Regex {pat!r} doesn't have 3 required capture groups ({req_groups!r}).")
+        if matches := re.findall(pat, text):
+            for match in matches:
+                val = match[mapper["value"]-1]
+                unit = match[mapper["unit"]-1]
+                try:
+                    val = pd.to_numeric(val)
+                    if not pd.isna(val):
+                        val = Q_(val, unit)
+                except ValueError:
+                    val = val
+
+                name = match[mapper["name"]-1] if len(matches) > 1 else key
+                info[name] = val
+    return info
             
 def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
     out = {}
+    info = {}
+    init_paths = []
     profile_specs = read_profile_json(profile)
     if not profile_specs:
         logger.error(f"Profile {profile!r} not found or empty.")
@@ -74,6 +122,8 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
             # load data from path
             try:
                 data = pd.read_csv(path, **kwargs)
+                init_paths.append(path)
+                info.update(read_info(path, values))
 
             except PermissionError:
                 logger.error(f"Failed to read {key}-data from {path}")
@@ -150,11 +200,13 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
             # rename unit indices
             newnames = concat.columns
             mapper = {old:new for old, new in zip(oldnames, newnames)}
-            units = {mapper[oldname]:unit for oldname, unit in units.items()}
+            units = {mapper[oldname]:unit if unit else "dimensionless" for oldname, unit in units.items()}
 
         # assign units to columns
-        concat = concat.transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) if unit else (lambda y: y) for col, unit in units.items()})
-
+        concat = concat.transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) for col, unit in units.items()})
         out[key] = concat
+        
+    info["paths"] = set(init_paths)
+    out["_info"] = info
 
     return out

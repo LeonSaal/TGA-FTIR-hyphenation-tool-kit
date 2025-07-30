@@ -2,12 +2,15 @@ import numpy as np
 import scipy as sp
 import itertools as it
 from ..config import SAVGOL
+import pandas as pd
 
+import pint
+ureg = pint.get_application_registry()
 
 def mass_step(sample, samples= 20, **kwargs):  # rel_height=.963
     "deriving mass steps via peaks in DTG signal"
     # calculation and smoothing of DTG
-    y = sample.tga['sample_mass'].to_numpy()
+    y = sample.tga['sample_mass']
     dtg = sample.tga.dtg
     
     # detect mass steps
@@ -30,14 +33,14 @@ def mass_step(sample, samples= 20, **kwargs):  # rel_height=.963
             step_ends_idx.append(right)
 
     # calculate mass steps
-    start_masses = np.zeros(len(step_starts_idx))
+    start_masses = pd.Series(np.zeros(len(step_starts_idx)), dtype=y.dtype)
     for i, step_start in enumerate(step_starts_idx):
-        start_masses[i] = np.mean(y[step_start : step_start + samples])
+        start_masses[i] = y[step_start : step_start + samples].mean()
 
     # calculate step height
-    step_height = np.zeros(len(step_starts_idx))
+    step_height = pd.Series(np.zeros(len(step_starts_idx)), dtype=y.dtype)
     for i, (start_mass, step_end) in enumerate(zip(start_masses, step_ends_idx)):
-        step_height[i] = start_mass - np.mean(y[step_end - samples : step_end])
+        step_height[i] = start_mass - y[step_end - samples : step_end].mean()
 
     rel_step_height = step_height / sample.reference_mass
 

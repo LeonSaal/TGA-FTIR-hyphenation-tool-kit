@@ -83,7 +83,7 @@ DEFAULTS = cfg["defaults"]
 SAVGOL = cfg["savgol"]
 BOUNDS = cfg["fitting"]
 EGA_NOISE = cfg["correction"]
-MERGE_CELLS = False
+MERGE_CELLS = True
 UNITS = cfg["units"]
 SEP = UNITS["sep"]
 

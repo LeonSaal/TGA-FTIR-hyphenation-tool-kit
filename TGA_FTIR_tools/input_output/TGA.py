@@ -1,52 +1,10 @@
 import logging
-import re
-
-import numpy as np
-import pandas as pd
 import scipy as sp
-
-from ..config import DEFAULTS, PATHS, SAVGOL
-from .general import find_files_re, read_profile_json
+from ..config import SAVGOL
 
 logger = logging.getLogger(__name__)
-
-
 WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
 POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
-
-
-def TGA_info(file, TGA, profile=DEFAULTS["profile"]):
-    from ..classes import SampleInfo
-
-    profile = read_profile_json(profile)["data"]['tga']
-
-    "extract TG info e.g. measurement time, initial mass... from TG file"
-    # open file from TGA in given directory and make a DataFrame from it
-    path = find_files_re(file, profile["ext"], PATHS["data"])[0] 
-    with open(path, encoding=profile.get("kwargs").get("encoding", "utf-8")) as f:
-        text = f.readlines()
-
-    text = "".join(text)
-    info = SampleInfo(file)
-
-    for key, pat in profile['info_pattern'].items():
-        if m := re.findall(pat, text):
-            for (k, val) in m:
-                try:
-                    val = pd.to_numeric(val)
-                except ValueError:
-                    val = val
-
-                if len(m)> 1:
-                    info[k] = val
-                else:
-                    info[key]=val
-            
-    if not info["initial_mass"] and "sample_mass" in TGA.columns:
-        info["initial_mass"]=TGA["sample_mass"].iloc[0]
-
-    return info
-
 
 def default_info(name, tga):
     from ..classes import SampleInfo

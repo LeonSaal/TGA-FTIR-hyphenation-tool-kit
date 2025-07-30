@@ -7,6 +7,9 @@ import numpy as np
 from ..config import SEP, UNITS
 from .plotting import get_label
 from .utils import make_title
+import pint
+ureg = pint.get_application_registry()
+ureg.setup_matplotlib()
 
 
 def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig']='rel', x_axis='sample_temp', title=False):
@@ -23,12 +26,6 @@ def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig'
     
     # set up plot
     x,y = sample.tga[x_axis], sample.tga.sample_mass
-    if y_axis =='rel':
-        unit = '%'
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=max(y)))
-    else:
-        unit = UNITS["sample_mass"]
-
     # plot steps
     ax.hlines(
         step_masses[:-1],
@@ -38,41 +35,18 @@ def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig'
     )
     ax.vlines(steps[1:], step_masses[1:], step_masses[:-1], linestyle="dashed")
     
-
     #plot step heights
     for step_start, step_end, step_height in zip(steps[:-1], steps[1:], step_heights):
         y_mean = np.mean((matches.loc[step_start], matches.loc[step_end]))
         if y_axis =='orig':
-            label = f'{step_height:.2f} {unit} ({step_height / step_masses[0]:.2%})'
+            percent = (step_height / step_masses[0]).to("percent")
+            label = f'{step_height:.2f}({percent:.2f})'
         else:
             label = f'{step_height/y.max():.1%}'
-        ax.text(step_end+ 5, y_mean ,label)
+        ax.text(step_end+ureg.Quantity(5, ureg.delta_degC), y_mean ,label)
 
     #plot data and set axes labels
     ax.plot(x, y)
-    ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
-    ax.set_ylabel(f'{get_label("sample_mass")} {SEP} {unit}')
 
     if title:
         ax.set_title(make_title(sample))
-
-# def plot_dtg_mass_step(x:pd.Series, y:pd.Series, steps:Tuple, peaks):
-#     # plotting of DTG
-#     step_starts, step_ends = steps
-#     fig, ax = plt.subplots()
-#     y = -DTG
-#     ax.plot(x, y)
-#     ax.vlines(x[step_ends], 0, max(y), linestyle="dashed")
-#     ax.vlines(x[step_starts], 0, max(y), linestyle="dashed")
-#     ax.vlines(x[peaks], y[peaks] - properties["prominences"], y[peaks])
-#     ax.hlines(
-#         y[peaks] - kwargs["rel_height"] * properties["prominences"],
-#         x[step_ends],
-#         x[step_starts],
-#     )
-#     ax.set_xlabel(f'{get_label("sample_temp")} {SEP} {UNITS["sample_temp"]}')
-#     ax.set_ylabel(
-#         f'{get_label("dtg")} { SEP} {UNITS["sample_mass"]} ${UNITS["time"]}^{{-1}}$'
-#     )
-#     ax.set(title="DTG")
-#     plt.show()

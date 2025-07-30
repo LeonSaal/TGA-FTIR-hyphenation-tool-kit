@@ -27,10 +27,12 @@
 		- update preview or errors
     - combination of above
   - move device specific settings to profile (e.g. mass resolution)
+    - savgol-settings?
     - move fields specific to ``Sample``-level to combined profile
 
 ## Correction
 - add synthetic baseline
+  - ALS, linear, const
 - make correction of $CO_2$ more flexible / less specific to first device
 
 ## Fitting
@@ -55,15 +57,12 @@
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
 - let `pint` handle units
-    - `pint-pandas` for unit inside `pd.DataFrame`
     - add unit annotations where possible
-- use minutes internally
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
 - ``setup.py`` $\rightarrow$ ``pyproject.toml``
 - testing with ``pytest`` (+`tox`?)
-- debug level in ``__init__`` oder settings?
 - clean up `Sample`, `calibration.py`
   - reduce if statements
   - combine code blocks to and or move functions to separate .py-files
@@ -84,7 +83,7 @@
 
 ## Calibration
 - add sample labels to points (if specified)
-- 
+- check unit for calibration methods other than "max"
 
 # Documentation
 - for _import profiles_
@@ -93,4 +92,4 @@
     - `Sample`+`Worklist`=`Worklist`
     - `Worklist`+`Worklist`=`Worklist`
 - calibration
-- add docstrings for every function
+- add docstrings, signatures for every function

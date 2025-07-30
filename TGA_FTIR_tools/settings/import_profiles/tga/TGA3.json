@@ -15,7 +15,7 @@
             "sample_mass": "lambda x: float(x.replace(',','.'))"
         },
         "engine": "python",
-        "encoding": "latin-1",
+        "encoding": "ansi",
         "names": [
             "Index",
             "time",

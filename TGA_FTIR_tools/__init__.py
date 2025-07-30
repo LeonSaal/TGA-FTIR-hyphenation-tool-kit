@@ -4,3 +4,5 @@ from .classes import Baseline, Sample, Worklist
 from .fitting import bar_plot_results, concatenate, robustness, summarize
 from .input_output import samplelog
 from .plotting import plots
+import pint_pandas
+pint_pandas.PintType.ureg.formatter.default_format = "P~"

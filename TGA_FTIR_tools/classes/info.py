@@ -13,10 +13,14 @@ class SampleInfo:
     initial_mass: float = None
     final_mass: float=None
     reference_mass_name: Optional[str] = "initial_mass"
-    steps_idx: list = field(default_factory=dict)
+    steps_idx: dict = field(default_factory=lambda: {"initial_mass":0, "final_mass" : -1})
+    info: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.alias = self.name
+        for key, value in self.info.items():
+            self[key] = value
+        del self.info
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value

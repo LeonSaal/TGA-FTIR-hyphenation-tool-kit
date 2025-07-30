@@ -12,6 +12,7 @@ from tabulate import tabulate
 import pandas as pd
 from .config import list_gh_profiles, download_supplementary
 from molmass import Formula, ELEMENTS
+import re
 
 logger = logging.getLogger(__name__)
 ln2 = np.log(2)

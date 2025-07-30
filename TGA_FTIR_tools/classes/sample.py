@@ -9,15 +9,17 @@ from types import NoneType
 from typing import Any, Literal, Mapping, Optional, List
 import matplotlib.pyplot as plt
 
-import configparser
 import numpy as np
 import pandas as pd
 import pint_pandas
+
+import pint
 from pint import DimensionalityError
+ureg = pint.get_application_registry()
 import scipy.stats as sp
 from scipy.signal import savgol_filter
 
-from ..config import DEFAULTS, PATHS, SAVGOL, update_config, PATH_SET
+from ..config import DEFAULTS, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog, read_profile_json)
 from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined
@@ -34,7 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Sample:
     name: str
-    ir: Optional[pd.DataFrame] = field(default=None)
+    ega: Optional[pd.DataFrame] = field(default=None)
     tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
@@ -45,8 +47,8 @@ class Sample:
     mode: InitVar[Literal["construct", "pickle"]] = "construct"
     profile: InitVar[str] = DEFAULTS["profile"]
 
-    def __post_init__(self, mode, profile, **kwargs):
-        if mode == "construct":
+    def __post_init__(self, **kwargs):
+        if self.mode == "construct":
             logger.info(f"Initializing '{self.name}'")
 
             self.check_profile()
@@ -55,17 +57,21 @@ class Sample:
 
             # load data
             self.__dict__.update(read_data(self.name, profile=self.profile))
+            self._info = SampleInfo(self.name, info=self._info)
 
             if self.tga is not None:
                 logger.info("TGA data found.")
                 logger.debug("Checking required columns in TGA data.")
                 
                 # deriving TG info
-                try:
-                    self._info = TGA.TGA_info(self.name, self.tga, profile=self.profile)
-                except Exception as e:
-                    logger.info(f"Failed to derive TG info. Using default values. {e}")
-                    self._info = TGA.default_info(self.name, self.tga)
+                # try:
+            
+                # except Exception as e:
+                #     logger.info(f"Failed to derive TG info. Using default values. {e}")
+                #     self._info = TGA.default_info(self.name, self.tga)
+
+                if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
+                    self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
 
                 # calculate sample mass with mass loss and initial mass
                 try:
@@ -74,14 +80,20 @@ class Sample:
                             self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
                 except DimensionalityError:
                     logger.error("Failed")
+                self._info.steps_idx.update({})
 
                 # check required columns
                 if missing:=self.missing_tga_columns():
                     logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
                 else:   
-                    self.tga["dtg"] = -savgol_filter(
-                        self.tga["sample_mass"], WINDOW_LENGTH, POLYORDER, deriv=1
-                    )
+                    try:
+                        dtg = savgol_filter(
+                            self.tga["sample_mass"].values._data, WINDOW_LENGTH, POLYORDER, deriv=1
+                        )
+                        dtype =  self.tga["sample_mass"].dtype
+                        self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
+                    except ValueError as e:
+                        print(e)
 
 
             else:
@@ -89,9 +101,11 @@ class Sample:
                 self._info = SampleInfo(name=self.name, alias=self.alias)
 
             if self.ega is not None:
-                self._info["gases"] = set(self.ega.columns[1:].to_list())
+                self._info["gases"] = self.ega.columns[1:].to_list()
+                
                 # load calibration
                 self.calibrate(mode="load", profile=self.profile)
+                
                 gases = self._info["gases"]
                 if self.linreg is not None:
                     calibrated_gases = self.linreg.index 
@@ -157,7 +171,7 @@ class Sample:
                 self.run = 0
 
         # initialize object from pickle file
-        if mode == "pickle":
+        if self.mode == "pickle":
             with open(PATHS["output"] / f"{self.name}.pkl", "rb") as inp:
                 obj = pickle.load(inp)
             for key in obj.__dict__:
@@ -341,7 +355,7 @@ class Sample:
     def mass_step(
         self, ax=None, plot=True, height=0, width=100, prominence=0, rel_height=0.9,**kwargs
     ):
-        w_T = width / sp.mode(np.diff(self.tga.sample_temp)).mode
+        w_T = width / sp.mode(np.diff(self.tga.sample_temp.values._data)).mode
         #self.plot("mass_steps", steps=self._info["step_temp"], **kwargs)
         step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
             self,
@@ -357,7 +371,7 @@ class Sample:
             self.plot(
                 "mass_steps",
                 ax=ax,
-                steps=self.step_data().sample_temps,
+                steps=self.step_data().sample_temp,
                 y_axis="orig",
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx

@@ -56,7 +56,7 @@ def make_title(sample):
     type_ref_mass = sample.info['reference_mass_name']
     reference_mass = sample.reference_mass
     label_ref_mass = get_label(type_ref_mass)
-    unit = UNITS['sample_mass']
+    unit = reference_mass.dtype.units
     
     return f"{alias}, {label_ref_mass} = {reference_mass:.2f} ${unit}$"
             
