@@ -2,12 +2,12 @@ import logging
 import pickle
 import re
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from ..classes import Sample
-from ..config import PATHS
+from ..config import PATHS, DEFAULTS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
 from ..plotting import bar_plot_results, plot_robustness, plots
@@ -18,20 +18,23 @@ import os
 
 @dataclass
 class Worklist:
-    samples: List[Sample|str]|str|Sample = field(default_factory=list)
+    samples: Union[List[Union[Sample,str]],str,Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
+    profile: str = DEFAULTS["profile"]
     _results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
 
     def __post_init__(self):
         match self.samples:
             case str():
-                self.samples = [Sample(self.samples)]
+                self.samples = [Sample(self.samples, profile=self.profile)]
             case list():
-                self.samples = [sample if isinstance(sample, Sample) else Sample(sample) for sample in self.samples]
+                self.samples = [sample if isinstance(sample, Sample) else Sample(sample, profile=self.profile) for sample in self.samples]
             case Sample():
                 self.samples = [self.samples]
             case _:
                 logger.warning(f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample].")
+        if any([sample.profile!=self.profile for sample in self.samples]):
+            logger.warning(f"Some of the supplied Samples have another profile than {self.profile!r}")
 
     def __add__(self, other):
         if isinstance(other, Sample):

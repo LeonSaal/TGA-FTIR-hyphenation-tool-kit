@@ -1,6 +1,7 @@
 import logging
 import os
 
+from matplotlib.image import interpolations_names
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -51,7 +52,6 @@ def integrate_peaks(
     if plot:
         plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax)
 
-
     return integrals
 
 
@@ -65,10 +65,8 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     gases = linreg.index
 
     n = len(x_cali)
-    if n == 2:
-        return pd.DataFrame()
-
     f = n - 2
+
     if not beta:
         beta = alpha
 
@@ -100,7 +98,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return pd.concat(stats_rows).pint.convert_object_dtype()
 
 
-def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, corr_baseline="linear", rel_height=.95, **fig_args):
+def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([20, 150]), min_rel_height = .2, corr_baseline="linear", **fig_args):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warning(f'{method=} not in {methods=}.')
@@ -112,15 +110,15 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             logger.warning(
                 "No calibration data found. To obtain quantitative EGA data run .calibrate(mode='recalibrate')!"
             )
-            return None, None
+            return None, None, None, None
         os.chdir(PATHS["calibration"])
 
         # try to load saved calibration
         try:
             cali = pd.read_excel(PATHS["calibration"] / "cali.xlsx", sheet_name=None, index_col=[0,1], header=[0,1])
             #cali["data"] = pd.read_excel("cali.xlsx", sheet_name="data", index_col=[0, 1])
-            cali["data"].reset_index(inplace=True)
-            cali["data"].set_index(cali["data"].columns[:3].to_list(), inplace=True)
+            # cali["data"].reset_index(inplace=True)
+            # cali["data"].set_index(cali["data"].columns[:3].to_list(), inplace=True)
             cali = {name: data.xs(profile).pint.quantify() for name, data in cali.items()}
 
             gases = cali["linreg"].index
@@ -157,16 +155,16 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         fig, axs = plt.subplots(len(worklist), 2,sharex="col", gridspec_kw={"hspace":.5, "wspace":.5}, **fig_args)
 
+        data = []
         for i, sample_data in enumerate(worklist):
-
             # calculating mass steps and integrating FTIR_data signals
+            # calculate width in terms of indices from supplied temperature width
+            #width_idxs = width_T / sp.stats.mode(np.diff(sample_data.tga.sample_temp.values._data)).mode
             steps, _, step_starts_idx, step_ends_idx, peaks_idx = sample_data.mass_step(
                 plot=plot,
                 ax=axs[i, 0],
-                height=0.00025,
-                width=50,
-                prominence=0.00025,
-                rel_height=rel_height,
+                height=min_rel_height, #only allow positive peaks
+                width_T=width_T,
             )
             integrals = integrate_peaks(
                 sample_data.ega,
@@ -182,14 +180,14 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             integrals.insert(
                 loc=0, column="mass loss", value=steps,
             )
-            cali["data"] = pd.concat(
-                [cali["data"], pd.concat({sample_data.name: integrals}, names=["samples", "step"])]
-            )
+            data.append(pd.concat({sample_data.name: integrals}, names=["samples", "step"]))
+            
             axs[i,0].set_title(sample_data.alias)
             if i!=len(worklist)-1:
                 axs[i, 0].set_xlabel("")
                 axs[i, 1].set_xlabel("")
         logger.info("Finished integrating data.")
+        cali["data"] = pd.concat(data)
         cali["data"].pint.dequantify().to_excel("data.xlsx")
         if plot:
             fig.align_xlabels()
@@ -254,16 +252,31 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         cali["linreg"] = cali["linreg"].pint.convert_object_dtype()
         cali["stats"] = calibration_stats(cali["x_mol"], cali["y"], cali["linreg"])
+        with pd.ExcelWriter("data.xlsx") as f:
+            for name, df in cali.items():
+                df.to_excel(f, sheet_name=name)
+        
         logger.info("Calibration finished.")
+
         # saving of dfs
+        # reset step index for easier loading
+        cali["data"].reset_index(level="step", inplace=True)
+        cali = {name:data.pint.convert_object_dtype() for name, data in cali.items()}
         try:
             path = PATHS["calibration"]/ "cali.xlsx"
-            with pd.ExcelWriter(path) as writer:
+            path_exists=path.exists()
+            with pd.ExcelWriter(path, mode="a" if path_exists else "w", engine="openpyxl", if_sheet_exists="replace" if path_exists else None) as writer:
                 for name, data in cali.items():
-                    data = data.pint.convert_object_dtype()
+                    # transform before saving
                     data = data.pint.dequantify()
                     data = data.rename({"":"No Unit"}, level=1, axis=1)
-                    pd.concat({profile:data}, names=["profile"]).to_excel(writer, sheet_name=name,merge_cells=MERGE_CELLS)
+                    data_new = pd.concat({profile:data}, names=["profile"])
+
+                    # get old contents of file and update rows with new data
+                    if path_exists:
+                        data_old = pd.read_excel(writer, sheet_name=name, header=[0,1], index_col=[0,1])
+                        data_new = pd.concat([data_old, data]).drop_duplicates(keep="last")
+                    data_new.to_excel(writer, sheet_name=name,merge_cells=MERGE_CELLS)
 
                 logger.info(f"Calibration completed, data is stored under {path.as_posix()!r}")
         except PermissionError:

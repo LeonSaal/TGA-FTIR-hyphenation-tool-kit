@@ -71,9 +71,9 @@ def plot_calibration_single(x,y, linreg, ax):
 
 def plot_calibration_combined(x,y, linreg, gases):
     y_units = set(dtype.units for dtype in y.dtypes)
-    _, axs = plt.subplots(1,len(y_units))
+    _, axs = plt.subplots(1,len(y_units), squeeze=False)
 
-    axdict =  {unit: ax for unit, ax in zip(y_units, axs)}
+    axdict =  {unit: ax for unit, ax in zip(y_units, axs[0])}
 
     for gas in gases:
         xgas = x[gas]

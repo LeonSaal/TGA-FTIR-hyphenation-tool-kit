@@ -10,9 +10,6 @@ import scipy as sp
 from ..config import MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
 from .utils import get_label, make_title, ylim_auto
 
-WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
-POLYORDER =int( SAVGOL.getfloat("POLYORDER"))
-
 import logging
 
 logger = logging.getLogger(__name__)

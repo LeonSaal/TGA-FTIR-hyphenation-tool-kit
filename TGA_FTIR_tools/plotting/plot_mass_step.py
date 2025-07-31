@@ -1,16 +1,9 @@
 from typing import Literal
-
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
-
-from ..config import SEP, UNITS
-from .plotting import get_label
 from .utils import make_title
 import pint
 ureg = pint.get_application_registry()
-ureg.setup_matplotlib()
-
 
 def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig']='rel', x_axis='sample_temp', title=False):
     """

@@ -1,38 +1,83 @@
 from TGA_FTIR_tools import Sample, Worklist, SampleInfo
 import pandas as pd
 import inspect as ins
+from typing import get_args
+from pytest import fixture
+import pytest
 
-class TestInit:
-    def test_init_sample():
-        path = ""
-        s = Sample(path)
-        
+cali_sample_names = [['ExpDat_250605_dd_Calciumoxalat_02_spline',
+ 'ExpDat_250605_dd_Calciumoxalat_03_spline',
+ 'ExpDat_250605_dd_Calciumoxalat_04_spline',
+ 'ExpDat_250605_dd_Calciumoxalat_05_spline',
+ 'ExpDat_250605_dd_Calciumoxalat_06_spline',
+ 'ExpDat_250605_dd_Calciumoxalat_07_spline'], ["dd_220722_Ca-oxalat_02", "dd_220722_Ca-oxalat_01"]]
+sample_names = [cali_sample_names[0][0], "dd_220721_AS5000_01"]
+profiles = ["Netzsch", "Otto"]
+
+
+@fixture(params = [(samples, profile) for samples, profile in zip(cali_sample_names, profiles)], ids=profiles)
+def get_cali_worklist(request):
+    names, profile = request.param
+    yield Worklist(names, profile=profile)
+
+
+@fixture(params = [(name, profile) for name, profile in zip(sample_names, profiles)], ids=profiles)
+def get_sample(request):
+    name, profile = request.param
+    print(name, profile)
+    yield Sample(name, profile=profile)
+
+@fixture(params = ((name, profile) for name, profile in zip([sample_names]*3, profiles*3)), ids=profiles*3)
+def get_worklist(request):
+    def init_options():
+        for fun in [lambda x, y: x, lambda x, y: Sample(x[0], profile=y), lambda x, y: [Sample(s, profile=y) for s in x]]:
+            init = fun(request.param)
+            yield Worklist(init)
+    return init_options
+
+@pytest.mark.usefixtures("get_sample")
+class TestSampleInit:
+    def test_init_sample(self, get_sample):        
         # check all class attributes
-        assert isinstance(s.tga, pd.DataFrame)
-        assert isinstance(s.ega, pd.DataFrame)
-        assert isinstance(s.name, str)
-        assert isinstance(s.alias, str)
-        assert isinstance(s.reference, str)
+        assert isinstance(get_sample.tga, pd.DataFrame)
+        assert isinstance(get_sample.ega, pd.DataFrame)
+        assert isinstance(get_sample.name, str)
+        assert isinstance(get_sample.alias, str)
+        #assert isinstance(get_sample.reference, str) or None
 
-        # check loading of linreg
-        assert isinstance(s.linreg, pd.DataFrame)
-        assert isinstance(s.stats, pd.DataFrame)
-        assert isinstance(s.xcali, pd.DataFrame)
-        assert isinstance(s.ycali, pd.DataFrame)
-        assert isinstance(s.info, SampleInfo)
+        # check loading of linreg before calibration
+        assert get_sample.linreg is None
+        assert get_sample.stats is None
+        assert get_sample.xcali is None
+        assert get_sample.ycali is None
+        assert isinstance(get_sample.info,SampleInfo)
 
+@pytest.mark.usefixtures("get_sample")
+class TestSamplePlot:
+    def test_plot_sample(self, get_sample):
+        plot_opts = get_args(ins.signature(get_sample.plot).parameters["plot"])
+        for plot in plot_opts:
+            get_sample.plot(plot)
 
-        
+@pytest.mark.usefixtures("get_cali_worklist", "get_sample")
+#@pytest.mark.parametrize("get_sample, get_cali_worklist", [((sample_names[0], "Netzsch"), cali_sample_names)], indirect=True)
+class TestSampleCali:    
+    def test_calibration(self, get_sample, get_cali_worklist):
+        sample = get_sample
+        wl = get_cali_worklist
+        sample.calibrate(worklist=wl, mode="recalibrate", molecular_formulas = {'QMID(s:1|m:18)/A': 'H2O', 'QMID(s:2|m:44)/A': 'CO2'})
+        sample = get_sample
+        assert isinstance(get_sample.stats , pd.DataFrame)
+        assert isinstance(get_sample.linreg , pd.DataFrame)
+        assert isinstance(get_sample.xcali , pd.DataFrame)
+        assert isinstance(get_sample.ycali , pd.DataFrame)
 
-    def test_other_import_profile():
-        pass
-
-    def test_init_worklist():
-        path = ""
-        s = Worklist(path)
-
-        assert isinstance(s.samples, list)
-        assert isinstance(s.name, str)
+@pytest.mark.usefixtures("get_cali_worklist", "get_sample", "get_worklist")
+class TestWorklistInit:
+    def test_init_worklist(self, get_worklist):
+        for worklist in get_worklist():
+            assert isinstance(worklist.samples, list)
+            assert isinstance(worklist.name, str)
 
 class TestSampleClassMethods():
 #     def 'calibrate',

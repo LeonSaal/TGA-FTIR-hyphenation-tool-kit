@@ -3,8 +3,8 @@ import scipy as sp
 from ..config import SAVGOL
 
 logger = logging.getLogger(__name__)
-WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
-POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
+WINDOW_LENGTH_REL = SAVGOL.getfloat("window_length_rel")
+POLYORDER = int(SAVGOL.getfloat("polyorder"))
 
 def default_info(name, tga):
     from ..classes import SampleInfo
@@ -50,9 +50,10 @@ def dry_weight(sample, how_dry="H2O"):
                 ref = sample.ega.copy()#.filter(items=["sample_temp", "H2O"])
             elif how_dry == "sample_mass":
                 ref = sample.tga.copy()#.filter(items=["sample_temp", "sample_mass"])
+                window_length = int(sample.tga.index.size * WINDOW_LENGTH_REL)
                 ref["sample_mass"] = -sp.signal.savgol_filter(
                     sample.tga["sample_mass"] / sample.info.initial_mass,
-                    WINDOW_LENGTH,
+                    window_length if window_length%2 ==0 else window_length+1,
                     POLYORDER,
                     deriv=1,
                 )

@@ -3,15 +3,15 @@ import scipy as sp
 import itertools as it
 from ..config import SAVGOL
 import pandas as pd
-
 import pint
 ureg = pint.get_application_registry()
 
-def mass_step(sample, samples= 20, **kwargs):  # rel_height=.963
+def mass_step(sample, samples= 20, min_height=0, **kwargs):  # rel_height=.963
     "deriving mass steps via peaks in DTG signal"
     # calculation and smoothing of DTG
     y = sample.tga['sample_mass']
     dtg = sample.tga.dtg
+    dtg = dtg / dtg.max()
     
     # detect mass steps
     peaks_idx, _ = sp.signal.find_peaks(dtg, **kwargs)
@@ -24,9 +24,9 @@ def mass_step(sample, samples= 20, **kwargs):  # rel_height=.963
     # following data from peaks down in both directions and detect change in direction
     for i, (a,b) in enumerate(it.pairwise(peaks)):
         subset = dtg.diff()[a+1:b-1]
-        subleft = subset[::-1] > 0
+        subleft = subset[::-1] > min_height
         left = b-np.argmin(subleft) if not subleft.all() else a
-        right = np.argmax(subset>0)+a
+        right = np.argmax(subset > min_height)+a
         if i < len(peaks)-2:
             step_starts_idx.append(left)
         if i !=0:

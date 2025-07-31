@@ -1,9 +1,17 @@
+## 2025-07-31
+- added testing routines with `pytest`
+- added profile keyword to `Worklist`
+- fixed ``mass_step``
+- adjusted TGA3 import profile
+- made *DTG*-smoothing more flexible and dependant on input data
+- estimated reasonable values for *DTG*-smoothing and -peak detection in ``mass_step``
+- bugfixes and cleanup
+
 ## 2025-07-30
 - make info derived from raw data more flexible
 - added unit support for info derived from file
 - make calibration compliant with units
 - begin refactoring of ``calibrate``
-- 
 
 ## 2025-07-29
 ### 1

@@ -9,13 +9,14 @@
     "kwargs": {
         "skiprows": 13,
         "skipfooter": 11,
-        "delim_whitespace": 1,
+        "sep": "\\s+",
         "decimal": ",",
         "converters": {
             "sample_mass": "lambda x: float(x.replace(',','.'))"
         },
         "engine": "python",
-        "encoding": "ansi",
+        "encoding": "latin_1",
+        "encoding_errors": "replace",
         "names": [
             "Index",
             "time",
@@ -38,5 +39,6 @@
         "method": "Methode:\\n\\s*(?P<method>\\S+)",
         "date": "Durchgeführt am(?P<date>\\d{2}\\.\\d{2}\\.\\d{4})",
         "time": "Durchgeführt am.+(?P<time>\\d{2}:\\d{2}:\\d{2})"
-    }
+    },
+    "units": ["s", "degreeC", "degreeC", "mg", "mW"]
 }

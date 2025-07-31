@@ -63,7 +63,7 @@ def read_info(path:str, profile:dict):
     if not skiprows and not skipfooter:
         return {}
     
-    with open(path, encoding=profile.get("kwargs").get("encoding", "utf-8")) as f:
+    with open(path, encoding=kwargs.get("encoding", "cp1252")) as f:
         if skipfooter:
             text = f.readlines()
         elif skiprows:
@@ -77,7 +77,8 @@ def read_info(path:str, profile:dict):
         pat_comp = re.compile(pat)
         mapper = pat_comp.groupindex
         if len(req_groups & mapper.keys()) != 3:
-            logger.warning(f"Regex {pat!r} doesn't have 3 required capture groups ({req_groups!r}).")
+            logger.warning(f"Regex {key!r} doesn't have 3 required capture groups ({req_groups!r}).")
+            continue
         if matches := re.findall(pat, text):
             for match in matches:
                 val = match[mapper["value"]-1]
@@ -161,7 +162,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                 # determine units from columns via regex
                 case str():
                     pat = values["units"]
-                    units = {col: re.match(pat, col).group("unit") for col in concat.columns if re.match(pat, col)}
+                    units = {col:re.match(pat, col).group("unit") for col in concat.columns if re.match(pat, col)}
                 
                 # pass units as list alongside columns
                 case list():
@@ -177,8 +178,11 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                     units = {name: value for name, value in values["units"].items() if name in concat.columns}
                 case _:
                     units={}
+        else:
+            units= {}
 
         # rename columns if specified
+        oldnames = concat.columns
         if values.get("rename"):
             # handle different formats for rename
             match values["rename"]:
@@ -194,17 +198,17 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                 case _:
                     logger.error(f"Invalid rename format for {key} in profile {profile!r}.")
                     rename = {}
-            oldnames = concat.columns
+            
             concat.rename(columns=rename, inplace=True)
             
-            # rename unit indices
-            newnames = concat.columns
-            mapper = {old:new for old, new in zip(oldnames, newnames)}
-            units = {mapper[oldname]:unit if unit else "dimensionless" for oldname, unit in units.items()}
+        # rename unit indices
+        newnames = concat.columns
+        mapper = {old:new for old, new in zip(oldnames, newnames)}
+        units = {mapper[oldname]: units.get(oldname) if units.get(oldname) else "dimensionless" for oldname in oldnames}
 
         # assign units to columns
         concat = concat.transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) for col, unit in units.items()})
-        out[key] = concat
+        out[key] = concat.pint.convert_object_dtype()
         
     info["paths"] = set(init_paths)
     out["_info"] = info

@@ -29,6 +29,9 @@
   - move device specific settings to profile (e.g. mass resolution)
     - savgol-settings?
     - move fields specific to ``Sample``-level to combined profile
+  - select profile on init?
+  - or move init operations to separate methods (e.g. `load_sample`)?
+  - add profile to ``Worklist``
 
 ## Correction
 - add synthetic baseline
@@ -84,6 +87,10 @@
 ## Calibration
 - add sample labels to points (if specified)
 - check unit for calibration methods other than "max"
+- can only pass initialized worklist guard
+- problem when no molformula
+- add date column
+- dont overwrite old data
 
 # Documentation
 - for _import profiles_

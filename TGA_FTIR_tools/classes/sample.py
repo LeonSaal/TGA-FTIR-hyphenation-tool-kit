@@ -16,7 +16,7 @@ import pint_pandas
 import pint
 from pint import DimensionalityError
 ureg = pint.get_application_registry()
-import scipy.stats as sp
+import scipy as sp
 from scipy.signal import savgol_filter
 
 from ..config import DEFAULTS, PATHS, SAVGOL, update_config
@@ -26,8 +26,8 @@ from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, p
 from ..utils import select_import_profile, check_profile_exists
 from .info import SampleInfo
 
-WINDOW_LENGTH = int(SAVGOL.getfloat("window_length"))
-POLYORDER = int(SAVGOL.getfloat("POLYORDER"))
+WINDOW_LENGTH_REL = SAVGOL.getfloat("window_length_rel")
+POLYORDER = int(SAVGOL.getfloat("polyorder"))
 
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,12 @@ class Sample:
     _info = None 
     baseline = None
     results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
-    mode: InitVar[Literal["construct", "pickle"]] = "construct"
-    profile: InitVar[str] = DEFAULTS["profile"]
+    mode: Literal["construct", "pickle"] = "construct"
+    profile: str = DEFAULTS["profile"]
 
     def __post_init__(self, **kwargs):
         if self.mode == "construct":
-            logger.info(f"Initializing '{self.name}'")
+            logger.info(f"Initializing {self.name!r} with {self.profile!r}")
 
             self.check_profile()
             self.profile_data = read_profile_json(self.profile)
@@ -87,8 +87,9 @@ class Sample:
                     logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
                 else:   
                     try:
+                        window_length = int(self.tga.index.size * WINDOW_LENGTH_REL)
                         dtg = savgol_filter(
-                            self.tga["sample_mass"].values._data, WINDOW_LENGTH, POLYORDER, deriv=1
+                            self.tga["sample_mass"].values._data, window_length if window_length%2 ==0 else window_length+1 , POLYORDER, deriv=1
                         )
                         dtype =  self.tga["sample_mass"].dtype
                         self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
@@ -128,6 +129,8 @@ class Sample:
                     #raise e
                 
                 if "sample_temp" not in self.ega and "time" in self.ega:
+                    self.ega.time = self.ega.time.astype(self.tga.time.dtype)
+                    self.ega = self.ega.set_index("time").reindex(self.tga.time, method="nearest").reset_index()
                     try:
                         self.ega = pd.merge(
                             self.tga.filter(
@@ -203,7 +206,7 @@ class Sample:
     def reference_mass(self):
         ref_mass_name=self.info.reference_mass_name
         step_data = self.step_data()
-        return step_data[step_data.step == ref_mass_name].sample_mass
+        return step_data[step_data.step == ref_mass_name].sample_mass.values[0]
 
     def step_data(self, ref_mass_name=None):
         idxs = self.info.steps_idx
@@ -288,7 +291,7 @@ class Sample:
                     self.raw.tga, self.baseline, plot=plot["tga"]
                 )
                 self.tga["dtg"] = -savgol_filter(
-                    self.tga.sample_mass, WINDOW_LENGTH, POLYORDER, deriv=1
+                    self.tga.sample_mass, WINDOW_LENGTH_REL, POLYORDER, deriv=1
                 )
             except PermissionError:
                 logger.error("Failed to correct TG data.")
@@ -353,16 +356,15 @@ class Sample:
             logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(
-        self, ax=None, plot=True, height=0, width=100, prominence=0, rel_height=0.9,**kwargs
+        self, ax=None, plot=True, height=0.2, width_T=np.array([20, 150]),**kwargs
     ):
-        w_T = width / sp.mode(np.diff(self.tga.sample_temp.values._data)).mode
-        #self.plot("mass_steps", steps=self._info["step_temp"], **kwargs)
+        #calculate width in terms of indices from supplied temperature width
+        width_idxs = width_T / sp.stats.mode(np.diff(self.tga.sample_temp.values._data)).mode
         step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
             self,
             height=height,
-            width=w_T,
-            prominence=prominence,
-            rel_height=rel_height,
+            width=width_idxs,
+            rel_height=.7,
             **kwargs,
         )
         steps = {f"Step {i}": idx for i, idx in enumerate(step_ends_idx, start=1)}
@@ -376,7 +378,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=None, ax=None, save=False, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration"], ax=None, save=False, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
@@ -473,7 +475,7 @@ class Sample:
                     plot_calibration_single(x, y, linreg, axs[0])
                     plot_residuals_single(x, y, linreg, axs[1])
                 else:
-                    plot_calibration_combined(self.xcali, self.ycali, self.linreg, self._info["gases"], ax)
+                    plot_calibration_combined(self.xcali, self.ycali, self.linreg, self._info["gases"])
 
         if save:
             path_plots = PATHS["plots"]/ plot
