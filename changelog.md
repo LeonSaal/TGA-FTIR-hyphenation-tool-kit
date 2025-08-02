@@ -1,3 +1,14 @@
+## 2025-08-02
+- checked ``.fit``
+- changed fit visuals
+- trying to make worklist functions concurrent
+
+## 2025-08-01
+- made ``mass_step`` more robust with new technique for finding of bounds
+- improved visualisation
+- fixed bug when updating calibration file
+- fixed saving of worklist to samplelog
+
 ## 2025-07-31
 - added testing routines with `pytest`
 - added profile keyword to `Worklist`

@@ -18,6 +18,7 @@ ureg = pint.get_application_registry()
 logger = logging.getLogger(__name__)
 
 REGR_COLS = ["molecular_formula","molmass", "slope", "intercept", "r_value", "p_value", "std_error"]
+FIGSIZE = np.array(plt.rcParams["figure.figsize"])
 
 def integrate_peaks(
     ega_data, step_starts_idx, step_ends_idx, peaks_idx, corr_baseline=None, plot=False, ax=None, gases=None
@@ -98,7 +99,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return pd.concat(stats_rows).pint.convert_object_dtype()
 
 
-def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([20, 150]), min_rel_height = .2, corr_baseline="linear", **fig_args):
+def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([0, np.inf]), min_rel_height = .2, corr_baseline="linear", **fig_args):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warning(f'{method=} not in {methods=}.')
@@ -152,8 +153,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         # calculating mass steps and integrating FTIR_data signals for all samples
         logger.info("Calibrating...")
-
-        fig, axs = plt.subplots(len(worklist), 2,sharex="col", gridspec_kw={"hspace":.5, "wspace":.5}, **fig_args)
+        figdim = len(worklist), 2
+        fig, axs = plt.subplots(*figdim,sharex="col", gridspec_kw={"hspace":.5, "wspace":.5}, figsize=FIGSIZE*figdim[::-1])
 
         data = []
         for i, sample_data in enumerate(worklist):
@@ -163,7 +164,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             steps, _, step_starts_idx, step_ends_idx, peaks_idx = sample_data.mass_step(
                 plot=plot,
                 ax=axs[i, 0],
-                height=min_rel_height, #only allow positive peaks
+                min_rel_height=min_rel_height, #only allow positive peaks
                 width_T=width_T,
             )
             integrals = integrate_peaks(
@@ -275,7 +276,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     # get old contents of file and update rows with new data
                     if path_exists:
                         data_old = pd.read_excel(writer, sheet_name=name, header=[0,1], index_col=[0,1])
-                        data_new = pd.concat([data_old, data]).drop_duplicates(keep="last")
+                        data_new = pd.concat([data_old, data_new]).drop_duplicates(keep="last")
                     data_new.to_excel(writer, sheet_name=name,merge_cells=MERGE_CELLS)
 
                 logger.info(f"Calibration completed, data is stored under {path.as_posix()!r}")
@@ -286,7 +287,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
     if plot:
         gases = cali["x_mass"].columns
         plot_gases = [gas for gas in gases if gas in cali["linreg"].index]
-        fig, axs = plt.subplots(len(plot_gases),2 ,gridspec_kw = {"hspace":.5, "wspace":.25}, **fig_args)
+        figdim = len(plot_gases),2
+        fig, axs = plt.subplots(*figdim ,gridspec_kw = {"hspace":.5, "wspace":.25}, figsize=FIGSIZE*figdim[::-1],**fig_args)
         for i,gas in enumerate(plot_gases):
             x = cali["x_mol"][gas]
             y = cali["y"][gas]

@@ -356,14 +356,13 @@ class Sample:
             logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(
-        self, ax=None, plot=True, height=0.2, width_T=np.array([20, 150]),**kwargs
+        self, ax=None, plot=True, min_rel_height=0.2, width_T=np.array([0, np.inf]),**kwargs
     ):
         #calculate width in terms of indices from supplied temperature width
-        width_idxs = width_T / sp.stats.mode(np.diff(self.tga.sample_temp.values._data)).mode
         step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
             self,
-            height=height,
-            width=width_idxs,
+            min_rel_height=min_rel_height,
+            width_T=width_T,
             rel_height=.7,
             **kwargs,
         )
@@ -378,7 +377,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration"], ax=None, save=False, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration"], ax=None, save=False,reference=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
 
         "plotting TG and or IR data"
@@ -417,44 +416,48 @@ class Sample:
         match plot:
             case "EGA":
                 plot_FTIR(self, ax, **kwargs)
+
             case "DIR":
                 temp = copy.deepcopy(self)
                 temp.ega.update(
                     self.ega.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
                 )
                 plot_FTIR(temp, ax, **kwargs)
+
             case "cumsum":
                 temp = copy.deepcopy(self)
                 temp.ega.update(self.ega.filter(self._info["gases"], axis=1).cumsum())
                 plot_FTIR(temp, ax, **kwargs)
+
             case "TG":
                 plot_TGA(self,"sample_mass", ax, **kwargs)
+
             case"heat_flow":
                 if "heat_flow" in self.tga.columns:
                     plot_TGA(self, plot, ax, **kwargs)
                 else:
                     logger.warning("No heat flow data available!")
+
             case"mass_steps":
                 if "steps" not in kwargs:
                     self.mass_step(plot=False)
                     kwargs["steps"] = self._info.step_temp
-        
                 plot_mass_steps(self,ax,**kwargs)
+
             case "IR_to_DTG":
                 FTIR_to_DTG(self, save=save, **kwargs)
+
             case "fit":
                 if self.results["fit"] == {}:
                     logger.warning(
                         'No fitting results available for plotting. Run ".fit()" first.'
                     )
                     return
-                if kwargs.get("reference"):
-                    reference = kwargs["reference"]
-                    if not self.results["fit"].get(reference):
-                        logger.warning(
-                            f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
-                        )
-                        return
+                if reference not in self.results["fit"]:
+                    logger.warning(
+                        f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
+                    )
+                    return
                 else:
                     if len(self.results["fit"].keys()) == 1:
                         reference = list(self.results["fit"].keys())[0]
@@ -495,64 +498,74 @@ class Sample:
         plot=True,
         presets=None,
         mod_sample=True,
+        overwrite=False,
         **kwargs,
     ):
         "deconvolution of IR data"
         from ..fitting import fitting, get_presets
 
-        # setting upper limit for data
-        if T_max is None:
-            T_max = max(self.tga["sample_temp"])
-        elif T_max > (T_max_data := max(self.tga["sample_temp"])):
-            logger.warning(f"{T_max=} exceeds maximum temperature of data ({T_max_data}).")
-            T_max = max(self.tga["sample_temp"])
-            logger.info(f'"T_max" has been set to {T_max_data}.')
+        if reference in self.results["fit"]:
+            if not overwrite:
+                logger.warning(f"Fitting with{reference!r} already in results! Pass overwrite=True to redo fit.")
+                results = self.results["fit"][reference]
+            else:
+                logger.warning(f"Fitting with{reference!r} was already in results! Overwriting.")
 
-        # load presets for deconvolution
-        if presets is None:
-            presets = get_presets(reference)
+        if reference not in self.results["fit"] or overwrite:
+            # setting upper limit for data
+            if T_max is None:
+                T_max = max(self.tga["sample_temp"]).magnitude
+            elif T_max > (T_max_data := max(self.tga["sample_temp"])):
+                logger.warning(f"{T_max=} exceeds maximum temperature of data ({T_max_data}).")
+                T_max = max(self.tga["sample_temp"]).magnitude
+                logger.info(f'"T_max" has been set to {T_max_data}.')
 
-        if presets is None:
-            return
+            # load presets for deconvolution
+            if presets is None:
+                presets = get_presets(reference)
 
-        for gas in presets:
-            presets[gas] = presets[gas].drop(
-                presets[gas].index[presets[gas].loc[:, "center_0"] > T_max + T_max_tol]
+            if presets is None:
+                return
+
+            for gas in presets:
+                presets[gas] = presets[gas].drop(
+                    presets[gas].index[presets[gas].loc[:, "center_0"] > T_max + T_max_tol]
+                )
+
+            # setting up output directory
+            if save:
+                path = (
+                    PATHS["fitting"] / f'{general.time()}{reference}_{self._info["name"]}'
+                )
+                os.makedirs(path)
+                os.chdir(path)
+
+            # fitting
+            logger.info(
+                f'Fitting of "{self.name}" according to "{reference}" in Fitting_parameters.xlsx is in progress ...'
             )
+            temp = copy.deepcopy(self)
+            temp_unit = temp.tga.sample_temp.dtypes.units
+            temp.tga = temp.tga[temp.tga["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
+            temp.ega = temp.ega[temp.ega["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
+            peaks = fitting(temp, presets, save=save, **kwargs)
+            if save:
+                logger.info(f"Plots and results are saved.\n'{path=}'.")
+                os.chdir(PATHS["home"])
 
-        # setting up output directory
-        if save:
-            path = (
-                PATHS["fitting"] / f'{general.time()}{reference}_{self._info["name"]}'
+            logger.info("Fitting finished!")
+
+            results = pd.concat(
+                [peaks],
+                keys=[(reference, self.sample, self.alias, self.run)],
+                names=["reference", "sample", "alias", "run"],
             )
-            os.makedirs(path)
-            os.chdir(path)
-
-        # fitting
-        logger.info(
-            f'Fitting of "{self.name}" according to "{reference}" in Fitting_parameters.xlsx is in progress ...'
-        )
-        temp = copy.deepcopy(self)
-        temp.tga = temp.tga[temp.tga["sample_temp"] < T_max]
-        temp.ega = temp.ega[temp.ega["sample_temp"] < T_max]
-        peaks = fitting(temp, presets, save=save, **kwargs)
-        if save:
-            logger.info(f"Plots and results are saved.\n'{path=}'.")
-            os.chdir(PATHS["home"])
-
-        logger.info("Fitting finished!")
-
-        results = pd.concat(
-            [peaks],
-            keys=[(reference, self.sample, self.alias, self.run)],
-            names=["reference", "sample", "alias", "run"],
-        )
-        if mod_sample:
-            self.results["fit"].update({reference: results})
+            if mod_sample:
+                self.results["fit"].update({reference: results})
 
         # plotting
         if plot:
-            self.plot("fit", **kwargs)
+            self.plot("fit", reference=reference, **kwargs)
 
         return results
 
@@ -570,7 +583,10 @@ class Sample:
             return
 
         # update samplelog
-        samplelog(self._info.__dict__, create=True, **kwargs)
+        info = {key: str(value) for key, value in info.items() if value is not None}
+        data = pd.DataFrame.from_dict(info, orient="index").T
+        data.set_index("name", inplace=True)
+        samplelog(data, create=True, **kwargs)
         path_output = PATHS["output"]
         if how == "samplelog":
             return

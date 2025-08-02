@@ -5,16 +5,27 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Union
 import matplotlib.pyplot as plt
 import pandas as pd
-
+from itertools import chain
 from ..classes import Sample
 from ..config import PATHS, DEFAULTS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
 from ..plotting import bar_plot_results, plot_robustness, plots
+from concurrent.futures import ProcessPoolExecutor
 
 logger = logging.getLogger(__name__)
 import os
 
+# for concurrent.futures
+def fit_sample(args):
+    sample, reference, presets, mod_samples, kwargs = args
+    return sample.fit(
+        reference,
+        presets=presets,
+        mod_sample=mod_samples,
+        save=False,
+        **kwargs
+    )
 
 @dataclass
 class Worklist:
@@ -101,6 +112,7 @@ class Worklist:
             presets = get_presets(reference)
 
         if presets is None:
+            logger.error("Presets neither were supplied, nor could be loaded from defaults.")
             return
 
         # make subdirectory to save data
@@ -110,26 +122,22 @@ class Worklist:
             os.chdir(path)
 
         # cycling through samples
-        for sample in self.samples:
-            # writing data to output DataFrames
-            if reference not in sample.results["fit"]:
-                sample.fit(
-                    reference,
-                    presets=presets,
-                    mod_sample=mod_samples,
-                    **kwargs,
-                    save=False,
-                )
+        samples_to_fit = [s for s in self if reference not in s.results["fit"]]
+        args_list = [(s, reference, presets, mod_samples, kwargs) for s in samples_to_fit]
+
+        with ProcessPoolExecutor() as e:
+            futures = [e.submit(fit_sample, args) for args in args_list]
+
         os.chdir(PATHS["home"])
-        return self.results["fit"]
+        return [f.result() for f in futures]  # self.results["fit"]
 
     @property
     def results(self):
         out = {"fit": None, "robustness": None}
+        oldres = list(chain(*[[res for res in s.results["fit"].values() if isinstance(res, pd.DataFrame)] for s in self]))
 
-        out["fit"] = pd.concat(
-            [pd.concat([res for res in s.results["fit"].values()]) for s in self]
-        )
+        if oldres:
+            out["fit"] = pd.concat(oldres)
         out["robustness"] = self._results["robustness"]
 
         return out
@@ -192,11 +200,14 @@ class Worklist:
         **kwargs,
     ) -> None:
         if how == "samplelog":
-            info = pd.DataFrame.from_dict(
-                {i: sample.info.__dict__ for i, sample in enumerate(self.samples)},
-                orient="index",
-            ).to_dict()
-            samplelog(info, create=True, **kwargs)
+            # collect sample info
+            infos = {sample.name: sample.info for sample in self.samples}
+            info = {name: {key: str(value) for key, value in info.__dict__.items() if value is not None} for name, info in infos.items()}
+            
+            #make df and save
+            data = pd.DataFrame.from_dict(info, orient="index")
+            samplelog(data, how = "samplelog")
+
         elif how == "pickle":
             path_output = PATHS["output"]
             if not path_output.exists():

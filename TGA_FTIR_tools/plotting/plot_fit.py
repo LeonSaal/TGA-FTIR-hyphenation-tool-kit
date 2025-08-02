@@ -36,23 +36,26 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
             zorder=num_curves + 1,
         )  # ,ls='',marker='x',markevery=2,c='cyan')
 
-        x, y_data = sample.ega.sample_temp, sample.ega[gas]
+        x, y_data = sample.ega.sample_temp.to_numpy(dtype=np.float64), sample.ega[gas].to_numpy(dtype=np.float64)
 
         yall = multi_gauss(
-            x.values, *params.height.values, *params.center.values, *params.hwhm.values
+            x, *params.height.values, *params.center.values, *params.hwhm.values
         )
         fitting.plot(x, yall, label="fit", lw=2, zorder=num_curves + 2)
 
         for i, ((ref, sample_name, alias, run, group, gas), row) in enumerate(
             params.iterrows()
         ):
-            y = gaussian(x.values, row.height, row.center, row.hwhm)
-            fitting.text(
-                row.center,
-                row.height,
-                group,
-                zorder=num_curves + 3 + i,
-            )
+            y = gaussian(x, row.height, row.center, row.hwhm)
+            # fitting.text(
+            #     row.center,
+            #     row.height,
+            #     group,
+            #     zorder=num_curves + 3 + i,
+            #     rotation = 45
+            # )
+            fitting.annotate(group, (row.center, row.height), (row.center, yall.max()*1.1),
+            arrowprops=dict(facecolor='black', shrink=0.1, width=1, headwidth=3, headlength=3), rotation=45, zorder=num_curves+3)
             fitting.plot(x, y, linestyle="dashed", zorder=i)  #
 
         fitting.legend()
@@ -65,14 +68,22 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
             )
 
         # mark center on x-axis
-        fitting.scatter(
-            params.center,
-            np.zeros(num_curves),
-            marker=7,
-            color="k",
-            s=100,
-            zorder=num_curves + 3,
-        )
+        # fitting.scatter(
+        #     params.center,
+        #     np.zeros(num_curves),
+        #     marker=7,
+        #     color="k",
+        #     s=100,
+        #     zorder=num_curves + 3,
+        # )
+
+        # fitting.vlines(
+        #     params.center,
+        #     np.zeros(num_curves),
+        #     params.height,
+        #     color="k",
+        #     zorder=num_curves + 3,
+        # )
 
         # plotting of absolute difference
         abs_max = 0.05 * max(y_data)

@@ -12,6 +12,9 @@ from ..config import BOUNDS, PATHS, config
 from ..input_output.general import time
 from ..utils import multi_gauss
 from .fitdata import FitData
+import pint_pandas
+import pint
+ureg = pint.get_application_registry()
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,7 @@ def baseline_als(
 def fitting(
     sample, presets, func=multi_gauss, y_axis="orig", save=True, predef_tol=0.01,
 ):
-    from ..calibration import stats
+    from ..calibration import calibration_stats
     "deconvolve IR data of sample with func and multiple presets"
     # temp_presets = copy.deepcopy(presets)
 
@@ -73,7 +76,7 @@ def fitting(
         x, y = data.ega.sample_temp.to_numpy(dtype=np.float64), data.ega[gas].to_numpy(dtype=np.float64)
         try:
             popt, _ = sp.optimize.curve_fit(
-                func, x, data.ega[gas], p0=params_0, bounds=(params_min, params_max)
+                func, x, y, p0=params_0, bounds=(params_min, params_max)
             )
         except ValueError:
             logger.error(f"Failed to fit {gas} signal")
@@ -88,8 +91,8 @@ def fitting(
     # calculate summarized groups
     #data.summarize()
 
-    if stats is not None:
-        check_LODQ_frame(data.peaks, stats)
+    #if sample.stats is not None:
+    #    check_LODQ_frame(data.peaks, sample.stats)
 
     # save results to excel
     if save:

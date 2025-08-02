@@ -9,7 +9,7 @@ from ..config import MERGE_CELLS, PATHS
 logger = logging.getLogger(__name__)
 
 
-def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
+def samplelog(data=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
     "load and write samplelog file with obj.info"
     path = PATHS["home"]/ "Samplelog.xlsx"
 
@@ -24,12 +24,10 @@ def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
         samplelog = pd.read_excel(path, index_col=0)
 
     # update existing samplelog file
-    if info != None:
-        data = pd.DataFrame.from_dict(info)
-        data.set_index("name", inplace=True)
-
+    if isinstance(data, pd.DataFrame):
+        # convert data to string
         samplelog = pd.concat([samplelog, data])
-        samplelog = samplelog[~samplelog.index.duplicated("last" if overwrite else "first")]
+        samplelog = samplelog.drop_duplicates(keep="last" if overwrite else "first")
 
         try:
             samplelog.to_excel(path, merge_cells=MERGE_CELLS)

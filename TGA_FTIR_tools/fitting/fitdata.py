@@ -41,8 +41,8 @@ class FitData:
             "mmol",
             "mmol_per_mg",
         ]
+        
         self.peaks = pd.DataFrame(columns=columns, index=index).sort_index()
-        del self.sample
 
     def xy(self, gas):
         return self.ega.sample_temp, self.ega[gas]
@@ -156,7 +156,7 @@ class FitData:
         )
         self.peaks.mmol = self.peaks.area / tot_area * tot_mmol
         self.peaks.mmol_per_mg = (
-            self.peaks.mmol / self.info[self.sample.reference_mass]
+            self.peaks.mmol / self.info[self.sample.info.reference_mass_name].magnitude
         )
 
     def summarize(self):

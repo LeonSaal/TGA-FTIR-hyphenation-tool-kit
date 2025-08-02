@@ -6,31 +6,39 @@ import pandas as pd
 import pint
 ureg = pint.get_application_registry()
 
-def mass_step(sample, samples= 20, min_height=0, **kwargs):  # rel_height=.963
+def mass_step(sample, samples= 20, width_T=np.array([0, np.inf]), min_rel_height=0.2, rel_height_bounds=.7, **kwargs):  # rel_height=.963
     "deriving mass steps via peaks in DTG signal"
     # calculation and smoothing of DTG
     y = sample.tga['sample_mass']
     dtg = sample.tga.dtg
     dtg = dtg / dtg.max()
     
+    width_idxs = width_T / sp.stats.mode(np.diff(sample.tga.sample_temp.values._data)).mode
     # detect mass steps
-    peaks_idx, _ = sp.signal.find_peaks(dtg, **kwargs)
-    peaks = [0]+ peaks_idx.tolist()+[dtg.size-1]
+    peaks_idx, props = sp.signal.find_peaks(dtg, height=dtg.max()*min_rel_height, width=width_idxs,**kwargs)
+    #peaks = [0]+ peaks_idx.tolist()+[dtg.size-1]
+    phs = props["peak_heights"] * rel_height_bounds
+    whs = props['width_heights']
+    lips = props['left_ips']
+    rips = props['right_ips']
+
+    step_starts_idx = (phs*(lips-peaks_idx)/(phs-whs)+peaks_idx).astype(int)
+    step_ends_idx= (phs*(rips-peaks_idx)/(phs-whs)+peaks_idx).astype(int)
 
     # find bounds of peaks
-    step_starts_idx = []
-    step_ends_idx =  []
+    # step_starts_idx = []
+    # step_ends_idx =  []
     
-    # following data from peaks down in both directions and detect change in direction
-    for i, (a,b) in enumerate(it.pairwise(peaks)):
-        subset = dtg.diff()[a+1:b-1]
-        subleft = subset[::-1] > min_height
-        left = b-np.argmin(subleft) if not subleft.all() else a
-        right = np.argmax(subset > min_height)+a
-        if i < len(peaks)-2:
-            step_starts_idx.append(left)
-        if i !=0:
-            step_ends_idx.append(right)
+    # # following data from peaks down in both directions and detect change in direction
+    # for i, (a,b) in enumerate(it.pairwise(peaks)):
+    #     subset = dtg.diff()[a+1:b-1]
+    #     subleft = subset[::-1] > min_rel_height
+    #     left = b-np.argmin(subleft) if not subleft.all() else a
+    #     right = np.argmax(subset > min_rel_height)+a
+    #     if i < len(peaks)-2:
+    #         step_starts_idx.append(left)
+    #     if i !=0:
+    #         step_ends_idx.append(right)
 
     # calculate mass steps
     start_masses = pd.Series(np.zeros(len(step_starts_idx)), dtype=y.dtype)

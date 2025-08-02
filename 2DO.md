@@ -1,6 +1,5 @@
 # Errors
 - `.corr(...)` if `plot=dict`, fill missing keys
-- saving of `Worklist` doesn't seem to update the samplelog
 
 # Further Improvements
 ## Config
@@ -60,12 +59,15 @@
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
 - let `pint` handle units
-    - add unit annotations where possible
+    - add unit annotations where possible?
+    - or convert values to base units and handle bare numbers internally
+    - 
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
+  - or set folder pattern(s) in profile definition (top-level)
+  - warn if none found
 - ``setup.py`` $\rightarrow$ ``pyproject.toml``
-- testing with ``pytest`` (+`tox`?)
 - clean up `Sample`, `calibration.py`
   - reduce if statements
   - combine code blocks to and or move functions to separate .py-files
@@ -90,7 +92,6 @@
 - can only pass initialized worklist guard
 - problem when no molformula
 - add date column
-- dont overwrite old data
 
 # Documentation
 - for _import profiles_

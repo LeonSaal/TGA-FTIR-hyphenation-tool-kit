@@ -33,7 +33,7 @@ def plot_mass_steps(sample, ax:plt.Axes, steps = [], y_axis:Literal['rel','orig'
         y_mean = np.mean((matches.loc[step_start], matches.loc[step_end]))
         if y_axis =='orig':
             percent = (step_height / step_masses[0]).to("percent")
-            label = f'{step_height:.2f}({percent:.2f})'
+            label = f'{step_height:.2f~P}({percent:.2f~P})'
         else:
             label = f'{step_height/y.max():.1%}'
         ax.text(step_end+ureg.Quantity(5, ureg.delta_degC), y_mean ,label)

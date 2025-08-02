@@ -4,6 +4,7 @@ import numpy as np
 from ..config import SEP, UNITS
 import pint
 ureg = pint.get_application_registry()
+FIGSIZE = np.array(plt.rcParams["figure.figsize"])
 
 def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax):        
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -71,7 +72,8 @@ def plot_calibration_single(x,y, linreg, ax):
 
 def plot_calibration_combined(x,y, linreg, gases):
     y_units = set(dtype.units for dtype in y.dtypes)
-    _, axs = plt.subplots(1,len(y_units), squeeze=False)
+    figdim = 1,len(y_units)
+    _, axs = plt.subplots(*figdim, squeeze=False, figsize = FIGSIZE * figdim[::-1])
 
     axdict =  {unit: ax for unit, ax in zip(y_units, axs[0])}
 
