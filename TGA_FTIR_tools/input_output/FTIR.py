@@ -18,8 +18,8 @@ def FTIR_info(sample):
         if gas in sample.linreg.index:
             if pd.isna(area):
                 continue
-            molar_amount = (area - sample.linreg["intercept"][gas]) / sample.linreg["slope"][gas]
-            info[f"mmol_{gas}"] = molar_amount if molar_amount >= 0 else pd.NA
+            molar_amount = (area.magnitude - sample.linreg["intercept"][gas]) / sample.linreg["slope"][gas]
+            info[f"mmol_{gas}"] = molar_amount if molar_amount >= 0 else 0
             
 
     # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters

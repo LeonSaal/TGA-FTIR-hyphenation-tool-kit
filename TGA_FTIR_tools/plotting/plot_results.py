@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def bar_plot_results(
-    worklist,
+    data,
     show_groups=[],
     group_by="sample",
     y_unit="µmol per g",
@@ -25,29 +25,23 @@ def bar_plot_results(
     w_bar=0.9,
     exclude_merged=True,
     exclude_total=True,
+    ax=None
 ):
     "Returns a bar plot of the robustness tested results with units conversion and two group_by options."
     dev = "stddev"
-    if res == "robustness":
-        if res not in worklist.results:
-            logger.warning(f"No results to plot. Run .robustness().")
-        data = worklist.results["robustness"][1]
-
-    elif res == "fit":
-        if "fit" not in worklist.results:
-            logger.warning(f"No results to plot. Run .fit().")
-
-        data = worklist.results["fit"]
+    print(data)
+    if res=="fit":
         use_cols = ["mean", "err_dev", "stddev"]
         use_index = data.index.get_level_values("run").isin(use_cols)
         index = ["sample", "group", "gas"]
         data = (
             data["mmol_per_mg"][use_index]
             .reset_index()
-            .pivot(index=index, columns=["run"])["mmol_per_mg"]
+            .pivot(index=index, columns=["run"])
         )
+        print(data)
     else:
-        options = ["fit", "robutsness"]
+        options = ["fit", "robustness"]
         logger.warning(f"{res=} not in {options=}.")
         return
 
@@ -88,7 +82,8 @@ def bar_plot_results(
         ha = "center"
         va = "top"
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     x_ticks = np.arange(N)
     ax.set_xticks(x_ticks, labels=labels, rotation=rot, ha=ha, va=va)
 
@@ -120,11 +115,7 @@ def bar_plot_results(
     if title:
         ax.set_title(f"summary plot with errors from {res}")
 
-    if save:
-        path_plots_eval = PATHS["plots"]/ "Evaluation"
-        if path_plots_eval.exists() == False:
-            path_plots_eval.mkdir()
-        fig.savefig(path_plots_eval/ f"{time()}_{worklist.name}_by_{group_by}.png")
+
 
 
 # def bar_plot_results(

@@ -12,6 +12,7 @@ import re
 from .config import MERGE_CELLS, PATHS, SEP, UNITS
 from .plotting import plot_integration, plot_calibration_single, plot_calibration_combined, plot_residuals_single
 import pint
+from .input_output.general import time
 from molmass import Formula
 ureg = pint.get_application_registry()
 
@@ -133,6 +134,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
     # new calibration
     elif mode == "recalibrate":
+        start_time=time()
         # check if calibration folder is present
         if not PATHS["calibration"].exists():
             # make directory
@@ -189,10 +191,11 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 axs[i, 1].set_xlabel("")
         logger.info("Finished integrating data.")
         cali["data"] = pd.concat(data)
-        cali["data"].pint.dequantify().to_excel("data.xlsx")
+        cali["data"].pint.dequantify().to_excel(f"{start_time}_data.xlsx")
         if plot:
             fig.align_xlabels()
             plt.show()
+            fig.savefig(f"{start_time}_intergration.png")
         
         step_dtype = cali["data"]["mass loss"].dtype
         # assigning gases to mass steps
@@ -302,6 +305,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             if i == len(plot_gases)-1:
                 axs[i, 0].set_xlabel(UNITS["molar_amount"])
                 axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ega']}")
+        fig.savefig(f"{start_time}_cali.png")
 
         x = cali["x_mol"]
         y = cali["y"].pint.convert_object_dtype()

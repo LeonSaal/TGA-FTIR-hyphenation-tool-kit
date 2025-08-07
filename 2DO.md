@@ -31,6 +31,10 @@
   - select profile on init?
   - or move init operations to separate methods (e.g. `load_sample`)?
   - add profile to ``Worklist``
+  - what if not all data is available for all sample for a certain profile? 
+    - $\rightarrow$ number of columns doesn't match number of supplied names
+    - $\rightarrow$ don't allow lists, only dicts for clear assignment
+  - warning if profile doesn't match data
 
 ## Correction
 - add synthetic baseline
@@ -46,6 +50,7 @@
     - move _SOG_-names to legend 
 - remove extra markers from _fit-plot_
 - parallelize computations
+- calculate statistical values and append to ``.results["fit"]``
 
 ## Plotting
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available

@@ -1,4 +1,8 @@
-## 2025-08-02
+# 2505-08-07
+- bugfix testing
+- fixed unit conversions
+
+# 2025-08-02
 - checked ``.fit``
 - changed fit visuals
 - trying to make worklist functions concurrent

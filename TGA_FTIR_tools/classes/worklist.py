@@ -17,15 +17,15 @@ logger = logging.getLogger(__name__)
 import os
 
 # for concurrent.futures
-def fit_sample(args):
-    sample, reference, presets, mod_samples, kwargs = args
-    return sample.fit(
-        reference,
-        presets=presets,
-        mod_sample=mod_samples,
-        save=False,
-        **kwargs
-    )
+# def fit_sample(args):
+#     sample, reference, presets, mod_samples, kwargs = args
+#     return sample.fit(
+#         reference,
+#         presets=presets,
+#         mod_sample=mod_samples,
+#         save=False,
+#         **kwargs
+#     )
 
 @dataclass
 class Worklist:
@@ -122,14 +122,18 @@ class Worklist:
             os.chdir(path)
 
         # cycling through samples
-        samples_to_fit = [s for s in self if reference not in s.results["fit"]]
-        args_list = [(s, reference, presets, mod_samples, kwargs) for s in samples_to_fit]
-
-        with ProcessPoolExecutor() as e:
-            futures = [e.submit(fit_sample, args) for args in args_list]
-
+        for sample in self.samples:
+            # writing data to output DataFrames
+            if reference not in sample.results["fit"]:
+                sample.fit(
+                    reference,
+                    presets=presets,
+                    mod_sample=mod_samples,
+                    **kwargs,
+                    save=False,
+                )
         os.chdir(PATHS["home"])
-        return [f.result() for f in futures]  # self.results["fit"]
+        return self.results["fit"]
 
     @property
     def results(self):
@@ -148,16 +152,35 @@ class Worklist:
             self.plot("robustness")
         return self._results["robustness"]
 
-    def plot(self, plot=None, ax=None, save=False,**kwargs) -> None:
+    def plot(self, plot=None, ax=None, save=False, reference=None,**kwargs) -> None:
         if not ax:
             fig, ax = plt.subplots()
 
-        if plot == "robustness" and "robustness" in self._results:
+        if plot == "robustness":
+            if self.results["robustness"] is None:
+                logger.warning(f"No results to plot. Run .robustness().")
             logger.warning("Under Maintenance")
             # plot_robustness(self._results["robustness"][0])
-        elif plot == "results":
+        elif plot == "fit":
+            if  self.results["fit"] is None:
+                logger.warning(f"No results to plot. Run .fit().")
+                return
+
+            avail_refs = list(self.results["fit"].index.levels[0])
+            if reference not in avail_refs:
+                logger.warning(
+                    f"No fit performed with {reference=}. Available options are {avail_refs!r}"
+                )
+                return
+            else:
+                if len(avail_refs) == 1:
+                    reference = avail_refs[0]
+                else:
+                    warn_msg = f"Multiple fitting results available. Specify with keyword 'reference'= one of {avail_refs!r}"
+                    logger.warning(warn_msg)
+                    return
             logger.warning("Under Maintenance")
-            # bar_plot_results(self, **kwargs)
+            bar_plot_results(self.results["fit"].loc[reference], res="fit", ax=ax,**kwargs)
         else:
             plots(self.samples, plot,ax, **kwargs)
 

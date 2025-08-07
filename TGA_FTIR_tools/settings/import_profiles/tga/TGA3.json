@@ -36,9 +36,9 @@
         "": "sample_mass"
     },
     "info_pattern": {
-        "method": "Methode:\\n\\s*(?P<method>\\S+)",
-        "date": "Durchgeführt am(?P<date>\\d{2}\\.\\d{2}\\.\\d{4})",
-        "time": "Durchgeführt am.+(?P<time>\\d{2}:\\d{2}:\\d{2})"
+        "method": "(?P<name>)Methode:\\n\\s*(?P<value>\\S+)(?P<unit>)",
+        "date": "(?P<name>)Durchgeführt am(?P<value>\\d{2}\\.\\d{2}\\.\\d{4})(?P<unit>)",
+        "time": "(?P<name>)Durchgeführt am.+(?P<value>\\d{2}:\\d{2}:\\d{2})(?P<unit>)"
     },
     "units": ["s", "degreeC", "degreeC", "mg", "mW"]
 }

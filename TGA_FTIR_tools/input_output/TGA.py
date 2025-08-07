@@ -1,6 +1,9 @@
 import logging
 import scipy as sp
 from ..config import SAVGOL
+import pint
+ureg = pint.get_application_registry()
+import numpy as np
 
 logger = logging.getLogger(__name__)
 WINDOW_LENGTH_REL = SAVGOL.getfloat("window_length_rel")
@@ -37,7 +40,7 @@ def dry_weight(sample, how_dry="H2O"):
         # if how_dry is a number, the dry point is set to that temperature
         case float() | int():
             # check if value is within the temperature range
-            if (min_temp < how_dry < max_temp):
+            if (min_temp < ureg.Quantity(how_dry, "degreeC") < max_temp):
                 dry_point_idx = sample.tga["time"][sample.tga["sample_temp"] >= how_dry].argmax()
             else:
                 logger.error(f"Supplied value is out of range. Must be within {min_temp:.2f} to {max_temp:.2f}")
@@ -61,17 +64,17 @@ def dry_weight(sample, how_dry="H2O"):
                 logger.info(f"'H2O' not in EGA-data. Defaulting to '{how_dry}")
             
             # look for signal peak between 50 and 200 °C
-            peak_signal_idx = ref[how_dry][(50 < ref["sample_temp"]) & (ref["sample_temp"] < 200)].argmax()
+            peak_signal_idx = ref[how_dry][(ureg.Quantity(50, "degreeC") < ref["sample_temp"]) & (ref["sample_temp"] < ureg.Quantity(200, "degreeC"))].argmax()
             min_T = ref["sample_temp"].iloc[peak_signal_idx]
-            max_T = min_T + 50
+            max_T = min_T + ureg.Quantity(50, "delta_degreeC")
             range_T = (min_T < ref["sample_temp"]) & (ref["sample_temp"]< max_T)
 
             # fit line to slope of peak and find intersection with temperature signal
-            x = ref["sample_temp"][range_T]
-            y = ref[how_dry][range_T]
+            x = ref["sample_temp"][range_T].to_numpy(dtype=np.float64)
+            y = ref[how_dry][range_T].to_numpy(dtype=np.float64)
             slope, intercept, _, _, _ = sp.stats.linregress(x, y)
 
-            intersection = (ref["sample_temp"] >= -intercept / slope)
+            intersection = (ref["sample_temp"] >= ureg.Quantity(-intercept / slope, ref["sample_temp"].dtypes.units))
             if intersection.any():
                 dry_point_idx = ref["sample_temp"][intersection].argmax()
             else:
@@ -87,7 +90,7 @@ def dry_weight(sample, how_dry="H2O"):
     dry_temp = sample.tga["sample_temp"][dry_point_idx]
     info = {}
 
-    info["steps_idx"] = {"dry":dry_point_idx}
+    info["steps_idx"] = {"dry_mass":dry_point_idx, **sample.info.steps_idx}
     info['reference_mass_name'] = "dry_mass"
     info['dry_mass'] = sample.tga["sample_mass"][dry_point_idx]
     info['dry_temp'] = dry_temp

@@ -182,7 +182,7 @@ class Sample:
         self.raw = copy.deepcopy(self)
 
     def __repr__(self):
-        attr_names = ["name", "alias", "sample", "reference", "run"]
+        attr_names = ["name", "alias", "profile","sample", "reference", "run"]
         attr_vals = ", ".join(
             [f"{key}={repr(self.__dict__[key])}" for key in attr_names]
         )
