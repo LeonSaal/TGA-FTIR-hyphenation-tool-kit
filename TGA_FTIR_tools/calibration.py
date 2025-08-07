@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from matplotlib.image import interpolations_names
 import matplotlib.pyplot as plt
@@ -140,6 +141,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             # make directory
             PATHS["calibration"].mkdir()
         os.chdir(PATHS["calibration"])
+        output_path = Path(f"{start_time}_calibration_{worklist.profile}")
+        output_path.mkdir()
 
         # setting up output DataFrames
         
@@ -191,11 +194,11 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 axs[i, 1].set_xlabel("")
         logger.info("Finished integrating data.")
         cali["data"] = pd.concat(data)
-        cali["data"].pint.dequantify().to_excel(f"{start_time}_data.xlsx")
+        cali["data"].pint.dequantify().to_excel(output_path / f"integration_data.xlsx")
         if plot:
             fig.align_xlabels()
             plt.show()
-            fig.savefig(f"{start_time}_intergration.png")
+            fig.savefig(output_path / f"integration.png")
         
         step_dtype = cali["data"]["mass loss"].dtype
         # assigning gases to mass steps
@@ -255,11 +258,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 #calibrate_mlr(cali, molecular_formulas)
 
         cali["linreg"] = cali["linreg"].pint.convert_object_dtype()
-        cali["stats"] = calibration_stats(cali["x_mol"], cali["y"], cali["linreg"])
-        with pd.ExcelWriter("data.xlsx") as f:
-            for name, df in cali.items():
-                df.to_excel(f, sheet_name=name)
-        
+        cali["stats"] = calibration_stats(cali["x_mol"], cali["y"], cali["linreg"])        
         logger.info("Calibration finished.")
 
         # saving of dfs
@@ -273,7 +272,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 for name, data in cali.items():
                     # transform before saving
                     data = data.pint.dequantify()
-                    data = data.rename({"":"No Unit"}, level=1, axis=1)
+                    data = data.rename({"":"dimensionless"}, level=1, axis=1)
                     data_new = pd.concat({profile:data}, names=["profile"])
 
                     # get old contents of file and update rows with new data
@@ -305,7 +304,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             if i == len(plot_gases)-1:
                 axs[i, 0].set_xlabel(UNITS["molar_amount"])
                 axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ega']}")
-        fig.savefig(f"{start_time}_cali.png")
+        fig.savefig(output_path / f"regression.png")
 
         x = cali["x_mol"]
         y = cali["y"].pint.convert_object_dtype()

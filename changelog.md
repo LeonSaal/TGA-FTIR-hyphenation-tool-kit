@@ -1,6 +1,7 @@
 # 2505-08-07
 - bugfix testing
 - fixed unit conversions
+- reorganized calibration output
 
 # 2025-08-02
 - checked ``.fit``

@@ -441,11 +441,12 @@ class Sample:
             case"mass_steps":
                 if "steps" not in kwargs:
                     self.mass_step(plot=False)
-                    kwargs["steps"] = self._info.step_temp
+                    kwargs["steps"] = self.step_data().sample_temp
                 plot_mass_steps(self,ax,**kwargs)
 
             case "IR_to_DTG":
                 FTIR_to_DTG(self, save=save, **kwargs)
+                return True
 
             case "fit":
                 if self.results["fit"] == {}:
@@ -467,6 +468,7 @@ class Sample:
                         logger.warning(warn_msg)
                         return
                 plot_fit(self, reference, **kwargs)
+                return True
                     
             case "calibration":
                 if (gas := kwargs.get("gas")) and kwargs.get("gas") in self._info["gases"]:
@@ -478,7 +480,8 @@ class Sample:
                     plot_calibration_single(x, y, linreg, axs[0])
                     plot_residuals_single(x, y, linreg, axs[1])
                 else:
-                    plot_calibration_combined(self.xcali, self.ycali, self.linreg, self._info["gases"])
+                    plot_calibration_combined(self.xcali, self.ycali, self.linreg, self.linreg.index)
+                return True
 
         if save:
             path_plots = PATHS["plots"]/ plot

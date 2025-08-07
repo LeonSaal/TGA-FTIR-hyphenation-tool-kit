@@ -35,6 +35,7 @@
     - $\rightarrow$ number of columns doesn't match number of supplied names
     - $\rightarrow$ don't allow lists, only dicts for clear assignment
   - warning if profile doesn't match data
+  - determine gases in ega more flexible (currently by index)
 
 ## Correction
 - add synthetic baseline
@@ -97,6 +98,7 @@
 - can only pass initialized worklist guard
 - problem when no molformula
 - add date column
+- integration graph normalized y-Axis of all gases
 
 # Documentation
 - for _import profiles_

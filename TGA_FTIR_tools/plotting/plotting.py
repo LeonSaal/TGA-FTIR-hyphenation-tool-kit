@@ -186,7 +186,7 @@ def plot_FTIR(
             graphs[i].set_yticks(np.linspace(graphs[i].get_yticks()[0], graphs[i].get_yticks()[-1], len(graphs[0].get_yticks())))
 
         elif y_axis == "rel":
-            tot_area = np.sum(sample.ega[gas])
+            tot_area = sample.ega[gas].sum().magnitude
             tot_mol = (
                 (tot_area - sample.linreg["intercept"][gas])
                 / sample.linreg["slope"][gas]
@@ -257,7 +257,7 @@ def FTIR_to_DTG(
     data = pd.merge(
         sample.tga, sample.ega, how="left", on=["time", "sample_temp"]
     ).dropna()
-    DTG = -sp.signal.savgol_filter(data["sample_mass"], 13, 3, deriv=1)
+    DTG = -sp.signal.savgol_filter(data["sample_mass"].to_numpy(dtype=np.float64), 13, 3, deriv=1)
 
     x = data[x_axis]
     y = np.zeros((len(gases), len(sample.ega)))
@@ -268,7 +268,7 @@ def FTIR_to_DTG(
 
     # calibrating IR data
     for i, gas in enumerate(gases):
-        tot_area = np.sum(sample.ega[gas])
+        tot_area = sample.ega[gas].sum().magnitude
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
