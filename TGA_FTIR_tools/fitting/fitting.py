@@ -52,7 +52,7 @@ def fitting(
     for gas in data.gases:
         # correction of water-signal drift
         if gas == "H2O":
-            data.ega[gas] -= baseline_als(data.ega[gas])
+            data.ega[gas] -= baseline_als(data.ega[gas].astype(np.float64))
 
         # molar desorption
         tot_area = np.sum(data.ega[gas])

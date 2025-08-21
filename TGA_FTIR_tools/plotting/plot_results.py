@@ -12,8 +12,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def bar_plot_results(data,
+    show_groups=[],
+    group_by="sample",
+    y_unit="µmol per g",
+    res="robustness",
+    save=False,
+    title=True,
+    w_group=0.9,
+    w_bar=0.9,
+    exclude_merged=True,
+    exclude_total=True,
+    ax=None):
+    
+    pass
 
-def bar_plot_results(
+def bar_plot_results_old(
     data,
     show_groups=[],
     group_by="sample",

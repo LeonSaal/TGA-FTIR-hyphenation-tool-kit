@@ -195,14 +195,10 @@ class FitData:
 
     def save(self, y_axis):
         f_name = f"{self.info.name}_{y_axis}.xlsx"
-        f_presets = "presets.xlsx"
-
-        with pd.ExcelWriter(f_name, engine="openpyxl") as writer, pd.ExcelWriter(
-            f_presets, engine="openpyxl"
-        ) as writer_presets:
+        with pd.ExcelWriter(f_name, engine="openpyxl") as writer:
             for gas, profiles in self.profiles.items():
                 profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
-                self.presets[gas].to_excel(writer_presets, sheet_name=gas, merge_cells=MERGE_CELLS)
+                self.presets[gas].to_excel(writer, sheet_name=f"presets {gas}", merge_cells=MERGE_CELLS)
             self.peaks.dropna(axis=1, how="all").to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
 
 

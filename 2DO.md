@@ -59,6 +59,10 @@
 - make plot interactive?
   - measure mass-, temperature- or time-differences
 - add DTG to mass-stops (optional)
+- results plot different comparisons
+  - for `fit` and `robustness`
+  - different references
+  - compare different samples
 
 ## General
 - reduce amount of logging

@@ -22,7 +22,7 @@ from scipy.signal import savgol_filter
 from ..config import DEFAULTS, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog, read_profile_json)
-from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined
+from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined, bar_plot_results
 from ..utils import select_import_profile, check_profile_exists
 from .info import SampleInfo
 
@@ -56,7 +56,10 @@ class Sample:
             logger.debug(f"Using profile {self.profile!r}.")
 
             # load data
-            self.__dict__.update(read_data(self.name, profile=self.profile))
+            try:
+                self.__dict__.update(read_data(self.name, profile=self.profile))
+            except Exception as e:
+                logger.error(f"Could not read any data for {self.name!r}. Have you specified the right {self.profile=}")
             self._info = SampleInfo(self.name, info=self._info)
 
             if self.tga is not None:
@@ -488,6 +491,16 @@ class Sample:
                 else:
                     plot_calibration_combined(self.xcali, self.ycali, self.linreg, self.linreg.index)
                 return True
+            case "results":
+                restype = kwargs.get("type", "fit")
+                results = self.results[restype]
+
+                if kwargs.get("reference"):
+                    pass
+                else:
+                    logger.warning(f"Specify reference= with one of {results.keys()}")
+                    return
+                    bar_plot_results()
 
         if save:
             path_plots = PATHS["plots"]/ plot
@@ -512,6 +525,9 @@ class Sample:
     ):
         "deconvolution of IR data"
         from ..fitting import fitting, get_presets
+        if self.ega is None:
+            logger.error("No EGA data to fit available.")
+            return
 
         if reference in self.results["fit"]:
             if not overwrite:
