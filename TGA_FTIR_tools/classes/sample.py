@@ -73,11 +73,15 @@ class Sample:
                 if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
                     self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
 
-                # calculate sample mass with mass loss and initial mass
+                # calculate sample mass with mass loss or percentage mass and initial mass
                 try:
                     if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
-                        if "initial_mass" in self._info:
-                            self.tga["sample_mass"] =  self.tga["mass_loss"] + self._info["initial_mass"]
+                        if "initial_mass" in self.info:
+                            self.tga["sample_mass"] =  self.tga["mass_loss"] + self.info["initial_mass"]
+
+                    elif "sample_mass" in self.tga.columns and  self.tga.sample_mass.dtype == "pint[%]":
+                        if "initial_mass" in self.info:
+                            self.tga["sample_mass"] = self.info["initial_mass"] * (self.tga["sample_mass"].astype("pint[dimensionless]"))
                 except DimensionalityError:
                     logger.error("Failed")
                 self._info.steps_idx.update({})
@@ -94,6 +98,8 @@ class Sample:
                         dtype =  self.tga["sample_mass"].dtype
                         self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
                     except ValueError as e:
+                        print(e)
+                    except AttributeError as e:
                         print(e)
 
 
@@ -134,7 +140,7 @@ class Sample:
                     try:
                         self.ega = pd.merge(
                             self.tga.filter(
-                                ["time", "sample_temp", "reference_temp"], axis=1
+                                ["time", "sample_temp", "reference_temp", "sample_mass"], axis=1
                             ),
                             self.ega,
                             how="left",

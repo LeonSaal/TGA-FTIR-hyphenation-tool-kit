@@ -3,9 +3,11 @@ import os
 from turtle import color
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter, ScalarFormatter
 import numpy as np
 import pandas as pd
 import scipy as sp
+from itertools import cycle
 
 from ..config import MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
 from .utils import get_label, make_title, ylim_auto
@@ -73,8 +75,8 @@ def plot_TGA(
         x, yDTG, ylim = ylim_auto(x, yDTG, xlim)
 
     # actual plotting
-    (gTGA,) = ax.plot(x, y, ls="-", color='C0',label=ylabel)
-    (gDTG,) = DTG.plot(x, yDTG, ls="--", color='C1',label="DTG")
+    (gTGA,) = ax.plot(x, y, ls="-", color="C0", label=ylabel)
+    (gDTG,) = DTG.plot(x, yDTG, ls="--", color="C1", label="DTG")
 
     ax.set_ylabel(ylabel)
     ax.set_ylim(ylim)
@@ -84,8 +86,12 @@ def plot_TGA(
     ax.yaxis.label.set_color(gTGA.get_color())
     DTG.yaxis.label.set_color(gDTG.get_color())
 
-    DTG.set_yticks(np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(ax.get_yticks())))
-    ax.set_yticks(np.linspace(ax.get_yticks()[0], ax.get_yticks()[-1], len(DTG.get_yticks())))
+    DTG.set_yticks(
+        np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(ax.get_yticks()))
+    )
+    ax.set_yticks(
+        np.linspace(ax.get_yticks()[0], ax.get_yticks()[-1], len(DTG.get_yticks()))
+    )
     if title == True:
         ax.set_title(make_title(sample))
 
@@ -99,10 +105,11 @@ def plot_FTIR(
     xlim=[None, None],
     legend=True,
     title=True,
+    merge_log=1
 ):
     "plot IR data"
-    #gases = set([gas.upper() for gas in gases])
-    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    # gases = set([gas.upper() for gas in gases])
+    colors = cycle(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
     x = copy.deepcopy(sample.ega[x_axis])
 
@@ -113,96 +120,154 @@ def plot_FTIR(
         calibrated = set()
     on_axis = set(sample.info["gases"])
     if len(gases) == 0:
-        if y_axis == "rel":
-            intersection = calibrated & on_axis
-            if len(on_axis - calibrated) != 0:
-                logger.info(
-                    f"{' and '.join([gas for gas in list(on_axis - calibrated)])} not calibrated. Proceeding with {' and '.join([gas for gas in intersection])}."
-                )
-            gases = intersection
-        elif y_axis == "orig":
-            gases = on_axis
+        match y_axis:
+            case "rel_mol":
+                intersection = calibrated & on_axis
+                if len(on_axis - calibrated) != 0:
+                    logger.info(
+                        f"{', '.join([gas for gas in list(on_axis - calibrated)])} not calibrated. Proceeding with {', '.join([gas for gas in intersection])}."
+                    )
+                gases = intersection
+            case "orig" | "rel":
+                gases = on_axis
+
     else:
-        if y_axis == "rel":
-            gases = set(gases)
-            intersection = calibrated & on_axis & gases
-            if len(gases - calibrated) != 0:
-                logger.warning(
-                    f"{' and '.join([gas for gas in gases - calibrated])} not calibrated."
-                )
-            if len(intersection) != 0:
-                logger.info(
-                    f"Proceeding with {' and '.join([gas for gas in intersection])}."
-                )
-                gases = intersection
-            else:
-                logger.error(
-                    "None of supplied gases was found in IR data and calibrated."
-                )
-                return
-        elif y_axis == "orig":
-            gases = set(gases)
-            intersection = on_axis & gases
-            if len(gases - on_axis) != 0:
-                logger.warning(
-                    f"{' and '.join([gas for gas in gases - on_axis])} not found in IR data."
-                )
-            if len(intersection) != 0:
-                logger.info(
-                    f"Proceeding with {' and '.join([gas for gas in intersection])}."
-                )
-                gases = intersection
-            else:
-                logger.error("None of supplied gases was found in IR data.")
-                return
+        match y_axis:
+            case "rel_mol":
+                gases = set(gases)
+                intersection = calibrated & on_axis & gases
+                if len(gases - calibrated) != 0:
+                    logger.warning(
+                        f"{', '.join([gas for gas in gases - calibrated])} not calibrated."
+                    )
+                if len(intersection) != 0:
+                    logger.info(
+                        f"Proceeding with {', '.join([gas for gas in intersection])}."
+                    )
+                    gases = intersection
+                else:
+                    logger.error(
+                        "None of supplied gases was found in IR data and calibrated."
+                    )
+                    return
+            case "orig" | "rel":
+                gases = set(gases)
+                intersection = on_axis & gases
+                if len(gases - on_axis) != 0:
+                    logger.warning(
+                        f"{', '.join([gas for gas in gases - on_axis])} not found in IR data."
+                    )
+                if len(intersection) != 0:
+                    logger.info(
+                        f"Proceeding with {', '.join([gas for gas in intersection])}."
+                    )
+                    gases = intersection
+                else:
+                    logger.error("None of supplied gases was found in IR data.")
+                    return
     gases = list(gases)
+
+    # sort gases by rounded log maximum intensity
+    gases = (
+        sample.ega[gases]
+        .apply(["max"])
+        .pint.convert_object_dtype()
+        .astype(np.float64)
+        .apply(lambda x: np.log10(x).astype(int))
+        .T.sort_values("max")
+        .transform(lambda x: x-np.mod(x, merge_log))
+    )
 
     # setup figure
     graphs = []
     graphs.append(ax)
     graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
-
+    color = next(colors)
     if x_axis == "time":
         x = x / 60
-    if y_axis == "orig":
-        graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['ega']}$")
-        graphs[0].yaxis.label.set_color(colors[0])
-    elif y_axis == "rel":
-        graphs[0].set_ylabel(
-            f"${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
-        )
+    match y_axis:
+        case "orig":
+            #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['ega']}$")
+            graphs[0].yaxis.label.set_color(color)
+        case "rel_mol":
+            graphs[0].set_ylabel(
+                f"${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
+            )
+        case "rel":
+            graphs[0].set_ylabel("relative intensity")
+            graphs[0].yaxis.set_major_formatter(PercentFormatter(xmax=1))
 
     # plot data and append secondary, third... y-axis on right side if necessary
-    for i, gas in enumerate(gases):
-        if y_axis == "orig":
-            y = sample.ega[gas]
+    oldlog = gases.iloc[0].values
+    i = 0
+    gases_axes = {}
+    axlocx = -.25
+    for k, (gas, logscale) in enumerate(gases.iterrows()):
+        gases_axes.update({gas:color})
+        newlog = logscale.values[0]
+        match y_axis:
+            case "orig":
+                y = sample.ega[gas].astype(np.float64)
+                graphs[i].plot(x, y, color=color, label=gas)
+                color = next(colors)
+                if oldlog != newlog or k==len(gases)-1:
+                    # finish previous axis
+                    ngases = len(gases_axes)
+                    dy = 1 / ngases
+                    for j, (gas_axes, col_gas) in enumerate(gases_axes.items()):
+                        yoff = 1-dy*(j+.5)
+                        graphs[i].text(axlocx+.1, yoff, gas_axes, transform = ax.transAxes, color=col_gas)#, bbox={"edgecolor":"grey","facecolor":"white","boxstyle":"round"})
+                    
+                    # nticks = max(2, 12-(ngases+ngases%2)) 
+                    # ticks = np.linspace(
+                    #         graphs[i].get_yticks()[0],
+                    #         graphs[i].get_yticks()[-1],
+                    #         nticks,
+                    #     )
+                    # graphs[i].set_yticks(ticks)
+                    graphs[i].yaxis.set_major_formatter(ScalarFormatter())
+                    graphs[i].yaxis.get_major_formatter().set_powerlimits((newlog, newlog+1))
+                    gases_axes = {}
 
-            if i > 0:
-                graphs.append(graphs[0].twinx())
-                graphs[i].spines["right"].set_position(("axes", 1 + (i - 1) * 0.1))
-            graphs[i].plot(x, y, color=colors[i])
-            graphs[i].set_ylabel(f"{get_label(gas)} {SEP} {UNITS['ega']}")
-            graphs[i].yaxis.label.set_color(colors[i])
-            graphs[i].set_yticks(np.linspace(graphs[i].get_yticks()[0], graphs[i].get_yticks()[-1], len(graphs[0].get_yticks())))
+                    # add new axis on the side
+                    if k>0 and k!=len(gases)-1:
+                        i+=1
+                        axlocx = 1 + (i - 1) * .25
+                        graphs.append(graphs[0].twinx())
+                        graphs[i].spines["right"].set_position(("axes", axlocx))
+                        graphs[i].yaxis.get_offset_text().set_x(axlocx)
+                     
+                oldlog = newlog
+                
+                
+                
+            case "rel_mol":
+                tot_area = sample.ega[gas].sum().magnitude
+                tot_mol = (
+                    (tot_area - sample.linreg["intercept"][gas])
+                    / sample.linreg["slope"][gas]
+                    / sample.reference_mass
+                )
+                y = sample.ega[gas] / tot_area * tot_mol
+                graphs[0].plot(x, y, label=get_label(gas))
+            case "rel":
+                y = sample.ega[gas] / sample.ega[gas].max()
+                graphs[0].plot(x, y, label=get_label(gas))
 
-        elif y_axis == "rel":
-            tot_area = sample.ega[gas].sum().magnitude
-            tot_mol = (
-                (tot_area - sample.linreg["intercept"][gas])
-                / sample.linreg["slope"][gas]
-                / sample.reference_mass
+    if legend:
+        if y_axis.startswith("rel"):
+            ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1, 0.5),
+                frameon=False,
+                ncols=divmod(len(gases), 15)[0] + 1,
             )
-            y = sample.ega[gas] / tot_area * tot_mol
-            graphs[0].plot(x, y, label=get_label(gas))
-
-    if legend and y_axis == "rel":
-        ax.legend()
-
 
     if title == True:
         graphs[0].set_title(make_title(sample))
 
     graphs[0].set_xlim(xlim)
+
 
 def FTIR_to_DTG(
     sample,
@@ -227,11 +292,9 @@ def FTIR_to_DTG(
         intersection = calibrated & on_axis
         if calibrated != on_axis:
             logger.warning(
-                f"{' and '.join([gas for gas in list(on_axis - calibrated)])} not calibrated. "
+                f"{', '.join([gas for gas in list(on_axis - calibrated)])} not calibrated. "
             )
-            logger.info(
-                f'Proceeding with {" and ".join([gas for gas in intersection])}.'
-            )
+            logger.info(f'Proceeding with {", ".join([gas for gas in intersection])}.')
         gases_temp = list(intersection)
 
     else:
@@ -239,13 +302,11 @@ def FTIR_to_DTG(
         if len(gases_temp - calibrated) != 0:
             logger.warning(
                 "{} not calibrated.".format(
-                    " and ".join([gas for gas in (gases_temp - calibrated)])
+                    ", ".join([gas for gas in (gases_temp - calibrated)])
                 )
             )
         if len(intersection) != 0:
-            logger.info(
-                f"Proceeding with {' and '.join([gas for gas in intersection])}."
-            )
+            logger.info(f"Proceeding with {', '.join([gas for gas in intersection])}.")
             gases_temp = list(intersection)
             gases_temp.sort(key=lambda i: gases.index(i) if i in gases else len(gases))
         else:
@@ -257,7 +318,9 @@ def FTIR_to_DTG(
     data = pd.merge(
         sample.tga, sample.ega, how="left", on=["time", "sample_temp"]
     ).dropna()
-    DTG = -sp.signal.savgol_filter(data["sample_mass"].to_numpy(dtype=np.float64), 13, 3, deriv=1)
+    DTG = -sp.signal.savgol_filter(
+        data["sample_mass"].to_numpy(dtype=np.float64), 13, 3, deriv=1
+    )
 
     x = data[x_axis]
     y = np.zeros((len(gases), len(sample.ega)))
@@ -306,8 +369,6 @@ def FTIR_to_DTG(
         f"{get_label('dtg')}, {', '.join([get_label(gas) for gas in gases])} {SEP} ${UNITS['sample_mass']}\\,{UNITS['time']}^{{-1}}$"
     )
 
-
-
     if legend:
         stack.legend()
 
@@ -318,10 +379,11 @@ def FTIR_to_DTG(
     stack.set_xlim(xlim)
 
     if save:
-        path_plot_irdtg = PATHS["plots"]/ "IRDTG"
+        path_plot_irdtg = PATHS["plots"] / "IRDTG"
         if not path_plot_irdtg.exists():
             path_plot_irdtg.mkdir()
-        fig.savefig(path_plot_irdtg/ f"{sample.name}_IRDTG.png")
+        fig.savefig(path_plot_irdtg / f"{sample.name}_IRDTG.png")
         out["dtg"] = DTG
-        out.to_excel(PATHS["output"]/ f"{sample.name}_IRDTG.xlsx", merge_cells=MERGE_CELLS)
-
+        out.to_excel(
+            PATHS["output"] / f"{sample.name}_IRDTG.xlsx", merge_cells=MERGE_CELLS
+        )

@@ -1,0 +1,32 @@
+{
+    "spec": {
+        "manufacturer": "Netzsch",
+        "device": "STA 449 F3",
+        "software": "NETZSCH5",
+        "version": ""
+    },
+    "ext": ".txt",
+    "kwargs": {
+        "sep": ";",
+        "skiprows": 36,
+        "decimal": ".",
+        "encoding": "utf-16",
+        "skipinitialspace": true
+    },
+    "info_pattern": {
+        "initial_mass": "#(?P<name>SAMPLE MASS) /(?P<unit>mg):\\s+;(?P<value>[\\d.]+)",
+        "any": "#(?P<name>[\\w\\s]+?)(?:\\s/(?P<unit>\\w+))?:\\s*;(?P<value>.*?)\\s+"
+    },
+    "usecols": [
+        "0:3",
+        -2,
+        -1
+    ],
+    "units": "(?:[^/]+)/?(?P<unit>.+)?",
+    "name_mapping": {
+        "##Temp./°C": "sample_temp",
+        "Time/min": "time",
+        "Mass/%": "sample_mass",
+        "c-DTA®(1)/K": "heat_flow"
+    }
+}

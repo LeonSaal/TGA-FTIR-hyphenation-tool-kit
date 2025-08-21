@@ -152,9 +152,26 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         concat = concat.loc[:, ~concat.columns.duplicated()]
 
         # select specific columns if specified
-        if "usecols" in values and isinstance(values["usecols"], list):
-            usecols = concat.columns[values["usecols"]]
-            concat = concat[usecols]
+        if values.get("usecols") and isinstance(values["usecols"], list):
+            indices = set()
+            for val in values.get("usecols"):
+                match val:
+                    case int():
+                        indices.add(val)
+                    case str():
+                        if m:=re.match("^(?P<start>\\d+):(?P<stop>\\d+)$", val):
+                            start, stop = int(m.group("start")), int(m.group("stop"))
+                            stop = stop if stop > 0 else stop+concat.columns.size
+                            indices_new = list(range(start,stop ))
+                            indices.update(indices_new)
+                        else:
+                            if val in concat.columns:
+                                indices.add(concat.columns.get_loc(val))
+                            else:
+                                logger.warning(f"{val!r} is neither a valid slice, nor a valid column name.")
+                    case _:
+                        logger.warning(f"Invalid type of element in 'usecols': {val}, {type(val)}")
+            concat = concat.iloc[:,list(indices)]
         
         # get units
         if values.get("units"):
@@ -181,6 +198,9 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         else:
             units= {}
 
+        if units:
+            pass
+
         # rename columns if specified
         oldnames = concat.columns
         if values.get("rename"):
@@ -200,7 +220,11 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                     rename = {}
             
             concat.rename(columns=rename, inplace=True)
-            
+
+        # map names to internal names
+        if values.get("name_mapping"):
+            concat.rename(columns=values.get("name_mapping"), inplace=True)
+
         # rename unit indices
         newnames = concat.columns
         mapper = {old:new for old, new in zip(oldnames, newnames)}

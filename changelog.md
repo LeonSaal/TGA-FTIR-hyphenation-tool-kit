@@ -1,4 +1,13 @@
-# 2505-08-07
+# 2025-08-20
+- new import profile for Netzsch
+- made _usecols_ in import profile more flexible
+  - pass integer indices of columns
+  - pass slices as strings _e.g._ "1:-4"
+  - pass names of columns
+- seperated renaming of columns and mapping of names to internal names
+- improved plotting
+
+# 2025-08-07
 - bugfix testing
 - fixed unit conversions
 - reorganized calibration output
