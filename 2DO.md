@@ -29,8 +29,8 @@
     - savgol-settings?
     - move fields specific to ``Sample``-level to combined profile
   - select profile on init?
+  - ask to save as default in settings
   - or move init operations to separate methods (e.g. `load_sample`)?
-  - add profile to ``Worklist``
   - what if not all data is available for all sample for a certain profile? 
     - $\rightarrow$ number of columns doesn't match number of supplied names
     - $\rightarrow$ don't allow lists, only dicts for clear assignment
@@ -51,7 +51,8 @@
     - move _SOG_-names to legend 
 - remove extra markers from _fit-plot_
 - parallelize computations
-- calculate statistical values and append to ``.results["fit"]``
+- calculate statistical values and append to ``.results["fit"]`` $\rightarrow$ maybe not necessary if plotting with `seaborn`
+- default ``plot=False``
 
 ## Plotting
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
@@ -59,10 +60,6 @@
 - make plot interactive?
   - measure mass-, temperature- or time-differences
 - add DTG to mass-stops (optional)
-- results plot different comparisons
-  - for `fit` and `robustness`
-  - different references
-  - compare different samples
 
 ## General
 - reduce amount of logging
@@ -102,7 +99,7 @@
 - can only pass initialized worklist guard
 - problem when no molformula
 - add date column
-- integration graph normalized y-Axis of all gases
+- integration graph normalized y-Axis of all gases (use ``Sample.plot("EGA")`` and add to `ax`)
 
 # Documentation
 - for _import profiles_

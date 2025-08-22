@@ -112,7 +112,7 @@ def robustness(
                             reference=reference,
                             save=False,
                             presets=temp_presets,
-                            mod_sample=False,
+                            mod_samples=False,
                             **kwargs,
                         )
                         results[run].update(
@@ -158,7 +158,7 @@ def robustness(
                     T_max=T_max,
                     plot=False,
                     presets=temp_presets,
-                    mod_sample=False,
+                    mod_samples=False,
                     **kwargs,
                 )["mmol_per_mg"]
                 results[run] = res.rename(run)
@@ -175,7 +175,7 @@ def robustness(
     data.index.rename(names=["reference","sample","alias", "run", "group", "gas"], inplace=True)
 
     # make further statistical data
-    summary = data.groupby(["alias", "group", "gas"]).agg(["mean", "std", "min", "max"]).reset_index()
+    summary = data.pint.convert_object_dtype().astype(np.float64).groupby(["alias", "group", "gas"]).agg(["mean", "std", "min", "max"]).reset_index()
     # stat_names = ["err_dev", "rel_err_dev", "rel_stddev", "stddev", "mean"]
     # stat_cond = ~data.index.get_level_values(1).isin(stat_names)
     # columns = ["mean", "stddev", "meanstddev", "min", "max"]

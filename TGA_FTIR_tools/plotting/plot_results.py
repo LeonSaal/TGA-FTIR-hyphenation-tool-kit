@@ -2,30 +2,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas
 import pint
 from ..config import PATHS
 from ..input_output import time
 import os
+import seaborn as sns
 
 import logging
-
+from typing import Literal
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def bar_plot_results(data,
-    show_groups=[],
-    group_by="sample",
-    y_unit="µmol per g",
-    res="robustness",
-    save=False,
-    title=True,
-    w_group=0.9,
-    w_bar=0.9,
-    exclude_merged=True,
-    exclude_total=True,
-    ax=None):
-    
-    pass
+def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['sumsqerr','center', 'height', 'hwhm', 'area', 'mmol', 'mmol_per_mg']="mmol_per_mg", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
+    y = value if orient =="v" else "group"
+    x = value if orient =="h" else "group"
+    row = "reference" if compare in ["sample", "alias", "run"] else "sample"
+    plot = sns.catplot(data, y=y, x=x, kind=kind, hue=compare, row=row, col="gas", margin_titles=True)
+    return plot.figure, plot.axes
 
 def bar_plot_results_old(
     data,

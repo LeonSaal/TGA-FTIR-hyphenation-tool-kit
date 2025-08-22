@@ -10,8 +10,11 @@ from ..classes import Sample
 from ..config import PATHS, DEFAULTS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
-from ..plotting import bar_plot_results, plot_robustness, plots
+from ..plotting import plot_results, plot_robustness, plots
 from concurrent.futures import ProcessPoolExecutor
+from inspect import signature
+from typing import get_args
+import numpy as np
 
 logger = logging.getLogger(__name__)
 import os
@@ -27,25 +30,37 @@ import os
 #         **kwargs
 #     )
 
+
 @dataclass
 class Worklist:
-    samples: Union[List[Union[Sample,str]],str,Sample] = field(default_factory=list)
+    samples: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
     profile: str = DEFAULTS["profile"]
-    _results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
+    _results: dict = field(default_factory=lambda: {"fit": pd.DataFrame(), "robustness": pd.DataFrame()})
 
     def __post_init__(self):
         match self.samples:
             case str():
                 self.samples = [Sample(self.samples, profile=self.profile)]
             case list():
-                self.samples = [sample if isinstance(sample, Sample) else Sample(sample, profile=self.profile) for sample in self.samples]
+                self.samples = [
+                    (
+                        sample
+                        if isinstance(sample, Sample)
+                        else Sample(sample, profile=self.profile)
+                    )
+                    for sample in self.samples
+                ]
             case Sample():
                 self.samples = [self.samples]
             case _:
-                logger.warning(f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample].")
-        if any([sample.profile!=self.profile for sample in self.samples]):
-            logger.warning(f"Some of the supplied Samples have another profile than {self.profile!r}")
+                logger.warning(
+                    f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample]."
+                )
+        if any([sample.profile != self.profile for sample in self.samples]):
+            logger.warning(
+                f"Some of the supplied Samples have another profile than {self.profile!r}"
+            )
 
     def __add__(self, other):
         if isinstance(other, Sample):
@@ -112,7 +127,9 @@ class Worklist:
             presets = get_presets(reference)
 
         if presets is None:
-            logger.error("Presets neither were supplied, nor could be loaded from defaults.")
+            logger.error(
+                "Presets neither were supplied, nor could be loaded from defaults."
+            )
             return
 
         # make subdirectory to save data
@@ -138,61 +155,97 @@ class Worklist:
     @property
     def results(self):
         out = {"fit": None, "robustness": None}
-        oldres = list(chain(*[[res for res in s.results["fit"].values() if isinstance(res, pd.DataFrame)] for s in self]))
+        oldres = list(
+            chain(
+                *[
+                    [
+                        res
+                        for res in s.results["fit"].values()
+                        if isinstance(res, pd.DataFrame)
+                    ]
+                    for s in self
+                ]
+            )
+        )
 
         if oldres:
             out["fit"] = pd.concat(oldres)
-        out["robustness"] = self._results["robustness"]
 
+        # conform robustness df to long format
+        if self._results["robustness"].empty:
+            out["robustness"] = {}
+        else:
+            idx_cols = self._results["robustness"].index.names
+            new_col = "varied"
+            out["robustness"] = (
+                self._results["robustness"]
+                .reset_index()
+                .melt(
+                    id_vars=idx_cols,
+                    ignore_index=False,
+                    var_name=new_col,
+                    value_name="mmol_per_mg",
+                )
+            ).set_index(idx_cols+[new_col])
         return out
 
     def robustness(self, reference: str, plot=True, **kwargs) -> pd.DataFrame:
-        self._results["robustness"] = robustness(self, reference, **kwargs)
+        self._results["robustness"], summary = robustness(self, reference, **kwargs)
+        self._results["robustness"], summary
         if plot:
             self.plot("robustness")
         return self._results["robustness"]
 
-    def plot(self, plot=None, ax=None, save=False, reference=None,**kwargs) -> None:
-        if not ax:
-            fig, ax = plt.subplots()
-
-        if plot == "robustness":
-            if self.results["robustness"] is None:
-                logger.warning(f"No results to plot. Run .robustness().")
-            logger.warning("Under Maintenance")
-            # plot_robustness(self._results["robustness"][0])
-        elif plot == "fit":
-            if  self.results["fit"] is None:
-                logger.warning(f"No results to plot. Run .fit().")
+    def plot(self, plot=None, ax=None, save=False, reference=None, **kwargs) -> None:
+        if plot in ["fit", "robustness"]:
+            results = self.results[plot]
+            if results is None:
+                logger.warning(f"No results to plot. Run .{plot}().")
                 return
+            results = (
+                results.pint.convert_object_dtype().astype(np.float64).reset_index()
+            )
+            avail_gases = results.gas.unique()
+            avail_references = results.reference.unique()
 
-            avail_refs = list(self.results["fit"].index.levels[0])
-            if reference not in avail_refs:
-                logger.warning(
-                    f"No fit performed with {reference=}. Available options are {avail_refs!r}"
+            # validate inputs
+            references = kwargs.get("references", avail_references)
+            references = [ref for ref in references if ref in avail_references]
+            gases = kwargs.get("gases", avail_gases)
+            gases = [g for g in gases if g in avail_gases]
+            if not references or not gases:
+                logger.error(
+                    f"There are no valid references or gases to plot.\nValid references are {avail_references!r}\nValid gases are {avail_gases!r}"
                 )
                 return
-            else:
-                if len(avail_refs) == 1:
-                    reference = avail_refs[0]
-                else:
-                    warn_msg = f"Multiple fitting results available. Specify with keyword 'reference'= one of {avail_refs!r}"
-                    logger.warning(warn_msg)
-                    return
-            logger.warning("Under Maintenance")
-            bar_plot_results(self.results["fit"].loc[reference], res="fit", ax=ax,**kwargs)
+            # subset dataset
+            data = results.query("gas in @gases & reference in @references")
+
+            # validate plot arguments
+            sig = signature(plot_results).parameters
+            args = {
+                key: (
+                    kwargs.get(key)
+                    if kwargs.get(key) in get_args(sig[key].annotation)
+                    else sig[key].default
+                )
+                for key in sig.keys()
+                if key != "data"
+            }
+            fig, ax = plot_results(data, **args)
         else:
-            plots(self.samples, plot,ax, **kwargs)
+            if not ax:
+                fig, ax = plt.subplots()
+            plots(self.samples, plot, ax, **kwargs)
 
         if save:
             path_plot = PATHS["plots"] / plot
-            if not path_plot.exists() :
+            if not path_plot.exists():
                 path_plot.mkdir(parents=True)
 
             path_pic = path_plot / "_".join([time(), self.name])
             fig.savefig(path_pic)
-
-
+        return ax
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -225,11 +278,18 @@ class Worklist:
         if how == "samplelog":
             # collect sample info
             infos = {sample.name: sample.info for sample in self.samples}
-            info = {name: {key: str(value) for key, value in info.__dict__.items() if value is not None} for name, info in infos.items()}
-            
-            #make df and save
+            info = {
+                name: {
+                    key: str(value)
+                    for key, value in info.__dict__.items()
+                    if value is not None
+                }
+                for name, info in infos.items()
+            }
+
+            # make df and save
             data = pd.DataFrame.from_dict(info, orient="index")
-            samplelog(data, how = "samplelog")
+            samplelog(data, how="samplelog")
 
         elif how == "pickle":
             path_output = PATHS["output"]

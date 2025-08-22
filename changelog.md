@@ -1,3 +1,8 @@
+# 2025-08-21
+- added `plot_results` to `Worklist.plot`
+- added `plot_results` to `Sample.plot`
+- fixed ``Sample`` and `Worklist`.results
+
 # 2025-08-20
 - new import profile for Netzsch
 - made _usecols_ in import profile more flexible

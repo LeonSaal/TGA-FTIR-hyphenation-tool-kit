@@ -8,9 +8,13 @@ from dataclasses import InitVar, dataclass, field
 from types import NoneType
 from typing import Any, Literal, Mapping, Optional, List
 import matplotlib.pyplot as plt
+from typing import get_args
+from inspect import signature
+import inspect
 
 import numpy as np
 import pandas as pd
+from traitlets import signature_has_traits
 import pint_pandas
 
 import pint
@@ -22,7 +26,7 @@ from scipy.signal import savgol_filter
 from ..config import DEFAULTS, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog, read_profile_json)
-from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined, bar_plot_results
+from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined, plot_results
 from ..utils import select_import_profile, check_profile_exists
 from .info import SampleInfo
 
@@ -386,9 +390,8 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration"], ax=None, save=False,reference=None, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
-
         "plotting TG and or IR data"
         options = [
             "TG",
@@ -399,11 +402,12 @@ class Sample:
             "cumsum",
             "IR_to_DTG",
             "fit",
-            "calibration"
+            "calibration",
+            "results"
         ]
         if plot not in options:
             logger.warning(f"{plot} not in supported {options=}.")
-
+            return
         needs_tg = ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
         needs_ega = ["EGA", "DIR", "cumsum", "IR_to_DTG"]
         needs_cali = [ "IR_to_DTG","calibration"]
@@ -419,7 +423,7 @@ class Sample:
             logger.warning("Option unavailable without calibration.")
             return
 
-        if not isinstance(ax, plt.Axes) and plot not in ["IR_to_DTG", "calibration", "fit"]:
+        if not isinstance(ax, plt.Axes) and plot not in ["IR_to_DTG", "calibration", "fit", "results"]:
             fig, ax = plt.subplots()
 
         match plot:
@@ -455,7 +459,6 @@ class Sample:
 
             case "IR_to_DTG":
                 FTIR_to_DTG(self, save=save, **kwargs)
-                return True
 
             case "fit":
                 if self.results["fit"] == {}:
@@ -477,7 +480,6 @@ class Sample:
                         logger.warning(warn_msg)
                         return
                 plot_fit(self, reference, **kwargs)
-                return True
                     
             case "calibration":
                 if (gas := kwargs.get("gas")) and kwargs.get("gas") in self._info["gases"]:
@@ -485,22 +487,40 @@ class Sample:
                     y = self.ycali.get(gas)
                     linreg = self.linreg.loc[gas, :]
 
-                    fig, axs = plt.subplots(1,2)
-                    plot_calibration_single(x, y, linreg, axs[0])
-                    plot_residuals_single(x, y, linreg, axs[1])
+                    fig, ax = plt.subplots(1,2)
+                    plot_calibration_single(x, y, linreg, ax[0])
+                    plot_residuals_single(x, y, linreg, ax[1])
                 else:
                     plot_calibration_combined(self.xcali, self.ycali, self.linreg, self.linreg.index)
-                return True
             case "results":
                 restype = kwargs.get("type", "fit")
                 results = self.results[restype]
+                if results:
+                    results = pd.concat([
+                        res
+                        for res in results.values()
+                        if isinstance(res, pd.DataFrame)
+                    ])
 
-                if kwargs.get("reference"):
-                    pass
-                else:
-                    logger.warning(f"Specify reference= with one of {results.keys()}")
+                results = results.pint.convert_object_dtype().astype(np.float64).reset_index()
+                avail_gases = results.gas.unique()
+                avail_references = results.reference.unique()
+                
+                # validate inputs
+                references = kwargs.get("references", avail_references)
+                references = [ref for ref in references if ref in avail_references]
+                gases = kwargs.get("gases", avail_gases)
+                gases = [g for g in gases if g in avail_gases]
+                if not references or not gases:
+                    logger.error(f"There are no valid references or gases to plot.\nValid references are {avail_references!r}\nValid gases are {avail_gases!r}")
                     return
-                    bar_plot_results()
+                # subset dataset
+                data = results.query("gas in @gases & reference in @references")
+                
+                # validate plot arguments
+                sig = signature(plot_results).parameters
+                args = {key: kwargs.get(key) if kwargs.get(key) in get_args(sig[key].annotation)  else sig[key].default for key in sig.keys() if key!="data"} 
+                fig, ax = plot_results(data, **args)
 
         if save:
             path_plots = PATHS["plots"]/ plot
