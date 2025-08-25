@@ -308,7 +308,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         x = cali["x_mol"]
         y = cali["y"].pint.convert_object_dtype()
-        plot_calibration_combined(x, y, cali["linreg"], plot_gases)
+        fig, axs = plot_calibration_combined(x, y, cali["linreg"], plot_gases)
+        fig.savefig(output_path / f"regression_combined.png")
 
     # return home
     os.chdir(PATHS["home"])
@@ -326,6 +327,7 @@ def calibrate_max(cali: dict, molecular_formulas:dict) -> dict:
             molar_mass = ureg.Quantity(Formula(molecular_formula).mass, "g/mol")
         else:
             invalid_mfs.append(molecular_formula)
+            cali["x_mol"].drop(gas, axis=1, inplace=True)
             continue
         molar_amount = (cali["x_mass"][gas] / molar_mass).pint.to_base_units()
         cali["x_mol"][gas] = molar_amount

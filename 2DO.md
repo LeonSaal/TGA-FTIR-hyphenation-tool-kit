@@ -10,7 +10,6 @@
 - add `Worklist.info` (
     - `dict` of `dicts`
     -  `pd.DataFrame`)
--  get unit from header with `re`
 - helper to determine `kwargs` for `read_csv`
 	- auto 
 		- encoding from chardet, python-magic
@@ -66,16 +65,14 @@
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
 - let `pint` handle units
-    - add unit annotations where possible?
     - or convert values to base units and handle bare numbers internally
-    - 
 - add `**kwargs` to every function for flexibility
 - remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
   - or set folder pattern(s) in profile definition (top-level)
   - warn if none found
 - ``setup.py`` $\rightarrow$ ``pyproject.toml``
-- clean up `Sample`, `calibration.py`
+- clean up `calibration.py`
   - reduce if statements
   - combine code blocks to and or move functions to separate .py-files
 - formatting of code 
@@ -97,9 +94,7 @@
 - add sample labels to points (if specified)
 - check unit for calibration methods other than "max"
 - can only pass initialized worklist guard
-- problem when no molformula
 - add date column
-- integration graph normalized y-Axis of all gases (use ``Sample.plot("EGA")`` and add to `ax`)
 
 # Documentation
 - for _import profiles_
@@ -109,3 +104,4 @@
     - `Worklist`+`Worklist`=`Worklist`
 - calibration
 - add docstrings, signatures for every function
+- add example folder

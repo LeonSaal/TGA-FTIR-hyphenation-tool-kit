@@ -14,7 +14,7 @@
         "skipinitialspace": true
     },
     "units": "(?:[^/]+)/?(?P<unit>.+)?",
-    "rename": "lambda x: re.sub('QMID\\(s:1\\||((?<=[:m\\d]{3})\\))?/.*$', '', x)",
+    "rename": "lambda x: re.sub('QMID\\(s:\\d+\\||((?<=[:m\\d]{3})\\))?/.*$', '', x)",
     "name_mapping": {
         "Temp.": "sample_temp",
         "Time": "time",

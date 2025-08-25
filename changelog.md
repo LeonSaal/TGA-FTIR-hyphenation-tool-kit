@@ -1,3 +1,8 @@
+# 2025-08-25
+- improved integration plot from calibration
+- fixed bug in calibration when molecular formula is invalid
+- updated Netzsch import profile
+
 # 2025-08-21
 - added `plot_results` to `Worklist.plot`
 - added `plot_results` to `Sample.plot`

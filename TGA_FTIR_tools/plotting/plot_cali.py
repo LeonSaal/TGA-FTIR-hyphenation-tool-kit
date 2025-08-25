@@ -1,50 +1,41 @@
+import matplotlib as mpl
 from .utils import get_label
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 import numpy as np
 from ..config import SEP, UNITS
 import pint
 ureg = pint.get_application_registry()
 FIGSIZE = np.array(plt.rcParams["figure.figsize"])
 
-def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax):        
+def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax:mpl.axes.Axes):        
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    graph = []
-    #fig.subplots_adjust(right=0.8)
-    x = ega_data["time"]
-    y = ega_data[gases[0]]
+
+    x = ega_data["sample_temp"]
+    y = ega_data[gases].transform(lambda x: (x-x.min())/(x.max()-x.min()))
     step_starts = x[step_starts_idx]
     step_ends = x[step_ends_idx]
     peaks = x[peaks_idx]
-        # setup figure and plot first gas
-    graph.append(ax)
-    # graph[0].set_xlabel(f'{get_label("time")} {SEP} { UNITS["time"]}')
-    graph[0].set_ylabel(f'{get_label(gases[0])} {y.pint.u}')
-    graph[0].yaxis.label.set_color(colors[0])
-    graph[0].plot(x, y)
-    graph[0].set_ylim(0 - (max(y) / 20), max(y))
-    for step_start, step_end in zip(step_starts, step_ends):
-        graph[0].axvspan(step_start, step_end, alpha=.5)
-    graph[0].vlines(peaks, 0, max(y), linestyle="dotted")
+
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+    ax.set_ylabel("relative intensity")
+    ax.set_xlabel(x.pint.u)
+    for step_start, peak,step_end in zip(step_starts, peaks,step_ends):
+        ax.axvspan(step_start, step_end, alpha=.5)
+        ax.axvline(peak, linestyle="dotted")
 
     # append secondary, third... y-axis on right side
-    for i, gas in enumerate(gases[1:]):
-        y = ega_data[gas]
-
-        graph.append(graph[0].twinx())
-        graph[i + 1].spines["right"].set_position(("axes", 1 + i * 0.1))
-        graph[i + 1].plot(x, y, color=colors[i + 1])
-
-        graph[i + 1].set_ylabel(f"{get_label(gas)} {y.pint.u}")
-        graph[i + 1].yaxis.label.set_color(colors[i + 1])
-        graph[i + 1].set_ylim(0 - (max(y) / 20), max(y))
+    for i, gas in enumerate(gases):
+        ax.plot(x, y[gas], color=colors[i], label=gas)
 
         # add baseline
         for j, (step_start_idx, step_end_idx) in enumerate(zip(step_starts_idx, step_ends_idx)):
             x_baseline = (
-                ega_data["time"].iloc[step_start_idx:step_end_idx]
+                ega_data["sample_temp"].iloc[step_start_idx:step_end_idx]
             )
-            graph[gases.index(gas)].plot(
-                x_baseline, baselines[gas][j], color=colors[gases.index(gas)], linestyle="dashed"
+            y_baseline = ((baselines[gas][j] - ega_data[gas].min()) / (ega_data[gas].max()- ega_data[gas].min()))
+            ax.plot(
+                x_baseline, y_baseline, color=colors[gases.index(gas)], linestyle="dashed"
             )
 
 def plot_calibration_single(x,y, linreg, ax):
@@ -73,7 +64,7 @@ def plot_calibration_single(x,y, linreg, ax):
 def plot_calibration_combined(x,y, linreg, gases):
     y_units = set(dtype.units for dtype in y.dtypes)
     figdim = 1,len(y_units)
-    _, axs = plt.subplots(*figdim, squeeze=False, figsize = FIGSIZE * figdim[::-1])
+    fig, axs = plt.subplots(*figdim, squeeze=False, figsize = FIGSIZE * figdim[::-1])
 
     axdict =  {unit: ax for unit, ax in zip(y_units, axs[0])}
 
@@ -92,6 +83,7 @@ def plot_calibration_combined(x,y, linreg, gases):
         )
         axdict[y_unit].set_xlim(0, max(xgas) + abs(min(xgas)))
         axdict[y_unit].legend(loc=0)
+    return fig, axs
 
 def plot_residuals_single(x,y, linreg, ax):
     x_unit = x.dtype.units
