@@ -1,149 +1,338 @@
-# TGA-FTIR-hyphenation-tool-kit
+# TGA-FTIR Hyphenation Tool Kit
 
-A package for handling hyphenated TGA and FTIR data. Includes basic plotting as well as as advanced deconvolution of FTIR data.
-For installation with conda and pip:
-
-First create fresh environment with name <YOUR_ENV>:
-
-`conda create -n <YOUR_ENV> python`
-
-`conda activate <YOUR_ENV>`
-
-Then run:
-
-`pip install git+https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit.git`
-
-To run GUI, download `run.py`, navigate to folder in your command prompt and run:
-
-`python run.py`
-
----
----
-## Main Usage
-Core classes of the package are `Sample` and `Worklist`, where a `Worklist` object holds multiple `Sample` objects.
-
-[1. Initialization](#1-initialization)\
-[2. Correction](#2-correction)\
-[3. Fitting](#3-fitting)\
-[4. Robustness of fit](#4-robustness-of-fit)\
-[5. Plotting](#5-plotting)\
-[6. Saving](#6-saving)\
-[7. Loading](#7-loading)
+A Python package for handling hyphenated TGA and EGA data, including plotting and advanced deconvolution of EGA data.
+- [TGA-FTIR Hyphenation Tool Kit](#tga-ftir-hyphenation-tool-kit)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [Home Environment](#home-environment)
+    - [Core Classes](#core-classes)
+    - [Basic Usage](#basic-usage)
+  - [API Reference](#api-reference)
+    - [Sample](#sample)
+      - [Initialization](#initialization)
+    - [Worklist](#worklist)
+      - [Initialization](#initialization-1)
+  - [Main Methods](#main-methods)
+    - [Correction](#correction)
+    - [Fitting](#fitting)
+    - [Robustness Analysis](#robustness-analysis)
+    - [Plotting](#plotting)
+    - [Saving](#saving)
+    - [Loading](#loading)
+  - [Common Dunder Methods](#common-dunder-methods)
+  - [Class-Specific Methods](#class-specific-methods)
+    - [Sample Methods](#sample-methods)
+    - [Worklist Methods](#worklist-methods)
+  - [Additional Information](#additional-information)
+    - [Data Loading Profile](#data-loading-profile)
 
 ---
-### 1. Initialization
-`obj = Sample(<SAMPLE_NAME>)`
-Optional arguments:
 
-    alias           alias to use in e.g. plots
-    mode            one of ["construct", "pickle"] to either:
-                    - construct Sample from raw data
-                    - load Sample from pickle
-    profile         name of data loading profile. Can be set in
-                    settings.ini
+## Installation
 
-For more info on how to save as pickle, see [6. Saving](#6-saving).
+Create a new environment and install via pip:
 
-Class attributes:
-
-    name            name of Sample, default is filename used for initialization
-    alias           alias of Sample, defaults to Sample.name
-    sample          sample type used for grouping, defauls to 
-                    Sample.name
-    info = None     contains sample information e.g. initial_mass
-    tga = None      contains tga data
-    ir = None       contains ir data
-    linreg = None   contains calibration data
-    raw             conatins raw data from first initialization,
-                    remains unchanged after e.g. correction. Is of 
-                    type Sample    
+```sh
+conda create -n <YOUR_ENV> python
+conda activate <YOUR_ENV>
+pip install git+https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit.git
+```
 ---
-after correction:
 
-    baseline        contains data of baseline used for correction. 
-                    Is of type Baseline which inherits from Sample
+## Quick Start
+### Home Environment
+On first import of the package this will set your home directory to the current working directory.
+A fresh `settings.ini` file as well as a file with fit preferences will be copied here. You can modify both files to your needs.
 
-`wl = Worklist([obj], name = <WORKLIST_NAME>)`
+Then, you are prompted to set a data directory. This will set the root folder under which all your raw data files are stored. 
+To initialize a ``Sample`` or ``Worklist``, it suffices to provide just the filename(s) (without path). The package will search for the files under the data directory.
 
-Class attributes: 
+To load the raw data into the respective objects, you need to provide a [data loading profile](#data-loading-profile). If none is provided during initialization, an interactive prompt will guide you through the creation of one. Profiles are saved in the installation folder under *settings/import_profiles/profiles*.
 
-    samples         List of Sample objects
-    name            name of Worklist
-    
-For overview on ``Worklist`` use ``print(Worklist)``.
-Worklists can be added to yield a new ``Worklist`` with combined samples. To modify inplace you can `Worklist.append(Sample | Worklist)`
+### Core Classes
 
+- **Sample**: Represents a single sample.
+- **Worklist**: Holds multiple `Sample` objects.
 
+### Basic Usage
+```Python
+from TGA_FTIR_tools import Sample, Worklist
+s = Sample("example_sample", profile="example_profile")  # Initialize a Sample
+w = Worklist(["example_sample", "another_sample"], profile="example_profile")  # Initialize a Worklist
+```
+Then you can access the data via the class attributes and use the main methods described below, e.g.:
+```Python
+ega = s.ega # Access EGA data
+print(s.info) # Print all Sample information
+s.plot("TG") # Plot TG data
+...
+```
 ---
-### 2. Correction
-`obj.corr(<BASELINE_NAME> | None)`
 
-`wl.corr(<BASELINE_NAME> | [<BASELINE_NAMES>] | None)`
+## API Reference
 
-If argument = None, it is lookes for a refernece given in the samplelog.
+### Sample
 
-Optional arguments:
+#### Initialization
 
-    plot = False        plot corrections
+```python
+Sample(name, alias=None, mode="construct", profile=None)
+```
 
----
-### 3. Fitting
-`obj.fit(<REFERENCE_NAME>)`
+**Parameters**
 
-`wl.fit(<REFERENCE_NAME>)`
+| Name    | Type | Default     | Description                                                                              |
+| ------- | ---- | ----------- | ---------------------------------------------------------------------------------------- |
+| name    | str  | —           | Name of the sample (usually filename)                                                    |
+| alias   | str  | None        | Alias for plots and grouping                                                             |
+| mode    | str  | "construct" | "construct" (from raw data) or "pickle" (from [pickle](#saving))                         |
+| profile | str  | None        | Data loading profile, if None is supplied, launched interactive prompt to construct one. |
 
-Valid values for `<REFERENCE_NAME>` can be found and/ or set in `Fitting_parameter.xlsx` which is accessible trough ``TGA_FTIR_tools.fit_preferences()``.
+**Attributes**
 
-Optional arguments:
-
-    T_max = None        limit fit interval
-    T_max_tol = 50      tolerance of center value
-    save = True         save results
-    plot = True         plot results
-    presets = None      pass presets other than those specified by <REFERENCE_NAME>
-    mod_sample = True   modify object during fitting
-
----
-### 4. Robustness of fit
-
-`wl.robustness(<REFERENCE_NAME>)`
-
-Optional arguments:
-
-    T_max = None        limit fit interval
-    save = True         save results
-    var_T = 10          absolute variance of HWHM_max and center_0
-    var_rel = 0.3       relative variance of HWHM_0 and height_0
+| Attribute | Type             | Default                     | Description                            |
+| --------- | ---------------- | --------------------------- | -------------------------------------- |
+| name      | str              | —                           | Name of sample                         |
+| alias     | str              | name                        | Alias for sample                       |
+| sample    | str              | —                           | Sample type for grouping               |
+| info      | dict             | —                           | Sample information (e.g. initial_mass) |
+| tga       | pd.DataFrame     | None                        | TGA data                               |
+| ega       | pd.DataFrame     | None                        | EGA data                               |
+| linreg    | pd.dataFrame     | None                        | Calibration data                       |
+| results   | dict             | {"fit":{}, "robustness":{}} | Fit and robustness results             |
+| raw       | Sample           | None                        | Raw data from initialization           |
+| baseline  | Baseline(Sample) | None                        | Baseline data after correction         |
 
 ---
-### 5. Plotting
 
-`obj.plot(<OPTION>)` 
-options = ["TG", "heat_flow", "EGA", "DIR", "cumsum", "IR_to_DTG", "fit"]
+### Worklist
 
-`wl.plot(<OPTION>)` options = ["TG", "heat_flow", "EGA", "DIR", "cumsum", "IR_to_DTG", "fit", "robustness", "results"]
+#### Initialization
+
+```python
+Worklist(samples, name=None, profile=None)
+```
+
+**Parameters**
+
+| Name    | Type        | Default | Description                     |
+| ------- | ----------- | ------- | ------------------------------- |
+| samples | list/Sample | —       | List of Sample objects or names |
+| name    | str         | None    | Name of the worklist            |
+| profile | str         | None    | Data loading profile            |
+
+**Attributes**
+
+| Attribute | Description            |
+| --------- | ---------------------- |
+| samples   | List of Sample objects |
+| name      | Name of worklist       |
+| profile   | Data loading profile   |
 
 ---
-### 6. Saving
-`obj.save()`
 
- Optional arguments:
+## Main Methods
 
-    how        one of ["samplelog", "excel", "pickle"] to save    
-                - obj.info in the samplelog
-                - obj.info, obj.ega, obj.tga to excel-file
-                - obj as pickle-file
+### Correction
 
-`wl.save()`
+Correct TG and EGA data for baseline or blank measurements.
 
-Optional arguments:
+```python
+Sample.corr(baseline_name=None, plot=False)
+Worklist.corr(baseline_names=None, plot=False)
+```
 
-    fname       filename, if None: wl.name
+**Parameters**
+
+| Name           | Type          | Default | Description             |
+| -------------- | ------------- | ------- | ----------------------- |
+| baseline_name  | str/None      | None    | Baseline name or None   |
+| baseline_names | str/list(str) | None    | Baseline name/s or None |
+| plot           | bool          | False   | Plot corrections        |
 
 ---
-### 7. Loading
-`wl.load(<FNAME>)`
 
-Load Worklist from pickle-file as produced by [6. Saving](#6-saving).
+### Fitting
 
-For Sample, see [1. Initialization](#1-initialization) and the use of the `mode`-argument.
+Fit sample or worklist data.
+
+```python
+Sample.fit(reference_name, T_max=None, T_max_tol=50, save=True, plot=True, presets=None, mod_sample=True, overwrite=False)
+Worklist.fit(reference_name, ...)
+```
+
+**Parameters**
+
+| Name           | Type  | Default | Description                  |
+| -------------- | ----- | ------- | ---------------------------- |
+| reference_name | str   | —       | Reference for fitting        |
+| T_max          | float | None    | Limit fit interval           |
+| T_max_tol      | float | 50      | Tolerance for center value   |
+| save           | bool  | True    | Save results                 |
+| plot           | bool  | True    | Plot results                 |
+| presets        | dict  | None    | Custom presets               |
+| mod_sample     | bool  | True    | Modify object during fitting |
+| overwrite      | bool  | False   | Overwrite existing fit       |
+
+Results are stored in `results["fit"][reference_name]`.
+
+---
+
+### Robustness Analysis
+
+Assess sensitivity of fit to parameter variations.
+
+```python
+Worklist.robustness(reference_name, T_max=None, save=True, var_T=10, var_rel=0.3)
+```
+
+**Parameters**
+
+| Name    | Type  | Default | Description           |
+| ------- | ----- | ------- | --------------------- |
+| var_T   | float | 10      | Absolute variance (K) |
+| var_rel | float | 0.3     | Relative variance     |
+
+---
+
+### Plotting
+
+Plot sample or worklist data.
+
+```python
+Sample.plot(option, ax=None, save=False, **kwargs)
+Worklist.plot(option, **kwargs)
+```
+
+**Options**
+
+| Option        | Description            |
+| ------------- | ---------------------- |
+| "TG"          | TG data                |
+| "mass_steps"  | Mass steps             |
+| "heat_flow"   | Heat flow              |
+| "EGA"         | EGA data               |
+| "DEGA"        | DEGA data              |
+| "cumsum"      | Cumulative sum         |
+| "EGA_to_DTG"  | EGA to DTG             |
+| "fit"         | Fit results            |
+| "calibration" | Calibration data       |
+| "results"     | Fit/robustness results |
+
+**Common Parameters**
+
+| Name   | Type | Default       | Description             |
+| ------ | ---- | ------------- | ----------------------- |
+| ax     | axis | None          | Matplotlib axis         |
+| save   | bool | False         | Save figure             |
+| x_axis | str  | "sample_temp" | "time" or "sample_temp" |
+| y_axis | str  | "orig"        | "orig" or "rel"         |
+| legend | bool | True          | Show legend             |
+| title  | bool | True          | Show title              |
+
+See function docstrings for option-specific parameters.
+
+---
+
+### Saving
+
+Save sample or worklist data.
+
+```python
+Sample.save(how="samplelog"|"excel"|"pickle")
+Worklist.save(fname=None)
+```
+
+---
+
+### Loading
+
+Load worklist from pickle file.
+
+```python
+Worklist.load(fname)
+```
+
+
+---
+
+## Common Dunder Methods
+
+Both `Sample` and `Worklist` implement several Python "dunder" (double underscore) methods to provide intuitive behavior:
+
+- `print(obj)`: Returns a readable string representation of the object, useful for debugging and interactive sessions.
+- `obj1 + obj2`: Allows combining objects using the `+` operator. For example, `Sample + Sample` or `Sample + Worklist` returns a new `Worklist` containing both.
+- `len(obj)`: Returns the number of contained samples (`1` for `Sample`, number of samples for `Worklist`).
+- `for sample in obj:`: Enables iteration over contained samples (a single-item iterator for `Sample`, all samples for `Worklist`).
+- `obj[]` (`Worklist` only): Supports indexing and slicing to access individual samples or subsets. Works with single integer index as well as with a list of indices and also with a single sample name.
+
+These methods make it easy to work with `Sample` and `Worklist` objects in a Pythonic way, supporting iteration, combination, and inspection.
+
+## Class-Specific Methods
+
+### Sample Methods
+
+| Method                      | Signature                                                                 | Description                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `info` (property)           | `Sample.info`                                                             | Returns sample information.                                                                                                                                                                                                |
+| `reference_mass` (property) | `Sample.reference_mass`                                                   | Returns reference mass value.                                                                                                                                                                                              |
+| `step_data`                 | `Sample.step_data(ref_mass_name=None)`                                    | Returns DataFrame with step data. Default steps include initial and final mass but can be extended with the dry mass or other steps as determined by `Sample.dry_weight()` or `Sample.mass_step()`.                        |
+| `get_value`                 | `Sample.get_value(*values, which="sample_mass", at="sample_temp")`        | Extracts values from TG data at specified points.                                                                                                                                                                          |
+| `dry_weight`                | `Sample.dry_weight(plot=False, **kwargs)`                                 | Determines dry point and mass of sample.                                                                                                                                                                                   |
+| `mass_step`                 | `Sample.mass_step(ax=None, plot=True, min_rel_height=0.2, width_T=[0,∞])` | Detects mass steps in TGA data. ``min_rel_height`` sets lower limit of peaks in DTG, ``width_T`` controls peak width in K                                                                                                  |
+| `calibrate`                 | `Sample.calibrate(worklist = Worklist,profile=None, **kwargs)`            | Calibrates EGA data with Worklist. Worklist should contain measurements of the thermal degradation of different masses from a substance with known thermogravimetric behaviour and consecutive release of different gases. |
+
+---
+
+
+### Worklist Methods
+
+| Method   | Signature                             | Description                                                                      |
+| -------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| `get`    | `Worklist.get(pattern, attr="name")`  | Returns a Worklist filtered with regular expression on attribute.                |
+| `append` | `Worklist.append(Sample \| Worklist)` | Adds a Sample or another Worklist.In contrast to `+` operation modifies inplace. |
+| `pop`    | `Worklist.pop(i)`                     | Removes and returns sample at index `i`.                                         |
+| `info`   | `Worklist.info(type="df")`            | Returns info for all samples as DataFrame or dict.                               |
+| `load`   | `Worklist.load(fname)`                | Loads a Worklist from pickle file.                                               |
+
+---
+
+## Additional Information
+
+- For fit references, see `Fitting_parameter.xlsx` via `TGA_FTIR_tools.fit_preferences()`.
+- For more details, see function docstrings and examples.
+
+### Data Loading Profile
+
+For each of the hyphenated devices a separate file of the following structure has to be provided in the respective *tga* and *ega* folders.
+
+The file must contain two required and can contain other otional key-value-pairs.
+
+|    | key  | Type | Default | Description     |
+| --- | ---- | ---- | ------- | --------------- |
+| required    | spec   | dict | {"manufacturer": str, "device": str, "software": str, "version": str}   | Metainformation on the device used to collect data. |
+|  required   | ext | str |  —  | Suffix of raw data files. Can be either just the file extension *e.g.* ".csv" or a regular expression containing the capture group *suffix e.g.*: "_?(?P\<suffix\>.*).txt". If a column in the raw data gets assigned the name "suffix", this is later replaced with the captured suffix.    |
+|optional|kwargs|dict|—|Extra arguments passed on to [`pandas.read_csv`](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html#pandas.read_csv). Currently only data readable by this function is supported.|
+|optional|map_suffix|dict|—|Map values of capture group "suffix" to custom name.|
+|optional|info_pattern|dict|—|Key-regular expressions (regex) pairs to extract additional information from raw data *e.g.* from the header or footer of the file. The regex must have named capture groups: "name", "value" and "unit" (can be empty). If the regex matches once, the key from the dict is used, otherwise the name from the capture group.|
+|optional|usecols|list|—|Subset columns in combined data. List can contain a combination of integer indices, column names (after renaming) and slices as string *e.g.* "1:3"|
+|optional|units|str, list, dict|—|Assign units to columns. If str, regex with capture "unit" to extract unit from column header. If list, unit for respective column (must have same length). If dict, a mapping of column-name: unit. |
+|optional|rename|str, list, dict|—|enaming of columns. If str, assumes function to be evaluated *e.g.* ``lambda x: x.upper()``. If list, new name for respective column (must have same length). If dict, a mapping of old-name:new-name|
+|optional|name_mapping|dict|—|A mapping of old-name:new-name (old-name after rename operation)|
+
+For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles).
+
+The hyphenation is achieved with a separate `.json` of the following structure:
+```json
+{
+    "data": {
+        "tga": "path to tga profile.json",
+        "ega": "path to ega profile.json"
+    },
+    "supplementary": {
+        "name_pattern": "",
+        "mass_resolution_ug": ""
+    }
+}
+```
+The supplementary field is currently not used, but should incorporate settings specific to the respective hyphenation in the future.

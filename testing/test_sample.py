@@ -61,7 +61,7 @@ class TestSamplePlot:
         plot_params = ins.signature(get_sample.plot).parameters["plot"].default
         plot_opts = get_args(plot_params)
         for plot in plot_opts:
-            if plot not in ["IR_to_DTG", "calibration", "fit"]:
+            if plot not in ["EGA_to_DTG", "calibration", "fit"]:
                 assert isinstance(get_sample.plot(plot), mpl.axes.Axes) 
             elif plot=="fit":
                 assert get_sample.plot(plot) == None

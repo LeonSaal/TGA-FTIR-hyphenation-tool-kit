@@ -7,9 +7,6 @@
     - use it everytime
 
 ## Import
-- add `Worklist.info` (
-    - `dict` of `dicts`
-    -  `pd.DataFrame`)
 - helper to determine `kwargs` for `read_csv`
 	- auto 
 		- encoding from chardet, python-magic
@@ -35,6 +32,7 @@
     - $\rightarrow$ don't allow lists, only dicts for clear assignment
   - warning if profile doesn't match data
   - determine gases in ega more flexible (currently by index)
+  - restructure import profile to better distinguish required and optional fields
 
 ## Correction
 - add synthetic baseline
@@ -50,12 +48,11 @@
     - move _SOG_-names to legend 
 - remove extra markers from _fit-plot_
 - parallelize computations
-- calculate statistical values and append to ``.results["fit"]`` $\rightarrow$ maybe not necessary if plotting with `seaborn`
+- calculate statistical values and append to ``.results["fit"]`` or add as new key:value-pair $\rightarrow$ maybe not necessary if plotting with `seaborn`
 - default ``plot=False``
 
 ## Plotting
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
-- add better summary plots for fitting and robustness-results (e.g. with tidy data in combination with `seaborn`)
 - make plot interactive?
   - measure mass-, temperature- or time-differences
 - add DTG to mass-stops (optional)
@@ -97,11 +94,6 @@
 - add date column
 
 # Documentation
-- for _import profiles_
-- combining of objects
-    - `Sample`+`Sample`=`Worklist`
-    - `Sample`+`Worklist`=`Worklist`
-    - `Worklist`+`Worklist`=`Worklist`
 - calibration
 - add docstrings, signatures for every function
 - add example folder

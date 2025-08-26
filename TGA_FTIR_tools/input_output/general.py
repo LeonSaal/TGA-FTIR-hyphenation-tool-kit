@@ -111,7 +111,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
             continue
 
         # convert strings to functions
-        kwargs = values["kwargs"]
+        kwargs = values.get("kwargs", {})
         if (arg := "converters") in kwargs:
             for col, converter in kwargs[arg].items():
                 kwargs[arg][col] = eval(converter)

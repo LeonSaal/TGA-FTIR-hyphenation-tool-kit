@@ -255,7 +255,7 @@ class Sample:
 
     def corr(
         self,
-        reference: NoneType | str = None,
+        baseline_name: NoneType | str = None,
         plot: Mapping | bool = False,
         update=False,
         dry_args={},
@@ -285,12 +285,12 @@ class Sample:
             )
             return
         # try to load reference from samplelog if none is supplied
-        if not reference:
+        if not baseline_name:
             if self.reference:
-                reference = self.reference
+                baseline_name = self.reference
             else:
                 if self.name in (log := samplelog(create=False).reference).index:
-                    reference = log.loc[self.name]
+                    baseline_name = log.loc[self.name]
                 else:
                     logger.warning(
                         "No reference found in Samplelog. Please supply 'reference = '"
@@ -298,8 +298,8 @@ class Sample:
                     return
 
         # correction of data
-        self.baseline = Baseline(reference)
-        self.reference = reference
+        self.baseline = Baseline(baseline_name)
+        self.reference = baseline_name
         if self.tga is not None:
             try:
                 self.tga = corrections.corr_TGA_Baseline(
@@ -392,7 +392,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DIR","cumsum","IR_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DEGA","cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
         "plotting TG and or IR data"
         options = [
@@ -400,9 +400,9 @@ class Sample:
             "mass_steps",
             "heat_flow",
             "EGA",
-            "DIR",
+            "DEGA",
             "cumsum",
-            "IR_to_DTG",
+            "EGA_to_DTG",
             "fit",
             "calibration",
             "results"
@@ -410,9 +410,9 @@ class Sample:
         if plot not in options:
             logger.warning(f"{plot} not in supported {options=}.")
             return
-        needs_tg = ["TG", "heat_flow", "IR_to_DTG", "mass_steps"]
-        needs_ega = ["EGA", "DIR", "cumsum", "IR_to_DTG"]
-        needs_cali = [ "IR_to_DTG","calibration"]
+        needs_tg = ["TG", "heat_flow", "EGA_to_DTG", "mass_steps"]
+        needs_ega = ["EGA", "DEGA", "cumsum", "EGA_to_DTG"]
+        needs_cali = [ "EGA_to_DTG","calibration"]
         
         # check requisites
         if (self.tga is None) and (plot in needs_tg):
@@ -425,14 +425,14 @@ class Sample:
             logger.warning("Option unavailable without calibration.")
             return
 
-        if not isinstance(ax, plt.Axes) and plot not in ["IR_to_DTG", "calibration", "fit", "results"]:
+        if not isinstance(ax, plt.Axes) and plot not in ["EGA_to_DTG", "calibration", "fit", "results"]:
             fig, ax = plt.subplots()
 
         match plot:
             case "EGA":
                 plot_FTIR(self, ax, **kwargs)
 
-            case "DIR":
+            case "DEGA":
                 temp = copy.deepcopy(self)
                 temp.ega.update(
                     self.ega.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
@@ -459,7 +459,7 @@ class Sample:
                     kwargs["steps"] = self.step_data().sample_temp
                 plot_mass_steps(self,ax,**kwargs)
 
-            case "IR_to_DTG":
+            case "EGA_to_DTG":
                 FTIR_to_DTG(self, save=save, **kwargs)
 
             case "fit":
@@ -535,7 +535,7 @@ class Sample:
 
     def fit(
         self,
-        reference,
+        reference_name,
         T_max=None,
         T_max_tol=50,
         save=True,
@@ -551,14 +551,14 @@ class Sample:
             logger.error("No EGA data to fit available.")
             return
 
-        if reference in self.results["fit"]:
+        if reference_name in self.results["fit"]:
             if not overwrite:
-                logger.warning(f"Fitting with{reference!r} already in results! Pass overwrite=True to redo fit.")
-                results = self.results["fit"][reference]
+                logger.warning(f"Fitting with{reference_name!r} already in results! Pass overwrite=True to redo fit.")
+                results = self.results["fit"][reference_name]
             else:
-                logger.warning(f"Fitting with{reference!r} was already in results! Overwriting.")
+                logger.warning(f"Fitting with{reference_name!r} was already in results! Overwriting.")
 
-        if reference not in self.results["fit"] or overwrite:
+        if reference_name not in self.results["fit"] or overwrite:
             # setting upper limit for data
             if T_max is None:
                 T_max = max(self.tga["sample_temp"]).magnitude
@@ -569,7 +569,7 @@ class Sample:
 
             # load presets for deconvolution
             if presets is None:
-                presets = get_presets(reference)
+                presets = get_presets(reference_name)
 
             if presets is None:
                 return
@@ -582,14 +582,14 @@ class Sample:
             # setting up output directory
             if save:
                 path = (
-                    PATHS["fitting"] / f'{general.time()}{reference}_{self._info["name"]}'
+                    PATHS["fitting"] / f'{general.time()}{reference_name}_{self._info["name"]}'
                 )
                 os.makedirs(path)
                 os.chdir(path)
 
             # fitting
             logger.info(
-                f'Fitting of "{self.name}" according to "{reference}" in Fitting_parameters.xlsx is in progress ...'
+                f'Fitting of "{self.name}" according to "{reference_name}" in Fitting_parameters.xlsx is in progress ...'
             )
             temp = copy.deepcopy(self)
             temp_unit = temp.tga.sample_temp.dtypes.units
@@ -604,15 +604,15 @@ class Sample:
 
             results = pd.concat(
                 [peaks],
-                keys=[(reference, self.sample, self.alias, self.run)],
+                keys=[(reference_name, self.sample, self.alias, self.run)],
                 names=["reference", "sample", "alias", "run"],
             )
             if mod_sample:
-                self.results["fit"].update({reference: results})
+                self.results["fit"].update({reference_name: results})
 
         # plotting
         if plot:
-            self.plot("fit", reference=reference, **kwargs)
+            self.plot("fit", reference=reference_name, **kwargs)
 
         return results
 

@@ -102,14 +102,14 @@ class Worklist:
     def __iter__(self):
         yield from self.samples
 
-    def get(self, key: str, attr: str = "name"):
+    def get(self, pattern: str, attr: str = "name"):
         return Worklist(
             samples=[
                 sample
                 for sample in self.samples
-                if re.search(key, sample.__dict__[attr])
+                if re.search(pattern, sample.__dict__[attr])
             ],
-            name=key,
+            name=pattern,
         )
 
     def append(self, other) -> None:
@@ -250,24 +250,24 @@ class Worklist:
     def __len__(self) -> int:
         return len(self.samples)
 
-    def corr(self, references=None, plot=False, **kwargs) -> None:
-        if type(references) == list:
-            if (ls := len(self)) != (lr := len(references)):
+    def corr(self, baseline_names=None, plot=False, **kwargs) -> None:
+        if type(baseline_names) == list:
+            if (ls := len(self)) != (lr := len(baseline_names)):
                 logger.error(
                     f"Lengths of samples ({ls}) and references ({lr}) do not match."
                 )
                 return
-        elif type(references) == str:
-            references = [references for _ in self.samples]
+        elif type(baseline_names) == str:
+            baseline_names = [baseline_names for _ in self.samples]
 
-        elif not references:
-            references = [None for _ in self.samples]
+        elif not baseline_names:
+            baseline_names = [None for _ in self.samples]
 
-        for sample, baseline in zip(self.samples, references):
+        for sample, baseline in zip(self.samples, baseline_names):
             sample.corr(baseline, plot=plot, **kwargs)
 
     def pop(self, i: int) -> None:
-        self.samples.pop(i)
+        return self.samples.pop(i)
 
     def save(
         self,
