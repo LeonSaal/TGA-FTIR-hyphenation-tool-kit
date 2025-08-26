@@ -19,8 +19,8 @@ class FitData:
     peaks: pd.DataFrame = field(default=None)
 
     def __post_init__(self):
-        self.ir = self.sample.ir
-        self.info = self.sample.info
+        self.ega = self.sample.ega
+        self.info = self.sample._info
         self.linreg = self.sample.linreg
         self.gases, self.gas_links, self.links = link_groups(self.presets)
         index = pd.MultiIndex.from_tuples(
@@ -41,18 +41,18 @@ class FitData:
             "mmol",
             "mmol_per_mg",
         ]
+        
         self.peaks = pd.DataFrame(columns=columns, index=index).sort_index()
-        del self.sample
 
     def xy(self, gas):
-        return self.ir.sample_temp, self.ir[gas]
+        return self.ega.sample_temp, self.ega[gas]
 
     def get_bounds(self, gas, sample, predef_tol):
         param_keys = {'c': 'center', 'w':'hwhm', 'h':'height'}
 
         for key in ["0", "min", "max"]:
             self.presets[gas].loc[:, f"height_{key}"] = (
-                self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ir[gas]))
+                self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ega[gas]))
             )
         if gas in self.gas_links:
             df = self.links.dropna(thresh=2).replace("0", np.nan).dropna(thresh=1)
@@ -156,7 +156,7 @@ class FitData:
         )
         self.peaks.mmol = self.peaks.area / tot_area * tot_mmol
         self.peaks.mmol_per_mg = (
-            self.peaks.mmol / self.info[self.info["reference_mass"]]
+            self.peaks.mmol / self.info[self.sample.info.reference_mass_name].magnitude
         )
 
     def summarize(self):
@@ -195,14 +195,10 @@ class FitData:
 
     def save(self, y_axis):
         f_name = f"{self.info.name}_{y_axis}.xlsx"
-        f_presets = "presets.xlsx"
-
-        with pd.ExcelWriter(f_name, engine="openpyxl") as writer, pd.ExcelWriter(
-            f_presets, engine="openpyxl"
-        ) as writer_presets:
+        with pd.ExcelWriter(f_name, engine="openpyxl") as writer:
             for gas, profiles in self.profiles.items():
                 profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
-                self.presets[gas].to_excel(writer_presets, sheet_name=gas, merge_cells=MERGE_CELLS)
+                self.presets[gas].to_excel(writer, sheet_name=f"presets {gas}", merge_cells=MERGE_CELLS)
             self.peaks.dropna(axis=1, how="all").to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
 
 
@@ -216,7 +212,7 @@ def link_groups(presets):
         gas_links.dropna(axis=1).empty
         and not links.replace("0", np.nan).dropna(thresh=1).empty
     ):
-        logger.warn("You cannnot predefine fitting parameters for all supplied gases!")
+        logger.warning("You cannnot predefine fitting parameters for all supplied gases!")
         gas_links = pd.DataFrame()
         links = pd.DataFrame()
     gases = [key for key in presets]

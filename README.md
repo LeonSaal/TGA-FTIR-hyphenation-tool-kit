@@ -119,9 +119,9 @@ Optional arguments:
 ### 5. Plotting
 
 `obj.plot(<OPTION>)` 
-options = ["TG", "heat_flow", "IR", "DIR", "cumsum", "IR_to_DTG", "fit"]
+options = ["TG", "heat_flow", "EGA", "DIR", "cumsum", "IR_to_DTG", "fit"]
 
-`wl.plot(<OPTION>)` options = ["TG", "heat_flow", "IR", "DIR", "cumsum", "IR_to_DTG", "fit", "robustness", "results"]
+`wl.plot(<OPTION>)` options = ["TG", "heat_flow", "EGA", "DIR", "cumsum", "IR_to_DTG", "fit", "robustness", "results"]
 
 ---
 ### 6. Saving
@@ -131,7 +131,7 @@ options = ["TG", "heat_flow", "IR", "DIR", "cumsum", "IR_to_DTG", "fit"]
 
     how        one of ["samplelog", "excel", "pickle"] to save    
                 - obj.info in the samplelog
-                - obj.info, obj.ir, obj.tga to excel-file
+                - obj.info, obj.ega, obj.tga to excel-file
                 - obj as pickle-file
 
 `wl.save()`

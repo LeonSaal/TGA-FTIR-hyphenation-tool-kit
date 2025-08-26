@@ -1,3 +1,76 @@
+# 2025-08-25
+- improved integration plot from calibration
+- fixed bug in calibration when molecular formula is invalid
+- updated Netzsch import profile
+
+# 2025-08-21
+- added `plot_results` to `Worklist.plot`
+- added `plot_results` to `Sample.plot`
+- fixed ``Sample`` and `Worklist`.results
+
+# 2025-08-20
+- new import profile for Netzsch
+- made _usecols_ in import profile more flexible
+  - pass integer indices of columns
+  - pass slices as strings _e.g._ "1:-4"
+  - pass names of columns
+- seperated renaming of columns and mapping of names to internal names
+- improved plotting
+
+# 2025-08-07
+- bugfix testing
+- fixed unit conversions
+- reorganized calibration output
+
+# 2025-08-02
+- checked ``.fit``
+- changed fit visuals
+- trying to make worklist functions concurrent
+
+## 2025-08-01
+- made ``mass_step`` more robust with new technique for finding of bounds
+- improved visualisation
+- fixed bug when updating calibration file
+- fixed saving of worklist to samplelog
+
+## 2025-07-31
+- added testing routines with `pytest`
+- added profile keyword to `Worklist`
+- fixed ``mass_step``
+- adjusted TGA3 import profile
+- made *DTG*-smoothing more flexible and dependant on input data
+- estimated reasonable values for *DTG*-smoothing and -peak detection in ``mass_step``
+- bugfixes and cleanup
+
+## 2025-07-30
+- make info derived from raw data more flexible
+- added unit support for info derived from file
+- make calibration compliant with units
+- begin refactoring of ``calibrate``
+
+## 2025-07-29
+### 1
+- initial setup for testing
+- refactor ``dry_weight``
+- refactor ``Sample.info``
+- refactor ``Sample.__post_init__``
+- restructured import profile
+### 2
+- remove unmaintained chempy from dependencies and replace with molmass
+- fix calculation of total amount per element
+- clean up ``config.py``
+- added unit support in import_profile
+- added ``pint_pandas`` to handly unit annotation
+
+## 2025-07-28
+- mostly renamed *IR* to *EGA* (`Sample.ir`, "IR" as arg)
+- moved calibration plots to separate files
+- add option 'calibration' to `Sample.plot`
+- add possibility to initialize `Worklist` with name or list of names in addition to list of `Sample`
+- add possibility to add `Sample` + `Sample` | `Worklist` 
+- cleaned up `Sample.plot`
+- cleaned up dependencies
+
 ## 2022-10-13
 - fixed bug in linked groups
 - changed output path of worklist.fit to ~/worklist.name

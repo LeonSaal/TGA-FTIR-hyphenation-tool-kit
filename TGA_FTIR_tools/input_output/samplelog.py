@@ -9,7 +9,7 @@ from ..config import MERGE_CELLS, PATHS
 logger = logging.getLogger(__name__)
 
 
-def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
+def samplelog(data=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
     "load and write samplelog file with obj.info"
     path = PATHS["home"]/ "Samplelog.xlsx"
 
@@ -24,28 +24,15 @@ def samplelog(info=None, create=True, overwrite=False,**kwargs) -> pd.DataFrame:
         samplelog = pd.read_excel(path, index_col=0)
 
     # update existing samplelog file
-    if info != None:
-        name = info["name"]
-        data = pd.DataFrame.from_dict(info, orient="index", columns=[name]).T.drop(
-            ["name"], axis=1
-        )
-        data.index.name = "name"
-
-        for key in data.columns:
-            if key not in samplelog.columns:
-                samplelog[key] = np.nan
-        if name in samplelog.index:
-            if overwrite == False:
-                samplelog = samplelog.fillna(data)
-            else:
-                samplelog.loc[[name]] = data
-        else:
-            samplelog = pd.concat([samplelog, data])
+    if isinstance(data, pd.DataFrame):
+        # convert data to string
+        samplelog = pd.concat([samplelog, data])
+        samplelog = samplelog.drop_duplicates(keep="last" if overwrite else "first")
 
         try:
             samplelog.to_excel(path, merge_cells=MERGE_CELLS)
             logger.info("Successfully updated 'Samplelog.xlsx'.")
-        except:
+        except PermissionError:
             logger.error(
                 "Unable to write on 'Samplelog.xlsx'. Please close file and try again!"
             )

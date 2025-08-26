@@ -8,10 +8,13 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 
-from ..config import BOUNDS, COUPLING, MERGE_CELLS, PATHS, config
+from ..config import BOUNDS, PATHS, config
 from ..input_output.general import time
 from ..utils import multi_gauss
 from .fitdata import FitData
+import pint_pandas
+import pint
+ureg = pint.get_application_registry()
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,7 @@ def baseline_als(
 def fitting(
     sample, presets, func=multi_gauss, y_axis="orig", save=True, predef_tol=0.01,
 ):
-    from ..calibration import stats
+    from ..calibration import calibration_stats
     "deconvolve IR data of sample with func and multiple presets"
     # temp_presets = copy.deepcopy(presets)
 
@@ -49,31 +52,31 @@ def fitting(
     for gas in data.gases:
         # correction of water-signal drift
         if gas == "H2O":
-            data.ir[gas] -= baseline_als(data.ir[gas])
+            data.ega[gas] -= baseline_als(data.ega[gas].astype(np.float64))
 
         # molar desorption
-        tot_area = np.sum(data.ir[gas])
+        tot_area = np.sum(data.ega[gas])
 
         if gas == "H2O":
             # total area of water is calculated above dry-point, if this exists (therefore, try)
             if "dry_temp" in data.info:
                 minimum_temp = data.info["dry_temp"]
             else:
-                minimum_temp = data.ir[gas].min()
-            tot_area = np.sum(data.ir[gas][data.ir.sample_temp > minimum_temp])
+                minimum_temp = data.ega[gas].min()
+            tot_area = np.sum(data.ega[gas][data.ega.sample_temp > minimum_temp])
 
         if y_axis == "rel" and data.linreg is not None:
             tot_mol = (tot_area - data.linreg.intercept[gas]) / data.linreg.slope[gas]
-            data.ir.update(data.ir[gas] / tot_area * tot_mol)
+            data.ega.update(data.ega[gas] / tot_area * tot_mol)
 
         # predefining guesses and bounds
         params_0, params_min, params_max = data.get_bounds(gas, sample, predef_tol)
 
         # actual fitting
-        x, y = data.ir.sample_temp.to_numpy(dtype=np.float64), data.ir[gas].to_numpy(dtype=np.float64)
+        x, y = data.ega.sample_temp.to_numpy(dtype=np.float64), data.ega[gas].to_numpy(dtype=np.float64)
         try:
             popt, _ = sp.optimize.curve_fit(
-                func, x, data.ir[gas], p0=params_0, bounds=(params_min, params_max)
+                func, x, y, p0=params_0, bounds=(params_min, params_max)
             )
         except ValueError:
             logger.error(f"Failed to fit {gas} signal")
@@ -86,10 +89,10 @@ def fitting(
         data.calculate_molar_mass()
 
     # calculate summarized groups
-    data.summarize()
+    #data.summarize()
 
-    if stats is not None:
-        check_LODQ_frame(data.peaks, stats)
+    #if sample.stats is not None:
+    #    check_LODQ_frame(data.peaks, sample.stats)
 
     # save results to excel
     if save:
@@ -97,127 +100,26 @@ def fitting(
 
     return data.peaks
 
-
-def fits(worklist, reference, save=True, presets=None, mod_sample=True, **kwargs):
-    "perform decovolution on multiple sample objects"
-    from ..calibration import stats
-
-    # load default presets
-    if not presets:
-        presets = get_presets(reference)
-
-    if presets is None:
-        return
-
-    # make subdirectory to save data
-    if save:
-        path = PATHS["fitting"]/ f'{time()}{reference}_{worklist.name}'
-        os.makedirs(path)
-        os.chdir(path)
-
-    results = {}
-    # cycling through samples
-    for sample in worklist:
-        # writing data to output DataFrames
-        results[sample.alias] = sample.fit(
-            reference, presets=presets, mod_sample=mod_sample, **kwargs, save=False
-        )
-
-    # return results
-    collection = pd.concat([item for item in results.values()])
-
-    statistics = []
-    dm = COUPLING.getfloat("mass_resolution")
-
-    # group by samples
-    names = ["run", "group"]
-    for sample, groups in collection.groupby("sample"):
-        sample_stats = []
-        # group by desorbed group
-        for (group, gas), values in groups.drop("limits", axis=1).groupby(
-            ["group", "gas"]
-        ):
-            if gas in ["stddev"]:
-                continue
-            # calculate statistical values
-            mean = pd.concat(
-                [values.mean().to_frame(gas).T], keys=[("mean", group)], names=names,
-            )
-            dev = pd.concat(
-                [values.std().to_frame(gas).T], keys=[("stddev", group)], names=names,
-            )
-            mean.index.rename(["run", "group", "gas"], inplace=True)
-            dev.index.rename(["run", "group", "gas"], inplace=True)
-
-            # calculate error propagation
-            if stats is not None and gas in stats.index:
-                lod = stats["x_LOD"][gas]
-                mmol_p_mg = values["mmol_per_mg"]
-                mmol = values["mmol"]
-                mg = mmol / mmol_p_mg
-
-                dmmol_mg_i = (
-                    np.power(np.power(lod / mmol, 2) + np.power(dm / mg, 2), 0.5)
-                    * mmol_p_mg
-                )
-                dmmol = np.power(np.sum(np.power(dmmol_mg_i, 2)), 0.5)
-
-                err_dev = pd.concat(
-                    [pd.DataFrame([dmmol], columns=["mmol_per_mg"], index=[gas])],
-                    keys=[("err_dev", group)],
-                    names=["run", "group"],
-                )
-                err_dev.index.rename(["run", "group", "gas"], inplace=True)
-                dev = pd.concat([dev, err_dev])
-
-            rel_dev = dev / mean.values
-            rel_dev.rename(
-                {old: f"rel_{old}" for old in rel_dev.index.get_level_values("run")},
-                inplace=True,
-            )
-            sample_stats.append(
-                pd.concat([pd.concat([mean, dev, rel_dev])], keys=[sample])
-            )
-
-        stats_df = pd.concat(sample_stats)
-        statistics.append(stats_df)
-
-    results = pd.concat([collection, pd.concat(statistics)])
-    results.sort_index(level=["sample", "group"], inplace=True)
-
-    # check results for LOD and LOQ and add columns 'rel_dev', limits
-
-    # exporting data
-    if save:
-        logger.info(f"Fitting finished! Results are saved in {path=}.")
-        with pd.ExcelWriter("summary.xlsx") as writer:
-            results.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
-        os.chdir(PATHS["home"])
-    if mod_sample:
-        worklist.results["fit"] = results
-    return results.drop("total", level="group")
-
-
-def get_presets(reference):
+def get_presets(reference, file = config["fitting_params"]):
     "load deconvolution presets from excel file"
     # load raw data from file
     presets = dict()
 
-    if not os.path.exists(config["fitting_params"]):
+    if not os.path.exists(file):
         if PATHS["fitting_params"].exists():
-            sh.copy(PATHS["fitting_params"], config["fitting_params"])
+            sh.copy(PATHS["fitting_params"], file)
         else:
-            logger.warn("Unable to get default settings.")
+            logger.warning("Unable to get default settings.")
 
     references = pd.read_excel(
-        config["fitting_params"], index_col=0, header=[0, 1], sheet_name=None,
+        file, index_col=0, header=[0, 1], sheet_name=None,
     )
 
     if (
         reference not in (options := references["center_0"].index.to_list())
         and reference is not None
     ):
-        logger.warn(f"{reference=} is an invalid option. {options=} ")
+        logger.warning(f"{reference=} is an invalid option. {options=} ")
         return
     elif reference is None:
         return options

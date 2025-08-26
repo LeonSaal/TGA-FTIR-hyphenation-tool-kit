@@ -2,19 +2,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas
 import pint
 from ..config import PATHS
 from ..input_output import time
 import os
+import seaborn as sns
 
 import logging
-
+from typing import Literal
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['sumsqerr','center', 'height', 'hwhm', 'area', 'mmol', 'mmol_per_mg']="mmol_per_mg", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
+    y = value if orient =="v" else "group"
+    x = value if orient =="h" else "group"
+    row = "reference" if compare in ["sample", "alias", "run"] else "sample"
+    plot = sns.catplot(data, y=y, x=x, kind=kind, hue=compare, row=row, col="gas", margin_titles=True)
+    return plot.figure, plot.axes
 
-def bar_plot_results(
-    worklist,
+def bar_plot_results_old(
+    data,
     show_groups=[],
     group_by="sample",
     y_unit="µmol per g",
@@ -25,30 +34,24 @@ def bar_plot_results(
     w_bar=0.9,
     exclude_merged=True,
     exclude_total=True,
+    ax=None
 ):
     "Returns a bar plot of the robustness tested results with units conversion and two group_by options."
     dev = "stddev"
-    if res == "robustness":
-        if res not in worklist.results:
-            logger.warn(f"No results to plot. Run .robustness().")
-        data = worklist.results["robustness"][1]
-
-    elif res == "fit":
-        if "fit" not in worklist.results:
-            logger.warn(f"No results to plot. Run .fit().")
-
-        data = worklist.results["fit"]
+    print(data)
+    if res=="fit":
         use_cols = ["mean", "err_dev", "stddev"]
         use_index = data.index.get_level_values("run").isin(use_cols)
         index = ["sample", "group", "gas"]
         data = (
             data["mmol_per_mg"][use_index]
             .reset_index()
-            .pivot(index=index, columns=["run"])["mmol_per_mg"]
+            .pivot(index=index, columns=["run"])
         )
+        print(data)
     else:
-        options = ["fit", "robutsness"]
-        logger.warn(f"{res=} not in {options=}.")
+        options = ["fit", "robustness"]
+        logger.warning(f"{res=} not in {options=}.")
         return
 
     if show_groups:
@@ -75,7 +78,7 @@ def bar_plot_results(
         grouped = groups
     else:
         options = ["sample", "group"]
-        logger.warn(f"{group_by=} not in {options=}.")
+        logger.warning(f"{group_by=} not in {options=}.")
         return
 
     N = len(labels)
@@ -88,7 +91,8 @@ def bar_plot_results(
         ha = "center"
         va = "top"
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     x_ticks = np.arange(N)
     ax.set_xticks(x_ticks, labels=labels, rotation=rot, ha=ha, va=va)
 
@@ -119,12 +123,8 @@ def bar_plot_results(
     ax.set_ylabel(f"SOG in {y_unit}")
     if title:
         ax.set_title(f"summary plot with errors from {res}")
-    plt.show()
-    if save:
-        path_plots_eval = PATHS["plots"]/ "Evaluation"
-        if path_plots_eval.exists() == False:
-            path_plots_eval.mkdir()
-        fig.savefig(path_plots_eval/ f"{time()}_{worklist.name}_by_{group_by}.png")
+
+
 
 
 # def bar_plot_results(

@@ -1,20 +1,26 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
-
-from ..config import COUPLING
+import pandas as pd
+from ..config import DEFAULTS
 
 
 @dataclass
 class SampleInfo:
     name: Optional[str]
-    initial_mass: Optional[float]
-    reference_mass: Optional[str] = "initial_mass"
-    background_delay: float = int(COUPLING["background_delay"])
-    step_temp: list = field(default_factory=list)
-    mass_steps: list = field(default_factory=list)
+    reference: str = None
+    alias: str = None
+    corrected: bool = False
+    initial_mass: float = None
+    final_mass: float=None
+    reference_mass_name: Optional[str] = "initial_mass"
+    steps_idx: dict = field(default_factory=lambda: {"initial_mass":0, "final_mass" : -1})
+    info: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.alias = self.name
+        for key, value in self.info.items():
+            self[key] = value
+        del self.info
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
@@ -37,3 +43,7 @@ class SampleInfo:
             )
             + "}"
         )
+
+    def get(self, key):
+        if key in self.__dict__:
+            return self.__dict__[key]

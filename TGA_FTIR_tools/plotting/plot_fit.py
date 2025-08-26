@@ -7,13 +7,13 @@ from ..utils import gaussian, multi_gauss
 from .plotting import get_label, make_title
 
 
-def plot_fit(sample, title=False, y_axis="orig", **kwargs):
+def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
     if y_axis == "rel":
-        ir_values = "mmol_per_mg"
+        ega_values = "mmol_per_mg"
     else:
-        ir_values = "area"
+        ega_values = "area"
 
-    fit_data = sample.results["fit"][["center", "height", "hwhm"]].dropna()
+    fit_data = sample.results["fit"][reference][["center", "height", "hwhm"]].dropna()
 
     for gas, params in fit_data.groupby("gas"):
         fig = plt.figure(constrained_layout=True)
@@ -25,53 +25,78 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
         # fitting.xaxis.set_ticks(np.arange(0, 1000, 50))
 
         # plotting of fit
-        # x, data = sample.ir.sample_temp, sample.ir[gas]
+        # x, data = sample.ega.sample_temp, sample.ega[gas]
 
         num_curves = params.index.size
         fitting.plot(
-            sample.ir.sample_temp,
-            sample.ir[gas],
+            sample.ega.sample_temp,
+            sample.ega[gas],
             label="data",
             lw=2,
             zorder=num_curves + 1,
         )  # ,ls='',marker='x',markevery=2,c='cyan')
 
-        x, y_data = sample.ir.sample_temp, sample.ir[gas]
+        x, y_data = sample.ega.sample_temp.to_numpy(dtype=np.float64), sample.ega[gas].to_numpy(dtype=np.float64)
 
-        yall = multi_gauss(x, *params.height, *params.center, *params.hwhm)
+        yall = multi_gauss(
+            x, *params.height.values, *params.center.values, *params.hwhm.values
+        )
         fitting.plot(x, yall, label="fit", lw=2, zorder=num_curves + 2)
-        for i, ((group, gas), row) in enumerate(params.iterrows()):
+
+        for i, ((ref, sample_name, alias, run, group, gas), row) in enumerate(
+            params.iterrows()
+        ):
             y = gaussian(x, row.height, row.center, row.hwhm)
-            fitting.text(
-                row.center, row.height, group, zorder=num_curves + 3 + i,
-            )
+            # fitting.text(
+            #     row.center,
+            #     row.height,
+            #     group,
+            #     zorder=num_curves + 3 + i,
+            #     rotation = 45
+            # )
+            fitting.annotate(group, (row.center, row.height), (row.center, yall.max()*1.1),
+            arrowprops=dict(facecolor='black', shrink=0.1, width=1, headwidth=3, headlength=3), rotation=45, zorder=num_curves+3)
             fitting.plot(x, y, linestyle="dashed", zorder=i)  #
 
         fitting.legend()
         fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if y_axis == "orig":
-            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ir']}$")
+            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ega']}$")
         elif y_axis == "rel":
             fitting.set_ylabel(
                 f"{get_label(gas)} {SEP} ${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
             )
 
         # mark center on x-axis
-        fitting.scatter(
-            params.center,
-            np.zeros(num_curves),
-            marker=7,
-            color="k",
-            s=100,
-            zorder=num_curves + 3,
-        )
+        # fitting.scatter(
+        #     params.center,
+        #     np.zeros(num_curves),
+        #     marker=7,
+        #     color="k",
+        #     s=100,
+        #     zorder=num_curves + 3,
+        # )
+
+        # fitting.vlines(
+        #     params.center,
+        #     np.zeros(num_curves),
+        #     params.height,
+        #     color="k",
+        #     zorder=num_curves + 3,
+        # )
 
         # plotting of absolute difference
         abs_max = 0.05 * max(y_data)
-        sqerr = sample.results["fit"].loc[("total", gas), "sumsqerr"]
-        total = sample.results["fit"].loc[("total", gas), ir_values]
+        sqerr = sample.results["fit"][reference].loc[
+            (ref,sample_name, alias, run, "total", gas), "sumsqerr"
+        ]
+        total = sample.results["fit"][reference].loc[
+            (ref,sample_name, alias, run, "total", gas), ega_values
+        ]
         error.text(
-            0, abs_max, f"SQERR: {sqerr:.2e} ({100 * sqerr / total:.2f} %)",
+            0,
+            abs_max,
+            f"SQERR: {sqerr:.2e} ({100 * sqerr / total:.2f} %)",
         )  # percentage SQERR
 
         diff = y_data - yall
@@ -87,4 +112,4 @@ def plot_fit(sample, title=False, y_axis="orig", **kwargs):
         fitting.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         error.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         fig.savefig(f'{sample.info["name"]}_{gas}.png')
-    plt.show()
+

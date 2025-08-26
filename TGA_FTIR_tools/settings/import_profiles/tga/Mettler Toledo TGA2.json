@@ -1,0 +1,26 @@
+{
+    "spec": {
+        "manufacturer": "Mettler Toledo",
+        "device": "TGA 2",
+        "software": "",
+        "version": ""
+    },
+    "ext": ".txt",
+    "kwargs": {
+        "skiprows": 11,
+        "skipfooter": 11,
+        "decimal": ",",
+        "converters": {
+            "sample_mass": "lambda x: float(x.replace(',','.'))"
+        },
+        "engine": "python",
+        "encoding": "ansi",
+        "names": [
+            "Index",
+            "time",
+            "sample_temp",
+            "reference_temp",
+            "sample_mass"
+        ]
+    }
+}

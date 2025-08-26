@@ -1,0 +1,50 @@
+{
+    "spec": {
+        "manufacturer": "Mettler Toledo",
+        "device": "TGA/DSC 3+",
+        "software": "",
+        "version": ""
+    },
+    "ext": "_?(?P<suffix>.*).txt",
+    "kwargs": {
+        "skiprows": 13,
+        "skipfooter": 11,
+        "sep": "\\s+",
+        "decimal": ",",
+        "converters": {
+            "sample_mass": "lambda x: float(x.replace(',','.'))"
+        },
+        "engine": "python",
+        "encoding": "latin_1",
+        "encoding_errors": "replace",
+        "names": [
+            "Index",
+            "time",
+            "sample_temp",
+            "reference_temp",
+            "suffix"
+        ],
+        "usecols": [
+            "time",
+            "sample_temp",
+            "reference_temp",
+            "suffix"
+        ]
+    },
+    "map_suffix": {
+        "mW": "heat_flow",
+        "": "sample_mass"
+    },
+    "info_pattern": {
+        "method": "(?P<name>)Methode:\\n\\s*(?P<value>\\S+)(?P<unit>)",
+        "date": "(?P<name>)Durchgeführt am(?P<value>\\d{2}\\.\\d{2}\\.\\d{4})(?P<unit>)",
+        "time": "(?P<name>)Durchgeführt am.+(?P<value>\\d{2}:\\d{2}:\\d{2})(?P<unit>)"
+    },
+    "units": [
+        "s",
+        "degreeC",
+        "degreeC",
+        "mg",
+        "mW"
+    ]
+}

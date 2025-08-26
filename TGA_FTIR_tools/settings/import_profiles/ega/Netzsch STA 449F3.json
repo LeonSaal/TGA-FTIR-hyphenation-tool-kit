@@ -1,0 +1,26 @@
+{
+    "spec": {
+        "manufacturer": "Netzsch",
+        "device": "STA 449 F3",
+        "software": "NETZSCH5",
+        "version": ""
+    },
+    "ext": ".txt",
+    "kwargs": {
+        "sep": ";",
+        "skiprows": 36,
+        "decimal": ".",
+        "encoding": "utf-16",
+        "skipinitialspace": true
+    },
+    "usecols": [
+        1,
+        "3:8"
+    ],
+    "units": "(?:[^/]+)/?(?P<unit>.+)?",
+    "rename": "lambda x: re.sub('QMID\\(s:\\d+\\||((?<=[:m\\d]{3})\\))?/.*$', '', x)",
+    "name_mapping": {
+        "Time": "time",
+        "Mass": "sample_mass"
+    }
+}

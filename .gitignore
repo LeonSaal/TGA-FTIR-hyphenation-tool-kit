@@ -1,7 +1,7 @@
 
 *.png
 *.xlsx
-*.ipynb
+test*.ipynb
 settings.ini
 *.ini
 *.ini
@@ -11,9 +11,9 @@ Calibration/
 Fitting/
 *.pyc
 
-TGA_FTIR_tools/settings/*.json
 TGA_FTIR_tools/settings/*.xlsx
 
 *.egg-info
 */__pycache__/
-2DO.md
+TGA-FTIR-hyphenation-tool-kit.code-workspace
+TGA_FTIR_tools/settings/import_profiles/profiles/*

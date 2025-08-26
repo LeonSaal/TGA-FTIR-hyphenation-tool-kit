@@ -15,22 +15,22 @@ logger = logging.getLogger(__name__)
 
 def plots(
     samples,
-    plot: Literal["TG", "IR", "DTG", "heat_flow"],
+    plot: Literal["TG", "EGA", "DTG", "heat_flow"],
+    ax=None,
     x_axis="sample_temp",
     y_axis="orig",
     ylim="auto",
     xlim=[None, None],
     gas=None,
-    save=False,
     legend=True,
-    reference_mass="reference_mass",
+    reference_mass_name=None,
     linewidth=1,
     **kwargs,
 ):
-    "overlay plots from different sampleects"
-    options = ["TG", "IR", "DTG", "heat_flow"]
+    "overlay plots from different samples"
+    options = ["TG", "EGA", "DTG", "heat_flow"]
     if plot not in options:
-        logger.warn(f"{plot=} not in {options=}")
+        logger.warning(f"{plot=} not in {options=}")
         return
 
     # setting up axis-labels and catching possible input errors
@@ -38,34 +38,34 @@ def plots(
         ylabel = "sample_mass"
     else:
         ylabel = plot.lower()
-    if plot == "IR":
+    if plot == "EGA":
         if gas == None:
-            logger.warn("Supply 'gas = '")
+            logger.warning("Supply 'gas = '")
             return
         else:
             gas = gas.upper()
-            if gas not in samples[0].ir.columns:
-                logger.warn(f"{gas} was not found in IR data.")
+            if gas not in samples[0].ega.columns:
+                logger.warning(f"{gas} was not found in IR data.")
                 return
 
         # just to see if supplied gas is calibrated or not
         calibrated = set()
-        for TG_IR in samples:
+        for sample in samples:
             try:
-                calibrated.update(set(TG_IR.linreg.index))
+                calibrated.update(set(sample.linreg.index))
             except AttributeError:
                 if y_axis == "rel":
-                    logger.warn(f"{gas} is not calibrated for {TG_IR.name}")
+                    logger.warning(f"{gas} is not calibrated for {sample.name}")
 
         if y_axis == "rel":
             if calibrated == set():
-                logger.warn(
+                logger.warning(
                     f"{gas} is not calibrated. Change y_axis to 'orig' and rerun command."
                 )
                 return
-    fig, ax = plt.subplots()
+
     ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
-    if plot != "IR":
+    if plot != "EGA":
         if y_axis == "orig":
             ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS[ylabel]}$")
         elif y_axis == "rel":
@@ -73,7 +73,7 @@ def plots(
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
             else:
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
-    elif plot == "IR":
+    elif plot == "EGA":
         if y_axis == "orig":
             ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS[ylabel]}$")
         elif y_axis == "rel":
@@ -83,10 +83,15 @@ def plots(
 
     # actual plotting
     for sample in samples:
-        if reference_mass == "reference_mass":
-            ref_mass = sample.info[sample.info[reference_mass]]
+        if reference_mass_name:
+            step_data = sample.step_data()
+            if reference_mass_name in step_data.step:
+                ref_mass = step_data[step_data.step==reference_mass_name].sample_mass
+            else:
+                logger.error(f"{reference_mass_name!r} is no valid option. Choose one of {step_data.step.to_list()!r}")
+                continue
         else:
-            ref_mass = sample.info[reference_mass]
+            ref_mass = sample.reference_mass
 
         label = make_title(sample)
         if plot == "TG":
@@ -141,12 +146,12 @@ def plots(
                 y,
                 linewidth=linewidth,
                 label=label)
-        if plot == "IR":
-            x = copy.deepcopy(sample.ir[x_axis])
+        if plot == "EGA":
+            x = copy.deepcopy(sample.ega[x_axis])
             if x_axis == "time":
                 x /= 60
             if y_axis == "orig":
-                y = sample.ir[gas]
+                y = sample.ega[gas]
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis
@@ -157,7 +162,7 @@ def plots(
                     linewidth=linewidth,
                     label=label)
             elif y_axis == "rel":
-                y = sample.ir[gas] / sample.linreg["slope"][gas] / ref_mass
+                y = sample.ega[gas] / sample.linreg["slope"][gas] / ref_mass
                 if (
                     ylim == "auto"
                 ):  # only select relevant range of x data, to auto-scale the y axis
@@ -181,12 +186,4 @@ def plots(
     )  # switch on minor ticks on each axis
     ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
 
-    plt.show()
 
-    if save:
-        path_plots = PATHS["plots"]
-        if not path_plots.exists() :
-            path_plots.mkdir()
-        if gas == None:
-            gas = ""
-        fig.savefig(path_plots /"_".join([time(), plot, gas, y_axis, '.png']))
