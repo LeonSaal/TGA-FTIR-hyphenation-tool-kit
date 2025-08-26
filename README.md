@@ -322,7 +322,7 @@ The file must contain two required and can contain other otional key-value-pairs
 
 For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles).
 
-The hyphenation is achieved with a separate `.json` of the following structure:
+The hyphenation is achieved with a separate `.json`-file in the ``settings/import_profiles/profiles``-folder of the following structure:
 ```json
 {
     "data": {
