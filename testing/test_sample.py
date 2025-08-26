@@ -7,6 +7,8 @@ import pytest
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from itertools import repeat
+import shutil as sh
+import os
 
 cali_sample_names = [['ExpDat_250605_dd_Calciumoxalat_02_spline',
  'ExpDat_250605_dd_Calciumoxalat_03_spline',
@@ -17,12 +19,10 @@ cali_sample_names = [['ExpDat_250605_dd_Calciumoxalat_02_spline',
 sample_names = [cali_sample_names[0][0], "dd_220721_AS5000_01"]
 profiles = ["Netzsch", "Otto"]
 
-
 @fixture(params = [(samples, profile) for samples, profile in zip(cali_sample_names, profiles)], ids=profiles)
 def get_cali_worklist(request):
     names, profile = request.param
     yield Worklist(names, profile=profile)
-
 
 @fixture(params = [(name, profile) for name, profile in zip(sample_names, profiles)], ids=profiles)
 def get_sample(request):

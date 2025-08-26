@@ -13,7 +13,15 @@
             "time",
             "suffix"
         ],
-        "converters":{"time":"lambda x: float(x.replace(',', '.'))+5"}
+        "converters": {
+            "time": "lambda x: float(x.replace(',', '.'))+5"
+        }
     },
-    "units":["min", "dimensionless", "dimensionless", "dimensionless", "dimensionless"]
+    "units": [
+        "min",
+        "dimensionless",
+        "dimensionless",
+        "dimensionless",
+        "dimensionless"
+    ]
 }

@@ -40,5 +40,11 @@
         "date": "(?P<name>)Durchgeführt am(?P<value>\\d{2}\\.\\d{2}\\.\\d{4})(?P<unit>)",
         "time": "(?P<name>)Durchgeführt am.+(?P<value>\\d{2}:\\d{2}:\\d{2})(?P<unit>)"
     },
-    "units": ["s", "degreeC", "degreeC", "mg", "mW"]
+    "units": [
+        "s",
+        "degreeC",
+        "degreeC",
+        "mg",
+        "mW"
+    ]
 }

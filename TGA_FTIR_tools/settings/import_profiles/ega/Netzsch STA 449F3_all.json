@@ -20,5 +20,8 @@
         "Time": "time",
         "Mass": "sample_mass"
     },
-    "usecols": [1, "6:109"]
+    "usecols": [
+        1,
+        "6:109"
+    ]
 }
