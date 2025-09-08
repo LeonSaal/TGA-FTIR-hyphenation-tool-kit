@@ -18,7 +18,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    install_requires=["pandas[excel, performance, plot, output-formatting, computation, output-formatting]", "scikit-learn", "requests","pint", "ipykernel", "seaborn", "molmass", "pint-pandas"],
+    install_requires=["pandas[excel, performance, plot, output-formatting, computation, output-formatting]", "scikit-learn", "requests","pint", "ipykernel", "seaborn", "molmass", "pint-pandas", "openpyxl"],
     python_requires=">=3.10.4",
     package_data={"settings": ["*.ini", "*.xlsx"]}
 )

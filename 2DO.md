@@ -73,6 +73,7 @@
   - reduce if statements
   - combine code blocks to and or move functions to separate .py-files
 - formatting of code 
+- use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)
 
 ## Testing
 - add automated testing for

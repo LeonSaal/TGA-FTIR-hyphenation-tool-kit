@@ -65,12 +65,13 @@ PATH_SET = PATH_DIR / "settings"
 config ={"ini":"settings.ini", "fitting_params":"Fitting_parameter.xlsx"}
 PATHS = {name: PATH_SET/ file for name, file in config.items()}
 
-# copy fresh settings into working directory         
-if not os.path.exists(config["ini"]):
-    if PATHS["ini"].exists():
-        sh.copy(PATHS["ini"], config["ini"])
-    else:
-        logger.error("Unable to find default settings.")
+# copy fresh settings into working directory 
+for name, filename in config.items():        
+    if not os.path.exists(filename):
+        if PATHS[name].exists():
+            sh.copy(PATHS[name], filename)
+        else:
+            logger.error(f"Unable to find {filename!r} in module!")
 
 # read settings
 cfg = configparser.ConfigParser()
@@ -87,6 +88,13 @@ MERGE_CELLS = True
 UNITS = cfg["units"]
 SEP = UNITS["sep"]
 
+# hint location of fit parameters
+def fit_references(open=False):
+    path = PATHS['fitting_params']
+    if open:
+        os.startfile(path.as_posix())
+    return path
+
 # update settings and paths for data and working directory
 logging.basicConfig(level=DEFAULTS["logging_level"], format=fmt, style="{")
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
@@ -94,6 +102,7 @@ if PATHS["home"] == Path() or not PATHS["home"].exists():
     cwd = os.getcwd().replace(os.sep, os.altsep)
     logger.info(f"No valid home path was supplied in {config['ini']!r}. home was set to {cwd!r}")
     cfg["paths"]["home"] = cwd
+
 if PATHS["data"] == Path() or not PATHS["data"].exists():
     logger.warning(f"No valid data path was supplied in {config['ini']!r}.")
     cfg["paths"]["data"] = input("Supply directory of Data:").replace(
@@ -117,12 +126,7 @@ units = ["mg", "min", "°C", "mmol", "mW", "mg\\,min^{{-1}}"]
 for key, val in zip(keys, units):
     UNITS[key] = val
 
-# hint location of fit parameters
-def fit_references(open=False):
-    path = PATHS['fitting_params']
-    if open:
-        os.startfile(path.as_posix())
-    return path
+
 
 # read, write, update settings
 def read_config(cfg_file: Union[str, PathLike] = config["ini"]) -> configparser.ConfigParser:

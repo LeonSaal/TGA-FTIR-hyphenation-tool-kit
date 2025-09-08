@@ -348,12 +348,9 @@ class Sample:
 
     def get_value(self, *values, which="sample_mass", at="sample_temp"):
         "extract values from TG data at e.g. certain temperatures"
-
-        out = pd.DataFrame(index=[which], columns=pd.Index(values, name=at))
-        for value in values:
-            out.loc[which, value] = self.tga[which][self.tga[at] >= value].values[0]
-
-        return out
+        new_idx = pd.Series(values, dtype=self.tga[at].dtype)
+        
+        return self.tga.set_index(at).reindex(new_idx, method="nearest")[which]
 
     def dry_weight(self, plot=False, **kwargs):
         "determine dry point and mass of sample"
