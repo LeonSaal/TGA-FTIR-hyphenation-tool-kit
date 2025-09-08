@@ -64,7 +64,7 @@ class Sample:
                 self.__dict__.update(read_data(self.name, profile=self.profile))
             except Exception as e:
                 logger.error(f"Could not read any data for {self.name!r}. Have you specified the right {self.profile=}")
-            self._info = SampleInfo(self.name, info=self._info)
+            self._info = SampleInfo(self.name, info=self._info, profile=self.profile)
 
             if self.tga is not None:
                 logger.info("TGA data found.")
@@ -112,7 +112,7 @@ class Sample:
 
             else:
                 logger.error(f"No TGA data found for {self.name!r}.")
-                self._info = SampleInfo(name=self.name, alias=self.alias)
+                self._info = SampleInfo(name=self.name, alias=self.alias, profile=self.profile)
 
             if self.ega is not None:
                 self._info["gases"] = self.ega.columns[1:].to_list()
@@ -349,7 +349,7 @@ class Sample:
     def get_value(self, *values, which="sample_mass", at="sample_temp"):
         "extract values from TG data at e.g. certain temperatures"
         new_idx = pd.Series(values, dtype=self.tga[at].dtype)
-        
+
         return self.tga.set_index(at).reindex(new_idx, method="nearest")[which]
 
     def dry_weight(self, plot=False, **kwargs):
@@ -619,7 +619,7 @@ class Sample:
         self.results["robustness"].update({ref: {"data":data,"summary":summary}})
         return data, summary
 
-    def save(self, how: Literal["samplelog", "excel", "pickle"], **kwargs):
+    def save(self, how: Literal["samplelog", "excel", "pickle"]="samplelog", **kwargs):
         "save object or its contents as pickle file or excel"
         options = ["samplelog", "excel", "pickle"]
         if how not in options:
@@ -627,14 +627,12 @@ class Sample:
             return
 
         # update samplelog
-        info = {key: str(value) for key, value in info.items() if value is not None}
-        data = pd.DataFrame.from_dict(info, orient="index").T
-        data.set_index("name", inplace=True)
-        samplelog(data, create=True, **kwargs)
-        path_output = PATHS["output"]
+        samplelog(self.info.to_row(), create=True, **kwargs)
+
         if how == "samplelog":
             return
-
+        
+        path_output = PATHS["output"]
         if not path_output.exists():
             os.makedirs(path_output)
 
@@ -642,6 +640,7 @@ class Sample:
         if how == "pickle":
             with open(path_output / f"{self.name}.pkl", "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
         elif how == "excel":
             path = path_output / f'{self._info["name"]}.xlsx'
             with pd.ExcelWriter(path) as writer:

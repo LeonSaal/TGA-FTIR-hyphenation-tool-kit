@@ -110,7 +110,11 @@ Sample(name, alias=None, mode="construct", profile=None)
 #### Initialization
 
 ```python
-Worklist(samples, name=None, profile=None)
+Worklist(samples, name=None, profiles=[], aliases=[])
+```
+Or from samplelog:
+```python
+Worklist.from_samplelog(sheet_name=0)
 ```
 
 **Parameters**
@@ -119,7 +123,10 @@ Worklist(samples, name=None, profile=None)
 | ------- | ----------- | ------- | ------------------------------- |
 | samples | list/Sample | —       | List of Sample objects or names |
 | name    | str         | None    | Name of the worklist            |
-| profile | str         | None    | Data loading profile            |
+| profiles | list         | []    | Data loading profiles            |
+| aliases | list         | []    | Sample aliases            |
+| sheet_name | str \| int         | 0    | Name or integer number of sheet in `Samplelog.xlsx` to initialize worklist from.           |
+
 
 **Attributes**
 
@@ -127,7 +134,8 @@ Worklist(samples, name=None, profile=None)
 | --------- | ---------------------- |
 | samples   | List of Sample objects |
 | name      | Name of worklist       |
-| profile   | Data loading profile   |
+| profiles   | Data loading profiles   |
+| aliases | Sample aliases from initialization. For current alias use `print(Worklist)` or access `Sample` directly.|
 
 ---
 
@@ -236,12 +244,18 @@ See function docstrings for option-specific parameters.
 
 ### Saving
 
-Save sample or worklist data.
+Save sample or worklist data to output directory (specified  under `settings.ini/[paths]/output`).
 
 ```python
 Sample.save(how="samplelog"|"excel"|"pickle")
-Worklist.save(fname=None)
+Worklist.save(how="samplelog"|"pickle")
 ```
+
+|`how`|Description|
+|-|-|
+|samplelog|Writes information from object to `Samplelog.xlsx`.|
+|pickle|Saves object as pickle-file.|
+|excel|Writes `Sample.info`,  `Sample.tga` and `Sample.ega` from sample to separate sheets in excel-file.|
 
 ---
 

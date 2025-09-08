@@ -1,3 +1,8 @@
+# 2025-09
+- added option to `samplelog` to read/write specific sheets
+- added `Worklist.from_samplelog` to create worklist from specific sheet in samplelog
+- fixed bug in ``Sample.get_values`` when no units are present [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
+
 # 2025-08-25
 - improved integration plot from calibration
 - fixed bug in calibration when molecular formula is invalid

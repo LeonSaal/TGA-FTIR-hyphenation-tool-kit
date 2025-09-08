@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Union
 import matplotlib.pyplot as plt
 import pandas as pd
-from itertools import chain
+from itertools import chain, zip_longest
 from ..classes import Sample
 from ..config import PATHS, DEFAULTS
 from ..fitting import get_presets, robustness
@@ -35,21 +35,22 @@ import os
 class Worklist:
     samples: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
-    profile: str = DEFAULTS["profile"]
+    profiles: list = field(default_factory=list)
+    aliases: list = field(default_factory=list)
     _results: dict = field(default_factory=lambda: {"fit": pd.DataFrame(), "robustness": pd.DataFrame()})
 
     def __post_init__(self):
         match self.samples:
             case str():
-                self.samples = [Sample(self.samples, profile=self.profile)]
+                self.samples = [Sample(self.samples, profile=self.profiles if len(self.profiles)==1 else DEFAULTS["profile"], alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
             case list():
                 self.samples = [
                     (
                         sample
                         if isinstance(sample, Sample)
-                        else Sample(sample, profile=self.profile)
+                        else Sample(sample, profile=profile if profile else DEFAULTS["profile"], alias = alias if alias else sample)
                     )
-                    for sample in self.samples
+                    for sample, profile, alias in zip_longest(self.samples, self.profiles, self.aliases)
                 ]
             case Sample():
                 self.samples = [self.samples]
@@ -57,10 +58,6 @@ class Worklist:
                 logger.warning(
                     f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample]."
                 )
-        if any([sample.profile != self.profile for sample in self.samples]):
-            logger.warning(
-                f"Some of the supplied Samples have another profile than {self.profile!r}"
-            )
 
     def __add__(self, other):
         if isinstance(other, Sample):
@@ -271,33 +268,19 @@ class Worklist:
 
     def save(
         self,
-        fname: str = None,
         how: Literal["samplelog", "pickle"] = "samplelog",
         **kwargs,
     ) -> None:
         if how == "samplelog":
-            # collect sample info
-            infos = {sample.name: sample.info for sample in self.samples}
-            info = {
-                name: {
-                    key: str(value)
-                    for key, value in info.__dict__.items()
-                    if value is not None
-                }
-                for name, info in infos.items()
-            }
-
-            # make df and save
-            data = pd.DataFrame.from_dict(info, orient="index")
+            # collect sample info and save
+            data = pd.concat([sample.info.to_row() for sample in self.samples])
             samplelog(data, how="samplelog")
 
         elif how == "pickle":
             path_output = PATHS["output"]
             if not path_output.exists():
                 os.makedirs(path_output)
-            if not fname:
-                fname = self.name
-            path = path_output / f"{fname}.wkl"
+            path = path_output / f"{self.name}.wkl"
             with open(path, "wb") as output:
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -316,3 +299,11 @@ class Worklist:
             return pd.DataFrame.fromdict(out)
         elif type=="dict":
             return out
+        
+    def from_samplelog(sheet_name=0):
+        worklist = samplelog(sheet_name=sheet_name)
+        samples = worklist.index.to_list()
+        profiles = worklist.profile
+        aliases = worklist.alias
+
+        return Worklist(samples, name = sheet_name, profiles=profiles, aliases=aliases)

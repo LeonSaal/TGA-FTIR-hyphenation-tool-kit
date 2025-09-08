@@ -9,6 +9,7 @@ class SampleInfo:
     name: Optional[str]
     reference: str = None
     alias: str = None
+    profile: str = None
     corrected: bool = False
     initial_mass: float = None
     final_mass: float=None
@@ -47,3 +48,17 @@ class SampleInfo:
     def get(self, key):
         if key in self.__dict__:
             return self.__dict__[key]
+
+    
+    def to_dict(self):
+        return {
+            key: str(value)
+            for key, value in self.__dict__.items()
+            if value is not None
+        }
+
+    def to_row(self):
+        return (pd.DataFrame
+                .from_dict(self.to_dict(), orient="index")
+                .T
+                .set_index("name"))

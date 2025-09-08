@@ -33,6 +33,7 @@
   - warning if profile doesn't match data
   - determine gases in ega more flexible (currently by index)
   - restructure import profile to better distinguish required and optional fields
+  - is it possible to edit parameters, e.g. how_dry, during initialization of a worklist? (in case of TGA without EGA is used in a profile) [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
 
 ## Correction
 - add synthetic baseline
@@ -98,3 +99,4 @@
 - calibration
 - add docstrings, signatures for every function
 - add example folder
+- regarding the order of sections in the readme file: I would expact Plotting to appear previously to Fitting. Or not? [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
