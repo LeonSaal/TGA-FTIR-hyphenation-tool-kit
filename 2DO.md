@@ -34,11 +34,16 @@
   - determine gases in ega more flexible (currently by index)
   - restructure import profile to better distinguish required and optional fields
   - is it possible to edit parameters, e.g. how_dry, during initialization of a worklist? (in case of TGA without EGA is used in a profile) [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
+  - make import profile more flexible (e.g. allow flexible number of gases, ignore last, from index onwards to -2 -> just one file for Netzsch)
+  - other name for ega Netzsch
 
 ## Correction
 - add synthetic baseline
   - ALS, linear, const
 - make correction of $CO_2$ more flexible / less specific to first device
+  - move to profile?
+  - expect corrected profiles?
+- automatic correction on init?
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -75,6 +80,7 @@
   - combine code blocks to and or move functions to separate .py-files
 - formatting of code 
 - use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)
+- ``settings[units] int_ega = ega``
 
 ## Testing
 - add automated testing for
