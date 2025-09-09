@@ -150,25 +150,36 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         # concatenate data and remove duplicate columns
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
+        rename = {}
 
         # select specific columns if specified
-        if values.get("usecols") and isinstance(values["usecols"], list):
+        if values.get("usecols") and isinstance(values["usecols"], dict):
             indices = set()
-            for val in values.get("usecols"):
+            for val, repl in values.get("usecols").items():
                 match val:
                     case int():
                         indices.add(val)
+                        if repl:
+                            rename[concat.columns[val]] = repl
                     case str():
+                        # match slice range from string
                         if m:=re.match("^(?P<start>\\d+):(?P<stop>\\d+)$", val):
                             start, stop = int(m.group("start")), int(m.group("stop"))
                             stop = stop if stop > 0 else stop+concat.columns.size
                             indices_new = list(range(start,stop ))
                             indices.update(indices_new)
                         else:
+                            # match name
                             if val in concat.columns:
                                 indices.add(concat.columns.get_loc(val))
+                                if repl:
+                                    rename[val] = repl
+                            # match regular expression to names
+                            elif (bidxs:=concat.columns.str.match(val)).any():
+                                indices.update({concat.columns.get_loc(col) for col, bidx in zip(concat.columns, bidxs) if bidx})
+                                rename.update({col:re.sub(val, repl, col) for col, bidx in zip(concat.columns, bidxs) if bidx and repl})
                             else:
-                                logger.warning(f"{val!r} is neither a valid slice, nor a valid column name.")
+                                logger.warning(f"{val!r} is neither a valid slice, a matching regular expression nor a valid column name.")
                     case _:
                         logger.warning(f"Invalid type of element in 'usecols': {val}, {type(val)}")
             concat = concat.iloc[:,list(indices)]
@@ -203,23 +214,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
 
         # rename columns if specified
         oldnames = concat.columns
-        if values.get("rename"):
-            # handle different formats for rename
-            match values["rename"]:
-                case dict():
-                    rename = values["rename"]
-                case str():
-                    rename = eval(values["rename"])
-                case list():
-                    if len(values["rename"]) != concat.columns.size:
-                        logger.error(f"Rename list for {key} in profile {profile!r} does not match number of columns.")
-                    else:
-                        rename = {col: new_col if new_col else col for col, new_col in zip(concat.columns, values["rename"])}
-                case _:
-                    logger.error(f"Invalid rename format for {key} in profile {profile!r}.")
-                    rename = {}
-            
-            concat.rename(columns=rename, inplace=True)
+        concat.rename(columns=rename, inplace=True)
 
         # map names to internal names
         if values.get("name_mapping"):

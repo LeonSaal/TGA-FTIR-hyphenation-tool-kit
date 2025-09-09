@@ -329,10 +329,8 @@ The file must contain two required and can contain other otional key-value-pairs
 |optional|kwargs|dict|—|Extra arguments passed on to [`pandas.read_csv`](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html#pandas.read_csv). Currently only data readable by this function is supported.|
 |optional|map_suffix|dict|—|Map values of capture group "suffix" to custom name.|
 |optional|info_pattern|dict|—|Key-regular expressions (regex) pairs to extract additional information from raw data *e.g.* from the header or footer of the file. The regex must have named capture groups: "name", "value" and "unit" (can be empty). If the regex matches once, the key from the dict is used, otherwise the name from the capture group.|
-|optional|usecols|list|—|Subset columns in combined data. List can contain a combination of integer indices, column names (after renaming) and slices as string *e.g.* "1:3"|
+|optional|usecols|dict|—|Subset and rename columns in combined data. Dict keys can contain a combination of integer indices, column names and column name patterns. The corresponding value (if not `null`) is the replacement value. For patterns, the replacement is done using [`re.sub`](https://docs.python.org/3/library/re.html#re.sub), so capture groups can be accessed via *e.g.* number or name.|
 |optional|units|str, list, dict|—|Assign units to columns. If str, regex with capture "unit" to extract unit from column header. If list, unit for respective column (must have same length). If dict, a mapping of column-name: unit. |
-|optional|rename|str, list, dict|—|enaming of columns. If str, assumes function to be evaluated *e.g.* ``lambda x: x.upper()``. If list, new name for respective column (must have same length). If dict, a mapping of old-name:new-name|
-|optional|name_mapping|dict|—|A mapping of old-name:new-name (old-name after rename operation)|
 
 For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles).
 

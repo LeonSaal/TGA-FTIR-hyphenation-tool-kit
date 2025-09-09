@@ -13,20 +13,13 @@
         "encoding": "utf-16",
         "skipinitialspace": true
     },
-    "info_pattern": {
-        "initial_mass": "#(?P<name>SAMPLE MASS) /(?P<unit>mg):\\s+;(?P<value>[\\d.]+)",
-        "any": "#(?P<name>[\\w\\s]+?)(?:\\s/(?P<unit>\\w+))?:\\s*;(?P<value>.*?)\\s+"
-    },
-    "usecols": [
-        "0:3",
-        -2,
-        -1
-    ],
     "units": "(?:[^/]+)/?(?P<unit>.+)?",
-    "name_mapping": {
+    "usecols": {
         "##Temp./°C": "sample_temp",
         "Time/min": "time",
-        "Mass/%": "sample_mass",
-        "c-DTA®(1)/K": "heat_flow"
+        "QMID\\(s:\\d+\\|(m:\\d+)\\)/A": "\\1",
+        "[CHNO\\d]+": null,
+        "Sensit./(uV/mW)": "sensitivity",
+        "Segment": null
     }
 }
