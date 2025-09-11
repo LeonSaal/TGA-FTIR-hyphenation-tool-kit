@@ -8,5 +8,7 @@ import pint_pandas
 import pint
 pint_pandas.PintType.ureg.formatter.default_format = "P~"
 ureg = pint.get_application_registry()
+ureg.autoconvert_offset_to_baseunit =True
+pint.set_application_registry(ureg)
 ureg.setup_matplotlib()
 ureg.mpl_formatter = "{:~P}"

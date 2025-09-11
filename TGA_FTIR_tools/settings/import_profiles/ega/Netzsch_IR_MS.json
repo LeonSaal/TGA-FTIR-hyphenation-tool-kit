@@ -15,11 +15,8 @@
     },
     "units": "(?:[^/]+)/?(?P<unit>.+)?",
     "usecols": {
-        "##Temp./°C": "sample_temp",
         "Time/min": "time",
         "QMID\\(s:\\d+\\|(m:\\d+)\\)/A": "\\1",
-        "[CHNO\\d]+": null,
-        "Sensit./(uV/mW)": "sensitivity",
-        "Segment": null
+        "[CHNO\\d]+": null
     }
 }

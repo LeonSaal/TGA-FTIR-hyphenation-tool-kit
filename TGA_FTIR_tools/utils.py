@@ -77,6 +77,9 @@ def select_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
             elif selection == "n":
                 profile = create_import_profile(directory, loc=loc)
                 break
+            elif selection == "s":
+                logger.warning("Skipping.")
+                return
 
     else:
         logger.info("No profiles found.")
@@ -137,6 +140,12 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
     profile = {"data": data}
     fields = ["name_pattern", "mass_resolution_ug"]
     profile["supplementary"] = {field: "" for field in fields}
+    
+    # load defaults profile specs
+    if (p:=PATH_SET / "default.json").exists():
+        defaults = read_json(p)
+        profile.update(defaults)
+
     # save profile
     while True:
         name = input("Enter profile name!")

@@ -103,6 +103,8 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         logger.error(f"Profile {profile!r} not found or empty.")
         return out
 
+    info["corrections"] = profile_specs.get("corrections", {})
+
     # iterate over devices
     for key, values in profile_specs["data"].items():
         paths = find_files_re(sample_name, values["ext"], PATHS["data"])
@@ -150,6 +152,10 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         # concatenate data and remove duplicate columns
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
+
+        # fill na
+        concat = concat.interpolate(method="cubicspline")
+
         rename = {}
 
         # select specific columns if specified
@@ -215,10 +221,6 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         # rename columns if specified
         oldnames = concat.columns
         concat.rename(columns=rename, inplace=True)
-
-        # map names to internal names
-        if values.get("name_mapping"):
-            concat.rename(columns=values.get("name_mapping"), inplace=True)
 
         # rename unit indices
         newnames = concat.columns

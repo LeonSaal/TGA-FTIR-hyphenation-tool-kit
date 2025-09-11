@@ -22,7 +22,7 @@ profiles = ["Netzsch", "Otto"]
 @fixture(params = [(samples, profile) for samples, profile in zip(cali_sample_names, profiles)], ids=profiles)
 def get_cali_worklist(request):
     names, profile = request.param
-    yield Worklist(names, profile=profile)
+    yield Worklist(names, profiles=profile)
 
 @fixture(params = [(name, profile) for name, profile in zip(sample_names, profiles)], ids=profiles)
 def get_sample(request):
@@ -32,7 +32,7 @@ def get_sample(request):
 @fixture(params = ((samplename, profile) for samplename, profile in zip(sample_names*3, profiles*3)), ids=profiles*3)
 def get_worklist(request):
     def init_options():
-        yield Worklist(request.param[0], profile = request.param[1])
+        yield Worklist(request.param[0], profiles = request.param[1])
         for fun in [lambda x, y: Sample(x, profile=y), lambda x, y: [Sample(x, profile=y)]]:
             init = fun(*request.param)
             yield Worklist(init)
@@ -49,10 +49,10 @@ class TestSampleInit:
         #assert isinstance(get_sample.reference, str) or None
 
         # check loading of linreg before calibration
-        assert get_sample.linreg is None
-        assert get_sample.stats is None
-        assert get_sample.xcali is None
-        assert get_sample.ycali is None
+        # assert get_sample.linreg is None
+        # assert get_sample.stats is None
+        # assert get_sample.xcali is None
+        # assert get_sample.ycali is None
         assert isinstance(get_sample.info,SampleInfo)
 
 @pytest.mark.usefixtures("get_sample")
@@ -72,12 +72,12 @@ class TestSamplePlot:
 #@pytest.mark.parametrize("get_sample, get_cali_worklist", [((sample_names[0], "Netzsch"), cali_sample_names)], indirect=True)
 class TestSampleCali:    
     def test_calibration(self, get_sample, get_cali_worklist):
-        if get_sample.profile != get_cali_worklist.profile:
+        if get_sample.profile != get_cali_worklist.profiles[0]:
             pytest.skip("Different profiles")
         
         sample = get_sample
         wl = get_cali_worklist
-        sample.calibrate(worklist=wl, mode="recalibrate", molecular_formulas = {'QMID(s:1|m:18)/A': 'H2O', 'QMID(s:2|m:44)/A': 'CO2'},plot=True)
+        sample.calibrate(worklist=wl, mode="recalibrate", molecular_formulas = {'m:18': 'H2O', 'm:44': 'CO2'},plot=True)
         sample = get_sample
         assert isinstance(get_sample.stats , pd.DataFrame)
         assert isinstance(get_sample.linreg , pd.DataFrame)

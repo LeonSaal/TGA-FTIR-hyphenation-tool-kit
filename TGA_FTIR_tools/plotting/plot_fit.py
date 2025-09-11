@@ -61,7 +61,7 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         fitting.legend()
         fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
         if y_axis == "orig":
-            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['ega']}$")
+            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['int_ega']}$")
         elif y_axis == "rel":
             fitting.set_ylabel(
                 f"{get_label(gas)} {SEP} ${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"

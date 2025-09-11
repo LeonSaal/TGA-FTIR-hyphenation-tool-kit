@@ -35,20 +35,22 @@ import os
 class Worklist:
     samples: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
-    profiles: list = field(default_factory=list)
+    profiles: Union[List, str] = DEFAULTS["profile"]
     aliases: list = field(default_factory=list)
     _results: dict = field(default_factory=lambda: {"fit": pd.DataFrame(), "robustness": pd.DataFrame()})
 
     def __post_init__(self):
+        if isinstance(self.profiles, str):
+            self.profiles = [self.profiles]*len(self)
         match self.samples:
             case str():
-                self.samples = [Sample(self.samples, profile=self.profiles if len(self.profiles)==1 else DEFAULTS["profile"], alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
+                self.samples = [Sample(self.samples, profile=self.profiles[0] if len(self.profiles)==1 else DEFAULTS["profile"], alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
             case list():
                 self.samples = [
                     (
                         sample
                         if isinstance(sample, Sample)
-                        else Sample(sample, profile=profile if profile else DEFAULTS["profile"], alias = alias if alias else sample)
+                        else Sample(sample, profile=profile, alias = alias if alias else sample)
                     )
                     for sample, profile, alias in zip_longest(self.samples, self.profiles, self.aliases)
                 ]
@@ -277,21 +279,22 @@ class Worklist:
             samplelog(data, how="samplelog")
 
         elif how == "pickle":
-            path_output = PATHS["output"]
-            if not path_output.exists():
-                os.makedirs(path_output)
-            path = path_output / f"{self.name}.wkl"
-            with open(path, "wb") as output:
-                pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+            self.to_pickle()
 
-            # for sample in self.samples:
-        #     sample.save(**kwargs)
+    def from_pickle(name: str) -> None:
+        if (p:= PATHS["output"] / f"{name}.pkl").exists():
+            with open(p , "rb") as inp:
+                obj = pickle.load(inp)
+            if isinstance(obj, Sample):
+                return obj
+        else:
+            logger.error(f"{p.as_posix()!r} does not exist!")
 
-    def load(self, fname: str) -> None:
-        with open(PATHS["output"] / f"{fname}.wkl", "rb") as inp:
-            obj = pickle.load(inp)
-        for key in obj.__dict__:
-            self.__dict__[key] = obj.__dict__[key]
+    def to_pickle(self):
+        if not PATHS["output"].exists():
+            os.makedirs(PATHS["output"])
+        with open(PATHS["output"] / f"{self.name}.pkl", "wb") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
     
     def info(self, type: str = "df") -> pd.DataFrame | dict :
         out = {sample.name: sample.info for sample in self.samples}
@@ -299,6 +302,9 @@ class Worklist:
             return pd.DataFrame.fromdict(out)
         elif type=="dict":
             return out
+        
+    def calibrate():
+        pass
         
     def from_samplelog(sheet_name=0):
         worklist = samplelog(sheet_name=sheet_name)

@@ -10,6 +10,7 @@ import scipy as sp
 
 from ..config import BOUNDS, PATHS, config
 from ..input_output.general import time
+from ..input_output.corrections import baseline_als
 from ..utils import multi_gauss
 from .fitdata import FitData
 import pint_pandas
@@ -21,18 +22,7 @@ logger = logging.getLogger(__name__)
 url_fitting_param = "https://raw.githubusercontent.com/BAMresearch/TGA-data.ir-hyphenation-tool-kit/9382aaea97048e507bdc56715f971a9dec25be6d/Fitting_parameter.xlsx"
 
 
-def baseline_als(
-    y, lam=1e6, p=0.01, niter=10
-):  # https://stackoverflow.com/questions/29156532/python-baseline-correction-library
-    L = len(y)
-    D = sp.sparse.csc_matrix(np.diff(np.eye(L), 2))
-    w = np.ones(L)
-    for i in range(niter):
-        W = sp.sparse.spdiags(w, 0, L, L)
-        Z = W + lam * D.dot(D.transpose())
-        z = sp.sparse.linalg.spsolve(Z, w * y)
-        w = p * (y > z) + (1 - p) * (y < z)
-    return z
+
 
 
 def fitting(

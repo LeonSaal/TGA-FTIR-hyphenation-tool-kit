@@ -8,29 +8,31 @@ A Python package for handling hyphenated TGA and EGA data, including plotting an
     - [Core Classes](#core-classes)
     - [Basic Usage](#basic-usage)
   - [API Reference](#api-reference)
-    - [Sample](#sample)
-      - [Initialization](#initialization)
-    - [Worklist](#worklist)
-      - [Initialization](#initialization-1)
-  - [Main Methods](#main-methods)
-    - [Correction](#correction)
-    - [Fitting](#fitting)
-    - [Robustness Analysis](#robustness-analysis)
-    - [Plotting](#plotting)
-    - [Saving](#saving)
+    - [Initialization](#initialization)
+      - [Sample](#sample)
+      - [Worklist](#worklist)
     - [Loading](#loading)
-  - [Common Dunder Methods](#common-dunder-methods)
-  - [Class-Specific Methods](#class-specific-methods)
-    - [Sample Methods](#sample-methods)
-    - [Worklist Methods](#worklist-methods)
+    - [Saving](#saving)
+    - [Common Dunder Methods](#common-dunder-methods)
+    - [Main Methods](#main-methods)
+      - [Correction](#correction)
+      - [Plotting](#plotting)
+      - [Fitting](#fitting)
+      - [Robustness Analysis](#robustness-analysis)
+    - [Class-Specific Methods](#class-specific-methods)
+      - [Sample Methods](#sample-methods)
+      - [Worklist Methods](#worklist-methods)
   - [Additional Information](#additional-information)
     - [Data Loading Profile](#data-loading-profile)
+      - [Data](#data)
+      - [Supplementary](#supplementary)
+      - [Corrections](#corrections)
 
 ---
 
 ## Installation
 
-Create a new environment and install via pip:
+Create a new environment and install via ``pip``:
 
 ```sh
 conda create -n <YOUR_ENV> python
@@ -70,10 +72,8 @@ s.plot("TG") # Plot TG data
 ---
 
 ## API Reference
-
-### Sample
-
-#### Initialization
+### Initialization
+#### Sample
 
 ```python
 Sample(name, alias=None, mode="construct", profile=None)
@@ -84,51 +84,59 @@ Sample(name, alias=None, mode="construct", profile=None)
 | Name    | Type | Default     | Description                                                                              |
 | ------- | ---- | ----------- | ---------------------------------------------------------------------------------------- |
 | name    | str  | —           | Name of the sample (usually filename)                                                    |
-| alias   | str  | None        | Alias for plots and grouping                                                             |
-| mode    | str  | "construct" | "construct" (from raw data) or "pickle" (from [pickle](#saving))                         |
 | profile | str  | None        | Data loading profile, if None is supplied, launched interactive prompt to construct one. |
+|||||
+| alias   | str  | None        | Alias for plots and grouping                                                             |
+| sample    | str              | alias                           | Sample type for grouping               |
+| run    | str \| int           | alias                           | Sample run for grouping replicates              |
 
-**Attributes**
+
+**Sample Attributes**
 
 | Attribute | Type             | Default                     | Description                            |
 | --------- | ---------------- | --------------------------- | -------------------------------------- |
 | name      | str              | —                           | Name of sample                         |
 | alias     | str              | name                        | Alias for sample                       |
-| sample    | str              | —                           | Sample type for grouping               |
+| sample    | str              | alias                           | Sample type for grouping               |
+| run    | str \| int           | alias                           | Sample run for grouping replicates              |
 | info      | dict             | —                           | Sample information (e.g. initial_mass) |
 | tga       | pd.DataFrame     | None                        | TGA data                               |
 | ega       | pd.DataFrame     | None                        | EGA data                               |
 | linreg    | pd.dataFrame     | None                        | Calibration data                       |
-| results   | dict             | {"fit":{}, "robustness":{}} | Fit and robustness results             |
+| results   | dict             | "fit":{}, "robustness":{} | Fit and robustness results             |
 | raw       | Sample           | None                        | Raw data from initialization           |
 | baseline  | Baseline(Sample) | None                        | Baseline data after correction         |
 
+
+
 ---
 
-### Worklist
-
-#### Initialization
+#### Worklist
 
 ```python
 Worklist(samples, name=None, profiles=[], aliases=[])
 ```
-Or from samplelog:
-```python
-Worklist.from_samplelog(sheet_name=0)
-```
-
 **Parameters**
 
 | Name    | Type        | Default | Description                     |
 | ------- | ----------- | ------- | ------------------------------- |
-| samples | list/Sample | —       | List of Sample objects or names |
+| samples | list[str \| Sample] \| Sample \| str | —       | List of Sample objects or names or single sample name or Sample |
 | name    | str         | None    | Name of the worklist            |
 | profiles | list         | []    | Data loading profiles            |
 | aliases | list         | []    | Sample aliases            |
+
+Or from samplelog:
+```python
+Worklist.from_samplelog(sheet_name=0)
+```
+**Parameters**
+
+| Name    | Type        | Default | Description                     |
+| ------- | ----------- | ------- | ------------------------------- |
 | sheet_name | str \| int         | 0    | Name or integer number of sheet in `Samplelog.xlsx` to initialize worklist from.           |
 
 
-**Attributes**
+**Worklist Attributes**
 
 | Attribute | Description            |
 | --------- | ---------------------- |
@@ -139,11 +147,54 @@ Worklist.from_samplelog(sheet_name=0)
 
 ---
 
-## Main Methods
+### Loading
 
-### Correction
+Load from [pickle file](#saving).
 
-Correct TG and EGA data for baseline or blank measurements.
+```python
+Sample.from_pickle(name)
+Worklist.from_pickle(fname)
+```
+
+---
+
+### Saving
+
+Save sample or worklist data to output directory (specified  under `settings.ini/[paths]/output`).
+
+```python
+Sample.save(how="samplelog"|"excel"|"pickle")
+Worklist.save(how="samplelog"|"pickle")
+```
+
+|`how`|shortcut|Description|
+|-|-|-|
+|samplelog|object.save()|Writes information from object to `Samplelog.xlsx`.|
+|pickle|object.to_pickle()|Saves object as pickle-file.|
+|excel|Sample.to_excel()|Writes `Sample.info`,  `Sample.tga` and `Sample.ega` from sample to separate sheets in excel-file.|
+
+---
+
+### Common Dunder Methods
+
+Both `Sample` and `Worklist` implement several Python "dunder" (double underscore) methods to provide intuitive behavior:
+
+- `print(obj)`: Returns a readable string representation of the object, useful for debugging and interactive sessions.
+- `obj1 + obj2`: Allows combining objects using the `+` operator. For example, `Sample + Sample` or `Sample + Worklist` returns a new `Worklist` containing both.
+- `len(obj)`: Returns the number of contained samples (`1` for `Sample`, number of samples for `Worklist`).
+- `for sample in obj:`: Enables iteration over contained samples (a single-item iterator for `Sample`, all samples for `Worklist`).
+- `obj[]` (`Worklist` only): Supports indexing and slicing to access individual samples or subsets. Works with single integer index as well as with a list of indices and also with a single sample name.
+
+These methods make it easy to work with `Sample` and `Worklist` objects in a Pythonic way, supporting iteration, combination, and inspection.
+
+---
+
+### Main Methods
+
+#### Correction
+
+Correct TG and EGA data for baseline or blank measurements. For
+correction on import see [data loading profile](#corrections).
 
 ```python
 Sample.corr(baseline_name=None, plot=False)
@@ -160,50 +211,7 @@ Worklist.corr(baseline_names=None, plot=False)
 
 ---
 
-### Fitting
-
-Fit sample or worklist data.
-
-```python
-Sample.fit(reference_name, T_max=None, T_max_tol=50, save=True, plot=True, presets=None, mod_sample=True, overwrite=False)
-Worklist.fit(reference_name, ...)
-```
-
-**Parameters**
-
-| Name           | Type  | Default | Description                  |
-| -------------- | ----- | ------- | ---------------------------- |
-| reference_name | str   | —       | Reference for fitting        |
-| T_max          | float | None    | Limit fit interval           |
-| T_max_tol      | float | 50      | Tolerance for center value   |
-| save           | bool  | True    | Save results                 |
-| plot           | bool  | True    | Plot results                 |
-| presets        | dict  | None    | Custom presets               |
-| mod_sample     | bool  | True    | Modify object during fitting |
-| overwrite      | bool  | False   | Overwrite existing fit       |
-
-Results are stored in `results["fit"][reference_name]`.
-
----
-
-### Robustness Analysis
-
-Assess sensitivity of fit to parameter variations.
-
-```python
-Worklist.robustness(reference_name, T_max=None, save=True, var_T=10, var_rel=0.3)
-```
-
-**Parameters**
-
-| Name    | Type  | Default | Description           |
-| ------- | ----- | ------- | --------------------- |
-| var_T   | float | 10      | Absolute variance (K) |
-| var_rel | float | 0.3     | Relative variance     |
-
----
-
-### Plotting
+#### Plotting
 
 Plot sample or worklist data.
 
@@ -242,49 +250,52 @@ See function docstrings for option-specific parameters.
 
 ---
 
-### Saving
+#### Fitting
 
-Save sample or worklist data to output directory (specified  under `settings.ini/[paths]/output`).
+Fit sample or worklist data.
 
 ```python
-Sample.save(how="samplelog"|"excel"|"pickle")
-Worklist.save(how="samplelog"|"pickle")
+Sample.fit(reference_name, T_max=None, T_max_tol=50, save=True, plot=True, presets=None, mod_sample=True, overwrite=False)
+Worklist.fit(reference_name, ...)
 ```
 
-|`how`|Description|
-|-|-|
-|samplelog|Writes information from object to `Samplelog.xlsx`.|
-|pickle|Saves object as pickle-file.|
-|excel|Writes `Sample.info`,  `Sample.tga` and `Sample.ega` from sample to separate sheets in excel-file.|
+**Parameters**
+
+| Name           | Type  | Default | Description                  |
+| -------------- | ----- | ------- | ---------------------------- |
+| reference_name | str   | —       | Reference for fitting        |
+| T_max          | float | None    | Limit fit interval           |
+| T_max_tol      | float | 50      | Tolerance for center value   |
+| save           | bool  | True    | Save results                 |
+| plot           | bool  | True    | Plot results                 |
+| presets        | dict  | None    | Custom presets               |
+| mod_sample     | bool  | True    | Modify object during fitting |
+| overwrite      | bool  | False   | Overwrite existing fit       |
+
+Results are stored in `results["fit"][reference_name]`.
 
 ---
 
-### Loading
+#### Robustness Analysis
 
-Load worklist from pickle file.
+Assess sensitivity of fit to parameter variations.
 
 ```python
-Worklist.load(fname)
+Worklist.robustness(reference_name, T_max=None, save=True, var_T=10, var_rel=0.3)
 ```
 
+**Parameters**
+
+| Name    | Type  | Default | Description           |
+| ------- | ----- | ------- | --------------------- |
+| var_T   | float | 10      | Absolute variance (K) |
+| var_rel | float | 0.3     | Relative variance     |
 
 ---
 
-## Common Dunder Methods
+### Class-Specific Methods
 
-Both `Sample` and `Worklist` implement several Python "dunder" (double underscore) methods to provide intuitive behavior:
-
-- `print(obj)`: Returns a readable string representation of the object, useful for debugging and interactive sessions.
-- `obj1 + obj2`: Allows combining objects using the `+` operator. For example, `Sample + Sample` or `Sample + Worklist` returns a new `Worklist` containing both.
-- `len(obj)`: Returns the number of contained samples (`1` for `Sample`, number of samples for `Worklist`).
-- `for sample in obj:`: Enables iteration over contained samples (a single-item iterator for `Sample`, all samples for `Worklist`).
-- `obj[]` (`Worklist` only): Supports indexing and slicing to access individual samples or subsets. Works with single integer index as well as with a list of indices and also with a single sample name.
-
-These methods make it easy to work with `Sample` and `Worklist` objects in a Pythonic way, supporting iteration, combination, and inspection.
-
-## Class-Specific Methods
-
-### Sample Methods
+#### Sample Methods
 
 | Method                      | Signature                                                                 | Description                                                                                                                                                                                                                |
 | --------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -299,7 +310,7 @@ These methods make it easy to work with `Sample` and `Worklist` objects in a Pyt
 ---
 
 
-### Worklist Methods
+#### Worklist Methods
 
 | Method   | Signature                             | Description                                                                      |
 | -------- | ------------------------------------- | -------------------------------------------------------------------------------- |
@@ -317,24 +328,7 @@ These methods make it easy to work with `Sample` and `Worklist` objects in a Pyt
 - For more details, see function docstrings and examples.
 
 ### Data Loading Profile
-
-For each of the hyphenated devices a separate file of the following structure has to be provided in the respective *tga* and *ega* folders.
-
-The file must contain two required and can contain other otional key-value-pairs.
-
-|    | key  | Type | Default | Description     |
-| --- | ---- | ---- | ------- | --------------- |
-| required    | spec   | dict | {"manufacturer": str, "device": str, "software": str, "version": str}   | Metainformation on the device used to collect data. |
-|  required   | ext | str |  —  | Suffix of raw data files. Can be either just the file extension *e.g.* ".csv" or a regular expression containing the capture group *suffix e.g.*: "_?(?P\<suffix\>.*).txt". If a column in the raw data gets assigned the name "suffix", this is later replaced with the captured suffix.    |
-|optional|kwargs|dict|—|Extra arguments passed on to [`pandas.read_csv`](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html#pandas.read_csv). Currently only data readable by this function is supported.|
-|optional|map_suffix|dict|—|Map values of capture group "suffix" to custom name.|
-|optional|info_pattern|dict|—|Key-regular expressions (regex) pairs to extract additional information from raw data *e.g.* from the header or footer of the file. The regex must have named capture groups: "name", "value" and "unit" (can be empty). If the regex matches once, the key from the dict is used, otherwise the name from the capture group.|
-|optional|usecols|dict|—|Subset and rename columns in combined data. Dict keys can contain a combination of integer indices, column names and column name patterns. The corresponding value (if not `null`) is the replacement value. For patterns, the replacement is done using [`re.sub`](https://docs.python.org/3/library/re.html#re.sub), so capture groups can be accessed via *e.g.* number or name.|
-|optional|units|str, list, dict|—|Assign units to columns. If str, regex with capture "unit" to extract unit from column header. If list, unit for respective column (must have same length). If dict, a mapping of column-name: unit. |
-
-For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles).
-
-The hyphenation is achieved with a separate `.json`-file in the ``settings/import_profiles/profiles``-folder of the following structure:
+The hyphenation is achieved with a `.json`-file in the ``settings/import_profiles/profiles``-folder of the following structure:
 ```json
 {
     "data": {
@@ -344,7 +338,48 @@ The hyphenation is achieved with a separate `.json`-file in the ``settings/impor
     "supplementary": {
         "name_pattern": "",
         "mass_resolution_ug": ""
+    },
+    "corrections": {
+        "ega": {
+            "H2O": {
+                "method": "arpls",
+                "kwargs": {
+                    ...
+                }
+            }
+        }
     }
 }
 ```
-The supplementary field is currently not used, but should incorporate settings specific to the respective hyphenation in the future.
+#### Data
+For the *data*-field, for each of the hyphenated devices a path leading to a file of the following structure has to be provided in the respective *tga* and *ega* folders.
+
+Each file must contain the two topmost and can contain other otional key-value-pairs.
+
+| key  | Type | Default | Description     |
+| ---- | ---- | ------- | --------------- |
+| spec   | dict | "manufacturer": str, "device": str, "software": str, "version": str   | Metainformation on the device used to collect data. |
+| ext | str |  —  | Suffix of raw data files. Can be either just the file extension *e.g.* ".csv" or a regular expression containing the capture group *suffix e.g.*: "_?(?P\<suffix\>.*).txt". If a column in the raw data gets assigned the name "suffix", this is later replaced with the captured suffix.    |
+|||
+|kwargs|dict|—|Extra arguments passed on to [`pandas.read_csv`](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html#pandas.read_csv). Currently only data readable by this function is supported.|
+|map_suffix|dict|—|Map values of capture group "suffix" (see *ext*) to custom name.|
+|info_pattern|dict|—|Key-regular expressions (regex) pairs to extract additional information from raw data *e.g.* from the header or footer of the file. The regex must have named capture groups: "name", "value" and "unit" (can be empty). If the regex matches once, the key from the dict is used, otherwise the name from the capture group.|
+|usecols|dict|—|Subset and rename columns in combined data. Dict keys can contain a combination of integer indices, column names and column name patterns. The corresponding value (if not `null`) is the replacement value. For patterns, the replacement is done using [`re.sub`](https://docs.python.org/3/library/re.html#re.sub), so capture groups can be accessed via *e.g.* number or name.|
+|units|str, list, dict|—|Assign units to columns. If str, regex with capture-group "unit" to extract unit from column header. If list, unit for respective column (must have same length). If dict, a mapping of column-name: unit. |
+
+For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles).
+
+
+#### Supplementary
+The *supplementary* field is currently not used, but should incorporate settings specific to the respective hyphenation in the future.
+
+#### Corrections
+The *corrections*-field can contain correction methods to be applied during initialization of a `Sample` object. By default, only correction of water in EGA data is performed due to . 
+
+| Method |  Description   | kwargs with defaults   | kwargs-Description|
+| ------ | --- | --- |--- |
+|     `arpls`   |    [Baseline correction using asymmetrically reweighted penalized least squares smoothing](https://doi.org/10.1039/C4AN01061B) |  lam=1e5<br> ratio=1e-6<br> iter_max=50  | <ul><li>lam = smoothness parameter (should be varied by orders of magnitude)</li> <li> ratio = early termination criterion of weight-change </li><li>iter_max = maximum number of iterations.</li></ul>|
+|     `als`   |  Baseline correction using asymmetrically least squares smoothing (see link above).  |   lam=1e6<br> p=0.01<br> iter_max=10  |<ul><li>p = parameter to set asymmetry in weights for least squares (recommended range 0.1 - 0.001).</li></ul>|
+|     `min`   | Using minimum value as constant baseline.    |   —  ||
+|     `const`   | Estimate noise level by subtracting Savitzky-Golay-smoothed from original signal and constructing conctant baseline.    |   spread=1  |<ul><li>spread = factor to scale noise estimate.</li></ul>|
+|     `none`   | Baseline is set to zero.    |   —  ||

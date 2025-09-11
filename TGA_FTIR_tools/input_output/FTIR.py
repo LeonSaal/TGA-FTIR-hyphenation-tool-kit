@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 def FTIR_info(sample):
     "determine total area of detected gases as well as the molar amount (if calibrated) of gases and elements"
     info = {}
-    gases = sample.info["gases"]
+    gases = sample._info["gases"]
     # calculate total area of each gas
-    for gas in sample.info["gases"]:
+    for gas in sample._info["gases"]:
         area = sample.ega[gas].sum()
         info[f"area_{gas}"] = area if area > 0 else pd.NA
 
@@ -37,8 +37,6 @@ def FTIR_info(sample):
             if temp != 0:
                 info[f"mmol_{elem}"] = temp
     except Exception as e:
-        logger.warning("Unable to calculate released molar masses.")
-        raise e
-
+        logger.warning(f"Unable to calculate released molar masses. {e}")
 
     return info

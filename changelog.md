@@ -3,6 +3,13 @@
 - added `Worklist.from_samplelog` to create worklist from specific sheet in samplelog
 - fixed bug in ``Sample.get_values`` when no units are present [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
 - update import profile to be more flexible
+- moved `baseline_als` to `corrections.py`
+- add ``corrections`` to import profile
+- restructured `Sample` -> 
+  - kwarg `mode=pickle` is replaced by ``Sample.from_pickle()``
+  - `.save(how=...)` is replaced by `.to_...()`
+  - removed `DEGA`-plot
+  - restructuring of ``README.md``
 
 # 2025-08-25
 - improved integration plot from calibration

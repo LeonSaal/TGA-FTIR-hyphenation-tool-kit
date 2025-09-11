@@ -135,13 +135,16 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
     # new calibration
     elif mode == "recalibrate":
+        if not len(profiles:=set([profile for profile in worklist.profiles]))==1:
+            logger.error(f"The worklist contains multiple profiles: {profiles!r}")
+            return
         start_time=time()
         # check if calibration folder is present
         if not PATHS["calibration"].exists():
             # make directory
             PATHS["calibration"].mkdir()
         os.chdir(PATHS["calibration"])
-        output_path = Path(f"{start_time}_calibration_{worklist.profile}")
+        output_path = Path(f"{start_time}_calibration_{profile}")
         output_path.mkdir()
 
         # setting up output DataFrames
@@ -159,7 +162,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
         # calculating mass steps and integrating FTIR_data signals for all samples
         logger.info("Calibrating...")
         figdim = len(worklist), 2
-        fig, axs = plt.subplots(*figdim,sharex="col", gridspec_kw={"hspace":.5, "wspace":.5}, figsize=FIGSIZE*figdim[::-1])
+        if plot:
+            fig, axs = plt.subplots(*figdim,sharex="col", gridspec_kw={"hspace":.5, "wspace":.5}, figsize=FIGSIZE*figdim[::-1])
 
         data = []
         for i, sample_data in enumerate(worklist):

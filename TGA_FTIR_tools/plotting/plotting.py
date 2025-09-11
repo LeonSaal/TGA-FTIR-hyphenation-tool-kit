@@ -170,6 +170,7 @@ def plot_FTIR(
     # sort gases by rounded log maximum intensity
     gases = (
         sample.ega[gases]
+        .abs()
         .apply(["max"])
         .pint.convert_object_dtype()
         .astype(np.float64)
@@ -187,7 +188,7 @@ def plot_FTIR(
         x = x / 60
     match y_axis:
         case "orig":
-            #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['ega']}$")
+            #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['int_ega']}$")
             graphs[0].yaxis.label.set_color(color)
         case "rel_mol":
             graphs[0].set_ylabel(

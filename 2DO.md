@@ -24,24 +24,18 @@
   - move device specific settings to profile (e.g. mass resolution)
     - savgol-settings?
     - move fields specific to ``Sample``-level to combined profile
+    - or have global default overwritten by profile
   - select profile on init?
   - ask to save as default in settings
   - or move init operations to separate methods (e.g. `load_sample`)?
-  - what if not all data is available for all sample for a certain profile? 
-    - $\rightarrow$ number of columns doesn't match number of supplied names
-    - $\rightarrow$ don't allow lists, only dicts for clear assignment
-  - warning if profile doesn't match data
-  - determine gases in ega more flexible (currently by index)
   - restructure import profile to better distinguish required and optional fields
   - is it possible to edit parameters, e.g. how_dry, during initialization of a worklist? (in case of TGA without EGA is used in a profile) [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
+  - merge log messages from loops for fewer outputs
+  - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
 
 ## Correction
-- add synthetic baseline
-  - ALS, linear, const
 - make correction of $CO_2$ more flexible / less specific to first device
-  - move to profile?
   - expect corrected profiles?
-- automatic correction on init?
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -60,9 +54,8 @@
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
 - make plot interactive?
   - measure mass-, temperature- or time-differences
-- add DTG to mass-stops (optional)
+- add DTG to mass-steps (optional)
 - DTG for worklists (adhere to `README.md`)
-- kein DEGA
 
 ## General
 - reduce amount of logging
@@ -82,6 +75,7 @@
 - formatting of code 
 - use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)
 - ``settings[units] int_ega = ega``
+- auto-save objects after changes
 
 ## Testing
 - add automated testing for

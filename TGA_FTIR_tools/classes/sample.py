@@ -7,6 +7,7 @@ import re
 from dataclasses import InitVar, dataclass, field
 from types import NoneType
 from typing import Any, Literal, Mapping, Optional, List
+from webbrowser import get
 import matplotlib.pyplot as plt
 from typing import get_args
 from inspect import signature
@@ -39,160 +40,153 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Sample:
-    name: str
+    name: str = field(default=None)
     ega: Optional[pd.DataFrame] = field(default=None)
     tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
     alias: str = field(default=None)
     reference: str = field(default=None)
-    _info = None 
+    sample: str = field(default=None) 
+    run: str = field(default=None)
     baseline = None
+    _info:dict =field(default_factory=dict) 
     results: dict = field(default_factory=lambda: {"fit": {}, "robustness": {}})
-    mode: Literal["construct", "pickle"] = "construct"
     profile: str = DEFAULTS["profile"]
 
     def __post_init__(self, **kwargs):
-        if self.mode == "construct":
-            logger.info(f"Initializing {self.name!r} with {self.profile!r}")
+        if self.name:
+            self.init(**kwargs)
 
-            self.check_profile()
-            self.profile_data = read_profile_json(self.profile)
-            logger.debug(f"Using profile {self.profile!r}.")
+    def init(self, **kwargs):
+        # check and get import profile
+        self.check_profile()
+        self.profile_data = read_profile_json(self.profile)
+        logger.info(f"Initializing {self.name!r} using profile {self.profile!r}.")
 
-            # load data
-            try:
-                self.__dict__.update(read_data(self.name, profile=self.profile))
-            except Exception as e:
-                logger.error(f"Could not read any data for {self.name!r}. Have you specified the right {self.profile=}")
-            self._info = SampleInfo(self.name, info=self._info, profile=self.profile)
+        # load data
+        try:
+            self.__dict__.update(read_data(self.name, profile=self.profile))
+        except Exception as e:
+            logger.error(f"Could not read any data for {self.name!r}. Have you specified the right {self.profile=}")
+            return
+        self._info = SampleInfo(self.name, info=self._info, profile=self.profile)
 
-            if self.tga is not None:
-                logger.info("TGA data found.")
-                logger.debug("Checking required columns in TGA data.")
-                
-                # deriving TG info
-                # try:
-            
-                # except Exception as e:
-                #     logger.info(f"Failed to derive TG info. Using default values. {e}")
-                #     self._info = TGA.default_info(self.name, self.tga)
+        self.post_init_tga()
+        self.post_init_ega(**kwargs)
 
-                if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
-                    self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
+        if self.ega is None and self.tga is None:
+            logger.error(f"Failed to initialize '{self.name}'.")
+            return
+        else:
+            logger.info(f"'{self.name}' successfully initialiazed.")
 
-                # calculate sample mass with mass loss or percentage mass and initial mass
-                try:
-                    if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
-                        if "initial_mass" in self.info:
-                            self.tga["sample_mass"] =  self.tga["mass_loss"] + self.info["initial_mass"]
-
-                    elif "sample_mass" in self.tga.columns and  self.tga.sample_mass.dtype == "pint[%]":
-                        if "initial_mass" in self.info:
-                            self.tga["sample_mass"] = self.info["initial_mass"] * (self.tga["sample_mass"].astype("pint[dimensionless]"))
-                except DimensionalityError:
-                    logger.error("Failed")
-                self._info.steps_idx.update({})
-
-                # check required columns
-                if missing:=self.missing_tga_columns():
-                    logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
-                else:   
-                    try:
-                        window_length = int(self.tga.index.size * WINDOW_LENGTH_REL)
-                        dtg = savgol_filter(
-                            self.tga["sample_mass"].values._data, window_length if window_length%2 ==0 else window_length+1 , POLYORDER, deriv=1
-                        )
-                        dtype =  self.tga["sample_mass"].dtype
-                        self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
-                    except ValueError as e:
-                        print(e)
-                    except AttributeError as e:
-                        print(e)
-
-
-            else:
-                logger.error(f"No TGA data found for {self.name!r}.")
-                self._info = SampleInfo(name=self.name, alias=self.alias, profile=self.profile)
-
-            if self.ega is not None:
-                self._info["gases"] = self.ega.columns[1:].to_list()
-                
-                # load calibration
-                self.calibrate(mode="load", profile=self.profile)
-                
-                gases = self._info["gases"]
-                if self.linreg is not None:
-                    calibrated_gases = self.linreg.index 
-                    gases_annotated = [gas+ ("*"if  gas in calibrated_gases else "")
-                                for gas in gases
-                            ]
-                    cali_msg = " (* and calibrated) "
-                else:
-                    gases_annotated = gases
-                    cali_msg = ""
-                logger.info(
-                    "EGA data found{} for {}.".format(cali_msg,", ".join(gases_annotated))
-                )
-
-                # deriving IR info
-                try:
-                    self._info.update(FTIR.FTIR_info(self))
-                except Exception as e:
-                    logger.error(f"Unable to derive EGA-info. {e}")
-                    #raise e
-                
-                if "sample_temp" not in self.ega and "time" in self.ega:
-                    self.ega.time = self.ega.time.astype(self.tga.time.dtype)
-                    self.ega = self.ega.set_index("time").reindex(self.tga.time, method="nearest").reset_index()
-                    try:
-                        self.ega = pd.merge(
-                            self.tga.filter(
-                                ["time", "sample_temp", "reference_temp", "sample_mass"], axis=1
-                            ),
-                            self.ega,
-                            how="left",
-                            on="time",
-                        )#.dropna(axis=0)
-                    except Exception as e:
-                        logger.info(f"Unable to merge temperature data. {e}")
-            try:
-                self.dry_weight(plot=False, **kwargs)
-            except Exception as e:
-                logger.error(f"Failed to derive dry weight: {e}")
-
-            if self.ega is None and self.tga is None:
-                logger.error(f"Failed to initialize '{self.name}'.")
-            else:
-                logger.info(f"'{self.name}' successfully initialiazed.")
-
-            # assigning alias
-            if not self.alias:
-                log  = samplelog(create=False)
-                if self.name in log.index:
-                    self.alias = log.loc[self.name, "alias"]
-                else:
-                    self.alias = self.name
-            else:
-                self.alias = str(self.alias)
-            self._info.alias = self.alias
-
-            if match := re.match(r"(?P<sample>.+)_(?P<run>\d{,3})$", self.name):
-                self.sample = match.group("sample")
-                self.run = match.group("run")
-            elif match := re.match(r"(?P<sample>.+)_(?P<run>\d{,3})$", self.alias):
-                self.sample = match.group("sample")
-                self.run = match.group("run")
-            else:
-                self.sample = self.alias
-                self.run = 0
-
-        # initialize object from pickle file
-        if self.mode == "pickle":
-            with open(PATHS["output"] / f"{self.name}.pkl", "rb") as inp:
-                obj = pickle.load(inp)
-            for key in obj.__dict__:
-                self.__dict__[key] = obj.__dict__[key]
+        # assigning alias, sample, run from samplelog
+        log = samplelog(create=False)
+        self.alias = log.get("alias", {}).get(self.name, self.name) if not self.alias else str(self.alias)
+        self.sample = log.get("sample", {}).get(self.name, self.alias) if not self.alias else str(self.alias)
+        self.run = log.get("run", {}).get(self.name, 0) if not self.run else self.run
         self.raw = copy.deepcopy(self)
+
+        if corrs:=self.info.get("corrections"):
+            self.baseline = Baseline().from_sample(self, corrs=corrs)
+            self.__dict__.update(corrections.corr_baseline(self.raw, self.baseline))
+            self.reference = self.baseline.name
+
+    def post_init_tga(self):
+        if self.tga is None:
+            logger.error(f"No TGA data found for {self.name!r}.")
+            self._info = SampleInfo(name=self.name, alias=self.alias, profile=self.profile)
+            return
+        else:
+            logger.info("TGA data found.")
+
+        logger.debug("Checking required columns in TGA data.")
+        
+        # deriving TG info
+        if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
+            self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
+
+        # calculate sample mass with mass loss or percentage mass and initial mass
+        try:
+            if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
+                if "initial_mass" in self.info:
+                    self.tga["sample_mass"] =  self.tga["mass_loss"] + self.info["initial_mass"]
+
+            elif "sample_mass" in self.tga.columns and  self.tga.sample_mass.dtype == "pint[%]":
+                if "initial_mass" in self.info:
+                    self.tga["sample_mass"] = self.info["initial_mass"] * (self.tga["sample_mass"].astype("pint[dimensionless]"))
+        except DimensionalityError as e:
+            logger.error(f"Failed. {e}")
+        self._info.steps_idx.update({})
+
+        # check required columns
+        if missing:=self.missing_tga_columns():
+            logger.error(f"Required column(s) {missing} not found in TGA data of {self.name!r}")
+        else:   
+            try:
+                window_length = int(self.tga.index.size * WINDOW_LENGTH_REL/2)*2 + 1
+                dtg = savgol_filter(
+                    self.tga["sample_mass"].values._data, window_length, POLYORDER, deriv=1
+                )
+                dtype =  self.tga["sample_mass"].dtype
+                self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
+            except ValueError as e:
+                print(e)
+            except AttributeError as e:
+                print(e)
+
+    def post_init_ega(self, **kwargs):
+        if self.ega is None:
+            logger.error(f"No EGA data found for {self.name!r}.")
+            return
+        
+        self._info["gases"] = self.ega.columns[1:].to_list()
+        
+        # load calibration
+        self.calibrate(mode="load", profile=self.profile)
+        
+        gases = self._info["gases"]
+        if self.linreg is not None:
+            calibrated_gases = self.linreg.index 
+            gases_annotated = [gas+ ("*"if  gas in calibrated_gases else "")
+                        for gas in gases
+                    ]
+            cali_msg = " (* and calibrated) "
+        else:
+            gases_annotated = gases
+            cali_msg = ""
+        logger.info(
+            "EGA data found{} for {}.".format(cali_msg,", ".join(gases_annotated))
+        )
+
+        if "sample_temp" not in self.ega and "time" in self.ega:
+            self.ega.time = self.ega.time.astype(self.tga.time.dtype)
+            self.ega = self.ega.set_index("time").reindex(self.tga.time, method="nearest").reset_index()
+            try:
+                self.ega = pd.merge(
+                    self.tga.filter(
+                        ["time", "sample_temp", "reference_temp", "sample_mass"], axis=1
+                    ),
+                    self.ega,
+                    how="left",
+                    on="time",
+                )#.dropna(axis=0)
+            except Exception as e:
+                logger.debug(f"Unable to merge temperature data. {e}")
+        try:
+            self.dry_weight(plot=False, **kwargs)
+        except Exception as e:
+            logger.warning(f"Failed to derive dry weight: {e}")
+                    
+    # initialize object from pickle file
+    def from_pickle(name):
+        if (p:= PATHS["output"] / f"{name}.pkl").exists():
+            with open(p , "rb") as inp:
+                obj = pickle.load(inp)
+            if isinstance(obj, Sample):
+                return obj
+        else:
+            logger.error(f"{p.as_posix()!r} does not exist!")
 
     def __repr__(self):
         attr_names = ["name", "alias", "profile","sample", "reference", "run"]
@@ -208,11 +202,21 @@ class Sample:
         elif isinstance(other, Worklist):
             return other + self
         else:
-            logger.warning("Can only add to Sample- or Worklist-type")
+            logger.debug("Can only add to Sample- or Worklist-type")
+
+    def get(self, name):
+        return self.__dict__.get(name)
 
     @property
     def info(self):
         self._info.alias = self.alias
+        # deriving IR info
+        try:
+            self._info.update(FTIR.FTIR_info(self))
+        except Exception as e:
+            logger.debug(f"Unable to derive EGA-info. {e}")
+            #raise e
+
         return self._info
 
     @property
@@ -255,7 +259,7 @@ class Sample:
 
     def corr(
         self,
-        baseline_name: NoneType | str = None,
+        baseline: NoneType | str = None,
         plot: Mapping | bool = False,
         update=False,
         dry_args={},
@@ -281,16 +285,16 @@ class Sample:
 
         if self.reference and not update:
             logger.warning(
-                "Sample has already been corrected! Re-initialise object for correction or specify 'update'=True."
+                f"Sample has already been corrected with {self.reference!r}! Re-initialise object for correction or specify 'update'=True."
             )
             return
         # try to load reference from samplelog if none is supplied
-        if not baseline_name:
+        if not baseline:
             if self.reference:
-                baseline_name = self.reference
+                baseline = self.reference
             else:
                 if self.name in (log := samplelog(create=False).reference).index:
-                    baseline_name = log.loc[self.name]
+                    baseline = log.loc[self.name]
                 else:
                     logger.warning(
                         "No reference found in Samplelog. Please supply 'reference = '"
@@ -298,8 +302,14 @@ class Sample:
                     return
 
         # correction of data
-        self.baseline = Baseline(baseline_name)
-        self.reference = baseline_name
+        match baseline:
+            case str():
+                self.baseline = Baseline(baseline)
+                self.reference = baseline
+            case Baseline():
+                self.baseline = baseline
+                self.reference = baseline.name
+
         if self.tga is not None:
             try:
                 self.tga = corrections.corr_TGA_Baseline(
@@ -308,8 +318,8 @@ class Sample:
                 self.tga["dtg"] = -savgol_filter(
                     self.tga.sample_mass, WINDOW_LENGTH_REL, POLYORDER, deriv=1
                 )
-            except PermissionError:
-                logger.error("Failed to correct TG data.")
+            except PermissionError as e:
+                logger.error(f"Failed to correct TG data. {e}")
 
             # filling Sample.info
             try:
@@ -348,9 +358,13 @@ class Sample:
 
     def get_value(self, *values, which="sample_mass", at="sample_temp"):
         "extract values from TG data at e.g. certain temperatures"
-        new_idx = pd.Series(values, dtype=self.tga[at].dtype)
-
-        return self.tga.set_index(at).reindex(new_idx, method="nearest")[which]
+        new_idx = pd.Series(values, dtype=np.float64, name="sample_temp")
+        tmp = self.tga[[at, which]].copy().sort_values(at)
+        tmp[at] = tmp[at].astype(np.float64)
+        tmp = pd.merge_asof(new_idx, tmp, on=at)
+        tmp[at] = tmp[at].astype(self.tga[at].dtype)
+        return tmp
+    
 
     def dry_weight(self, plot=False, **kwargs):
         "determine dry point and mass of sample"
@@ -364,7 +378,6 @@ class Sample:
                 plot_dweight(self, **kwargs)
 
         except Exception as e:
-            raise e
             logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(
@@ -384,12 +397,12 @@ class Sample:
             self.plot(
                 "mass_steps",
                 ax=ax,
-                steps=self.step_data().sample_temp,
+                steps=self.step_data().sample_temp.astype(np.float64),
                 y_axis="orig",
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "DEGA","cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
         "plotting TG and or IR data"
         options = [
@@ -397,7 +410,7 @@ class Sample:
             "mass_steps",
             "heat_flow",
             "EGA",
-            "DEGA",
+            
             "cumsum",
             "EGA_to_DTG",
             "fit",
@@ -408,7 +421,7 @@ class Sample:
             logger.warning(f"{plot} not in supported {options=}.")
             return
         needs_tg = ["TG", "heat_flow", "EGA_to_DTG", "mass_steps"]
-        needs_ega = ["EGA", "DEGA", "cumsum", "EGA_to_DTG"]
+        needs_ega = ["EGA",  "cumsum", "EGA_to_DTG"]
         needs_cali = [ "EGA_to_DTG","calibration"]
         
         # check requisites
@@ -429,13 +442,6 @@ class Sample:
             case "EGA":
                 plot_FTIR(self, ax, **kwargs)
 
-            case "DEGA":
-                temp = copy.deepcopy(self)
-                temp.ega.update(
-                    self.ega.filter(self._info["gases"], axis=1).diff().ewm(span=10).mean()
-                )
-                plot_FTIR(temp, ax, **kwargs)
-
             case "cumsum":
                 temp = copy.deepcopy(self)
                 temp.ega.update(self.ega.filter(self._info["gases"], axis=1).cumsum())
@@ -453,7 +459,7 @@ class Sample:
             case"mass_steps":
                 if "steps" not in kwargs:
                     self.mass_step(plot=False)
-                    kwargs["steps"] = self.step_data().sample_temp
+                    kwargs["steps"] = self.step_data().sample_temp.astype(np.float64)
                 plot_mass_steps(self,ax,**kwargs)
 
             case "EGA_to_DTG":
@@ -628,39 +634,42 @@ class Sample:
 
         # update samplelog
         samplelog(self.info.to_row(), create=True, **kwargs)
+        match how:
+            case "pickle":
+                self.to_pickle()
+            case "excel":
+                self.to_excel() 
+            case _:
+                pass
 
-        if how == "samplelog":
-            return
-        
-        path_output = PATHS["output"]
-        if not path_output.exists():
-            os.makedirs(path_output)
+    def to_pickle(self):
+        if not PATHS["output"].exists():
+            os.makedirs(PATHS["output"])
+        with open(PATHS["output"] / f"{self.name}.pkl", "wb") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
-        # save object
-        if how == "pickle":
-            with open(path_output / f"{self.name}.pkl", "wb") as output:
-                pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+    def to_excel(self):
+        if not PATHS["output"].exists():
+            os.makedirs(PATHS["output"])
 
-        elif how == "excel":
-            path = path_output / f'{self._info["name"]}.xlsx'
-            with pd.ExcelWriter(path) as writer:
+        path = PATHS["output"] / f'{self._info["name"]}.xlsx'
+        with pd.ExcelWriter(path) as writer:
+            try:
+                pd.DataFrame.from_dict(
+                    self._info.__dict__, orient="index"
+                ).to_excel(writer, sheet_name="info")
+            except PermissionError:
+                logger.warning(
+                    f"Unable to write on {path=} as the file is opened by another program."
+                )
+            for key in ["tga", 'ega']:
                 try:
-                    pd.DataFrame.from_dict(
-                        self._info.__dict__, orient="index"
-                    ).to_excel(writer, sheet_name="info")
+                    if self.__dict__[key] is not None:
+                        self.__dict__[key].to_excel(writer, sheet_name=key)
                 except PermissionError:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
                     )
-                for key in ["tga", 'ega']:
-                    try:
-                        if self.__dict__[key] is not None:
-                            self.__dict__[key].to_excel(writer, sheet_name=key)
-                    except PermissionError:
-                        logger.warning(
-                            f"Unable to write on {path=} as the file is opened by another program."
-                        )
-
     def calibrate(self, profile=None,**kwargs):
         "calibrate object"
         from ..calibration import calibrate
@@ -684,3 +693,42 @@ class Baseline(Sample):
     def __repr__(self):
         attrs = ["name"]
         return f'Baseline({", ".join([f"{key}={repr(value)}" for key, value in self.__dict__.items() if key in attrs])})'
+
+    def from_sample(self, sample:Sample, corrs: dict):
+        self.name = "from data"
+        self._info = SampleInfo(self.name, reference = None, alias = "Baseline", profile="from_sample", initial_mass = ureg.Quantity(0, "mg"), final_mass = ureg.Quantity(0, "mg")) 
+        for name, methods in corrs.items():
+            if not (sample.get(name) is not None and isinstance(sample.get(name), pd.DataFrame)):
+                logger.warning(f"{name} is no correctable attribute of {sample.name}.")
+                continue
+            else:
+                data = sample.__dict__[name].copy()
+            all_signals = data.columns
+            
+            for pattern, method in methods.items():
+                signals = [signal for signal in all_signals if re.match(pattern, signal)]
+
+                if not signals:
+                    logger.warning(f"{pattern!r} did not match any signal!")
+                    continue
+
+                kwargs = method.get("kwargs", {})
+                match method.get("method"):
+                    case "als":
+                        fn = lambda x: corrections.baseline_als(x.astype(np.float64), **kwargs)
+                    case "arpls":
+                        fn = lambda x: corrections.baseline_arpls(x.astype(np.float64), **kwargs)
+                    case "min":
+                        fn = lambda x: np.ones_like(x) * x.min()
+                    case "const":
+                        fn= lambda x: corrections.baseline_const(x.astype(np.float64), **kwargs)
+                    case "debug":
+                        fn = lambda x: print(x)
+                    case "none":
+                        fn = lambda x: np.zeros_like(x)
+                    case _:
+                        fn = lambda x: np.zeros_like(x)
+
+                data.update(data[signals].apply(fn))
+            self.__dict__[name] = data
+        return self

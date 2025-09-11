@@ -15,7 +15,7 @@ def samplelog(data=None, create=True, overwrite=False, sheet_name=0,**kwargs) ->
 
     # try to load samplelog file
     if not path.exists():
-        samplelog = pd.DataFrame(columns=["alias", "reference", "profile"])
+        samplelog = pd.DataFrame(columns=["alias", "sample", "run", "reference", "profile"])
         samplelog.index.name = "name"
         if create:  # create new Samplelox.xlsx file
             samplelog.to_excel(path, merge_cells=MERGE_CELLS)
