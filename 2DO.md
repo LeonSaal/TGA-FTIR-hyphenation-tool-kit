@@ -29,13 +29,13 @@
   - ask to save as default in settings
   - or move init operations to separate methods (e.g. `load_sample`)?
   - restructure import profile to better distinguish required and optional fields
-  - is it possible to edit parameters, e.g. how_dry, during initialization of a worklist? (in case of TGA without EGA is used in a profile) [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)
   - merge log messages from loops for fewer outputs
   - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
 
 ## Correction
 - make correction of $CO_2$ more flexible / less specific to first device
   - expect corrected profiles?
+- pass custom function with given signature to `.corr()`
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -56,26 +56,22 @@
   - measure mass-, temperature- or time-differences
 - add DTG to mass-steps (optional)
 - DTG for worklists (adhere to `README.md`)
+- move all pltting to `.plot(...)`-method
 
 ## General
 - reduce amount of logging
     - adjust level for initialization substeps from *INFO* to *DEBUG*
 - don't log `Baseline`
-- let `pint` handle units
-    - or convert values to base units and handle bare numbers internally
 - add `**kwargs` to every function for flexibility
-- remove functions / REs specific to BAM-devices
 - use root-folder names as profiles?
   - or set folder pattern(s) in profile definition (top-level)
   - warn if none found
 - ``setup.py`` $\rightarrow$ ``pyproject.toml``
-- clean up `calibration.py`
-  - reduce if statements
-  - combine code blocks to and or move functions to separate .py-files
 - formatting of code 
 - use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)
 - ``settings[units] int_ega = ega``
-- auto-save objects after changes
+- auto-save objects after changes -> global setting
+- remove functions that are not used anymore
 
 ## Testing
 - add automated testing for
@@ -88,22 +84,15 @@
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
-- ? shift `Baseline` 
 
 ## Calibration
 - add sample labels to points (if specified)
 - check unit for calibration methods other than "max"
-- can only pass initialized worklist guard
 - add date column
-- passing of worklist as positional argument?
-- `Worklist.calibrate`
-- no plot when `plot=False`
-- limit R²
+- passing of worklist as positional argument? 
 - polyorder = 2, rel_window_lenght = .01
 - integration bounds (baseline not constant due to window width)
 
 # Documentation
-- calibration
 - add docstrings, signatures for every function
 - add example folder
-- regarding the order of sections in the readme file: I would expact Plotting to appear previously to Fitting. Or not? [#87](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/issues/87)

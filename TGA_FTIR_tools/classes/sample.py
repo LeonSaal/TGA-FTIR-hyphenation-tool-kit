@@ -257,104 +257,37 @@ class Sample:
         missing = [col for col in required_columns if col not in self.tga.columns]
         return missing if missing else None
 
-    def corr(
-        self,
-        baseline: NoneType | str = None,
-        plot: Mapping | bool = False,
-        update=False,
-        dry_args={},
-        ega_args={},
-    ):
-        "correction of TG and IR data"
-        if self.ega is None and self.tga is None:
-            logger.error("There is no data to correct.")
-            return
+    def corr(self, baseline, corrs: dict, **kwargs):
+        """_summary_
 
-        if plot == True:
-            plot = {}
-            plot["ega"] = True
-            plot["tga"] = True
-            plot["dry_weight"] = True
-        elif plot == False:
-            plot = {}
-            plot["ega"] = False
-            plot["tga"] = False
-            plot["dry_weight"] = False
-        elif isinstance(plot, dict):
-            plot = {key: False for key in ["ir", "tga", "dry_weight"] if key not in plot}
+        Args:
+            baseline (Baseline | Sample): Initialized Baseline used for correction.
+            corrs (dict): Dict of structure {"ega": {signal: fun}, "tga": ...}
+            fun is function with signature fun(x, y, **kwargs) -> z that takes in numeric vectors of same length and returns one vector of same length. 
+            x and y are the respective signal column for the sample to be corrected and the associated baseline data respectively.
+        """        
+        if not self.baseline:
+            self.baseline = Baseline(name="from baseline")
 
-        if self.reference and not update:
-            logger.warning(
-                f"Sample has already been corrected with {self.reference!r}! Re-initialise object for correction or specify 'update'=True."
-            )
-            return
-        # try to load reference from samplelog if none is supplied
-        if not baseline:
-            if self.reference:
-                baseline = self.reference
-            else:
-                if self.name in (log := samplelog(create=False).reference).index:
-                    baseline = log.loc[self.name]
-                else:
-                    logger.warning(
-                        "No reference found in Samplelog. Please supply 'reference = '"
-                    )
-                    return
+        for data, traces in corrs.items():
+            to_corr = self.__dict__.get(data)
+            use_to_corr = baseline.__dict__.get(data)
+            if not isinstance(to_corr, pd.DataFrame) and not isinstance(use_to_corr, pd.DataFrame):
+                logger.warning(f"{data!r} not in sample or baseline or not of the correct type (required: pandas.DataFrame). Skipping.")
+                continue
+            
+            to_update = pd.DataFrame()
+            for signal, fun in traces.items():
+                if signal not in to_corr or signal not in use_to_corr:
+                    logger.warning(f"{signal!r} not in sample or baseline. Skipping.")
+                    continue
+                to_update[signal] = fun(to_corr[signal], use_to_corr[signal], **kwargs)
 
-        # correction of data
-        match baseline:
-            case str():
-                self.baseline = Baseline(baseline)
-                self.reference = baseline
-            case Baseline():
-                self.baseline = baseline
-                self.reference = baseline.name
-
-        if self.tga is not None:
-            try:
-                self.tga = corrections.corr_TGA_Baseline(
-                    self.raw.tga, self.baseline, plot=plot["tga"]
-                )
-                self.tga["dtg"] = -savgol_filter(
-                    self.tga.sample_mass, WINDOW_LENGTH_REL, POLYORDER, deriv=1
-                )
-            except PermissionError as e:
-                logger.error(f"Failed to correct TG data. {e}")
-
-            # filling Sample.info
-            try:
-                if self._info['reference_mass_name'] == "initial_mass":
-                    # By default dry_weight() asumes how_dry = 'H2O'. If during initialization how_dry = None, this is catched here.
-                    # kwargs = dict(kwargs, how_dry=None)
-                    # However, there is no distinction between the other how_dry options (e.g. float), that still have to be passed to corr() again!
-                    pass
-
-                self.dry_weight(plot=plot["dry_weight"], **dry_args)
-                logger.info(
-                    f'".info" of {self._info["name"]} was updated. To store these in Samplelog.xlsx run ".save()"'
-                )
-                success = True
-            except PermissionError:
-                logger.error("Failed to derive TG info.")
-
-        if (self.ega is not None) and (self.baseline.ega is not None):
-            try:
-                self.ega.update(
-                    corrections.corr_FTIR(
-                        self.raw, self.baseline, plot=plot['ega'], **ega_args
-                    )
-                )
-            except PermissionError:
-                logger.error("Failed to correct IR data.")
-
-            try:
-                self._info.update(FTIR.FTIR_info(self))
-                if not success:
-                    logger.info(
-                        "'.info' was updated. To store these in Samplelog.xlsx run '.save()'"
-                    )
-            except PermissionError:
-                logger.error("Failed to derive IR info.")
+            self.__dict__[data].update(to_update)
+            index_cols = self.__dict__[data].filter(items=['time', 'sample_temp', 'reference_temp', 'sample_mass'])
+            self.baseline.__dict__[data] = pd.concat([index_cols, to_update], axis=1)
+            self.baseline.info["gases"] = to_update.columns.to_list()
+            
 
     def get_value(self, *values, which="sample_mass", at="sample_temp"):
         "extract values from TG data at e.g. certain temperatures"
@@ -730,5 +663,6 @@ class Baseline(Sample):
                         fn = lambda x: np.zeros_like(x)
 
                 data.update(data[signals].apply(fn))
-            self.__dict__[name] = data
+            index_cols = sample.__dict__[name].filter(items=['time', 'sample_temp', 'reference_temp', 'sample_mass'])
+            self.__dict__[name] = pd.concat([index_cols, data], axis=1)
         return self

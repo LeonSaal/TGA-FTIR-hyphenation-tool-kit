@@ -8,8 +8,15 @@
 - restructured `Sample` -> 
   - kwarg `mode=pickle` is replaced by ``Sample.from_pickle()``
   - `.save(how=...)` is replaced by `.to_...()`
-  - removed `DEGA`-plot
-  - restructuring of ``README.md``
+- removed `DEGA`-plot
+- restructuring of ``README.md``
+- add `Worklist.calibrate()` to run calibration.
+- add `min_r2` to calibration to warn about bad fits
+- Improved logic in determining dry point in `dry_weight()`
+- made correction more flexible by allowing custom functions to be passed to `.corr()`
+- cleanup of code and logging
+- update testing
+- updated `settings.ini`
 
 # 2025-08-25
 - improved integration plot from calibration

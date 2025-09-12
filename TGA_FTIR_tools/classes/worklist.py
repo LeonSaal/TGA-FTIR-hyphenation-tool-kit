@@ -6,7 +6,7 @@ from typing import List, Literal, Optional, Union
 import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import chain, zip_longest
-from ..classes import Sample
+from ..classes import Sample, Baseline
 from ..config import PATHS, DEFAULTS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
@@ -249,21 +249,28 @@ class Worklist:
     def __len__(self) -> int:
         return len(self.samples)
 
-    def corr(self, baseline_names=None, plot=False, **kwargs) -> None:
-        if type(baseline_names) == list:
-            if (ls := len(self)) != (lr := len(baseline_names)):
+    def corr(self, baselines, corrs, **kwargs) -> None:
+        if type(baselines) == list:
+            if (ls := len(self)) != (lb := len(baselines)):
                 logger.error(
-                    f"Lengths of samples ({ls}) and references ({lr}) do not match."
+                    f"Lengths of samples ({ls}) and baselines ({lb}) do not match."
                 )
                 return
-        elif type(baseline_names) == str:
-            baseline_names = [baseline_names for _ in self.samples]
-
-        elif not baseline_names:
-            baseline_names = [None for _ in self.samples]
-
-        for sample, baseline in zip(self.samples, baseline_names):
-            sample.corr(baseline, plot=plot, **kwargs)
+        else:
+            baselines = list(baselines)*len(self)
+        
+        for sample, baseline in zip(self.samples, baselines):
+            match baseline:
+                case str():
+                    baseline = Baseline(baseline)
+                case Sample():
+                    pass
+                case Baseline():
+                    pass
+                case _:
+                    logger.error(f"{baseline!r} is of wrong type! Allowed are str (sample name), Sample and Baseline. Skipping.")
+                    continue
+            sample.corr(baseline, corrs, **kwargs)
 
     def pop(self, i: int) -> None:
         return self.samples.pop(i)
@@ -274,9 +281,7 @@ class Worklist:
         **kwargs,
     ) -> None:
         if how == "samplelog":
-            # collect sample info and save
-            data = pd.concat([sample.info.to_row() for sample in self.samples])
-            samplelog(data, how="samplelog")
+            samplelog(self.info, how="samplelog")
 
         elif how == "pickle":
             self.to_pickle()
@@ -296,15 +301,19 @@ class Worklist:
         with open(PATHS["output"] / f"{self.name}.pkl", "wb") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
     
-    def info(self, type: str = "df") -> pd.DataFrame | dict :
-        out = {sample.name: sample.info for sample in self.samples}
-        if type=="df":
-            return pd.DataFrame.fromdict(out)
-        elif type=="dict":
-            return out
+    @property
+    def info(self) -> pd.DataFrame:
+        return pd.concat([sample.info.to_row() for sample in self.samples])
         
-    def calibrate():
-        pass
+    def calibrate(self, **kwargs):
+        from ..calibration import calibrate
+        profiles=[profile for profile in self.profiles]
+
+        if not len(set(profiles))==1:
+            logger.error(f"The worklist contains multiple profiles: {profiles!r}")
+            return
+
+        return calibrate(worklist = self, mode="recalibrate",profile=profiles[0], **kwargs)
         
     def from_samplelog(sheet_name=0):
         worklist = samplelog(sheet_name=sheet_name)

@@ -101,7 +101,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return pd.concat(stats_rows).pint.convert_object_dtype()
 
 
-def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([0, np.inf]), min_rel_height = .2, corr_baseline="linear", **fig_args):
+def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([0, np.inf]), min_rel_height = .2, corr_baseline="linear", min_r2=.95, **fig_args):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warning(f'{method=} not in {methods=}.')
@@ -205,6 +205,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             fig.savefig(output_path / f"integration.png")
         
         step_dtype = cali["data"]["mass loss"].dtype
+        
         # assigning gases to mass steps
         for sample in cali["data"].index.levels[0]:
             release_steps = []
@@ -247,7 +248,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
        
         match method:
             case "max":
-                calibrate_max(cali, molecular_formulas)
+                calibrate_max(cali, molecular_formulas,  min_r2=min_r2)
             case "iter":
                 logger.error(f"{method=!r} is currently not available.")
                 #calibrate_iter(cali, molecular_formulas)
@@ -322,7 +323,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 def get_regression_df():
     pass
 
-def calibrate_max(cali: dict, molecular_formulas:dict) -> dict:
+def calibrate_max(cali: dict, molecular_formulas:dict, min_r2=0) -> dict:
     cali["x_mol"] = pd.DataFrame(index = cali["x_mass"].index, columns = cali["x_mass"].columns)
     invalid_mfs = []
     for gas in cali["x_mass"].columns:
@@ -341,6 +342,8 @@ def calibrate_max(cali: dict, molecular_formulas:dict) -> dict:
         regression = pd.DataFrame(
             [[molecular_formula, molar_mass]+regr_res], index=[gas], columns=REGR_COLS
         )
+        if (r2:=regr_res[2]) < min_r2 or regr_res[2]==1:
+            logger.warning(f"R² for {gas} {r2} is out of bounds [{min_r2}, 1). Consider adjusting lower bound with 'min_r2='")
 
         if gas not in cali["linreg"].index:
             cali["linreg"] = pd.concat([cali["linreg"], regression], verify_integrity=True)

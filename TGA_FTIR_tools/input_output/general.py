@@ -185,7 +185,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                                 indices.update({concat.columns.get_loc(col) for col, bidx in zip(concat.columns, bidxs) if bidx})
                                 rename.update({col:re.sub(val, repl, col) for col, bidx in zip(concat.columns, bidxs) if bidx and repl})
                             else:
-                                logger.warning(f"{val!r} is neither a valid slice, a matching regular expression nor a valid column name.")
+                                logger.debug(f"{val!r} is neither a valid slice, a matching regular expression nor a valid column name.")
                     case _:
                         logger.warning(f"Invalid type of element in 'usecols': {val}, {type(val)}")
             concat = concat.iloc[:,list(indices)]

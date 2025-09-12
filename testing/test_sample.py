@@ -68,21 +68,16 @@ class TestSamplePlot:
             else:
                 assert get_sample.plot(plot) == True
 
-@pytest.mark.usefixtures("get_cali_worklist", "get_sample")
+@pytest.mark.usefixtures("get_cali_worklist")
 #@pytest.mark.parametrize("get_sample, get_cali_worklist", [((sample_names[0], "Netzsch"), cali_sample_names)], indirect=True)
-class TestSampleCali:    
-    def test_calibration(self, get_sample, get_cali_worklist):
-        if get_sample.profile != get_cali_worklist.profiles[0]:
-            pytest.skip("Different profiles")
-        
-        sample = get_sample
-        wl = get_cali_worklist
-        sample.calibrate(worklist=wl, mode="recalibrate", molecular_formulas = {'m:18': 'H2O', 'm:44': 'CO2'},plot=True)
-        sample = get_sample
-        assert isinstance(get_sample.stats , pd.DataFrame)
-        assert isinstance(get_sample.linreg , pd.DataFrame)
-        assert isinstance(get_sample.xcali , pd.DataFrame)
-        assert isinstance(get_sample.ycali , pd.DataFrame)
+class TestSampleCali:
+        def test_cali(self, get_cali_worklist):    
+            wl = get_cali_worklist
+            linreg, stats, xcali, ycali= wl.calibrate(molecular_formulas = {'m:18': 'H2O', 'm:44': 'CO2'},plot=True)
+            assert isinstance(stats , pd.DataFrame)
+            assert isinstance(linreg , pd.DataFrame)
+            assert isinstance(xcali , pd.DataFrame)
+            assert isinstance(ycali , pd.DataFrame)
 
 @pytest.mark.usefixtures("get_worklist")
 class TestWorklistInit:

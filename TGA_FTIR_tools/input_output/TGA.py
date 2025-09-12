@@ -28,7 +28,8 @@ def dry_weight(sample, how_dry="H2O"):
         dry_point_idx = 0
 
     if how_dry=="H2O" and sample.ega is None:
-        logger.error(f"If {how_dry=!r}, EGA data is required.")
+        logger.warning(f"If {how_dry=!r}, EGA data is required. Reverting to DTG.")
+        how_dry = "sample_mass"
 
     if col:="sample_temp" not in sample.ega.columns:
         logger.error(f"{col!r} must be present in EGA data.")
@@ -41,7 +42,7 @@ def dry_weight(sample, how_dry="H2O"):
         case float() | int():
             # check if value is within the temperature range
             if (min_temp < ureg.Quantity(how_dry, "degreeC") < max_temp):
-                dry_point_idx = sample.tga["time"][sample.tga["sample_temp"] >= how_dry].argmax()
+                dry_point_idx = sample.tga["time"][sample.tga["sample_temp"].astype(np.float64) >= how_dry].argmax()
             else:
                 logger.error(f"Supplied value is out of range. Must be within {min_temp:.2f} to {max_temp:.2f}")
                 return 
@@ -61,7 +62,8 @@ def dry_weight(sample, how_dry="H2O"):
                     deriv=1,
                 )
             else:
-                logger.info(f"'H2O' not in EGA-data. Defaulting to '{how_dry}")
+                logger.info(f"{how_dry!r} is an invalid option.")
+                return
             
             # look for signal peak between 50 and 200 °C
             peak_signal_idx = ref[how_dry][(ureg.Quantity(50, "degreeC") < ref["sample_temp"]) & (ref["sample_temp"] < ureg.Quantity(200, "degreeC"))].argmax()

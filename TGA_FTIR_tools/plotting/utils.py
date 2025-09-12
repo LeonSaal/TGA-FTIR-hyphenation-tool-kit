@@ -53,9 +53,12 @@ def get_label(key:str) -> str:
 
 def make_title(sample):
     alias = sample.alias
-    type_ref_mass = sample.info['reference_mass_name']
-    reference_mass = sample.reference_mass
-    label_ref_mass = get_label(type_ref_mass)
-    
-    return f"{alias}, {label_ref_mass} = {reference_mass:.2f~P}"
+    if sample.tga is not None:
+        type_ref_mass = sample.info['reference_mass_name']
+        reference_mass = sample.reference_mass
+        label_ref_mass = get_label(type_ref_mass)
+        
+        return f"{alias}, {label_ref_mass} = {reference_mass:.2f~P}"
+    else:
+        return sample.alias
             
