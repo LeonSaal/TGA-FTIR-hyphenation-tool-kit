@@ -117,10 +117,25 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         if (arg := "converters") in kwargs:
             for col, converter in kwargs[arg].items():
                 kwargs[arg][col] = eval(converter)
-
+                
         frames = []
         for path in paths:
             filename = Path(path).name
+            if (skiprows:=kwargs.get("skiprows")) is not None:
+                if isinstance(skiprows, str):
+                    # match empty rows
+                    if skiprows == "":
+                        skiprows = "\n"
+                    with open(path, "r", encoding = kwargs.get("encoding", "utf-8")) as f:
+                        ridx = 0
+                        # iterate over rows to find skipmark
+                        while (text:=f.readline()) != "":
+                            ridx = ridx + 1
+                            if not text.startswith(skiprows):
+                                continue
+                            break
+                    kwargs["skiprows"] = ridx
+                    logger.debug(f"skipping {ridx} rows.")
 
             # load data from path
             try:

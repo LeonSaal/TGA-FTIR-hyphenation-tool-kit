@@ -172,7 +172,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             #width_idxs = width_T / sp.stats.mode(np.diff(sample_data.tga.sample_temp.values._data)).mode
             steps, _, step_starts_idx, step_ends_idx, peaks_idx = sample_data.mass_step(
                 plot=plot,
-                ax=axs[i, 0],
+                ax=None if not plot else axs[i, 0],
                 min_rel_height=min_rel_height, #only allow positive peaks
                 width_T=width_T,
             )
@@ -182,7 +182,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 step_ends_idx,
                 peaks_idx,
                 plot=plot,
-                ax=axs[i, 1],
+                ax=None if not plot else axs[i, 1],
                 corr_baseline=corr_baseline,
                 gases=sample_data.info.gases,
             )
@@ -192,10 +192,11 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             )
             data.append(pd.concat({sample_data.name: integrals}, names=["samples", "step"]))
             
-            axs[i,0].set_title(sample_data.alias)
-            if i!=len(worklist)-1:
-                axs[i, 0].set_xlabel("")
-                axs[i, 1].set_xlabel("")
+            if plot:
+                axs[i,0].set_title(sample_data.alias)
+                if i!=len(worklist)-1:
+                    axs[i, 0].set_xlabel("")
+                    axs[i, 1].set_xlabel("")
         logger.info("Finished integrating data.")
         cali["data"] = pd.concat(data)
         cali["data"].pint.dequantify().to_excel(output_path / f"integration_data.xlsx")

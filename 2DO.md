@@ -32,11 +32,6 @@
   - merge log messages from loops for fewer outputs
   - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
 
-## Correction
-- make correction of $CO_2$ more flexible / less specific to first device
-  - expect corrected profiles?
-- pass custom function with given signature to `.corr()`
-
 ## Fitting
 - `.robustness()` for single `Sample`
     - Workaround: Make Worklist from Single `Sample` to perform `.robustness()`
@@ -56,7 +51,11 @@
   - measure mass-, temperature- or time-differences
 - add DTG to mass-steps (optional)
 - DTG for worklists (adhere to `README.md`)
-- move all pltting to `.plot(...)`-method
+- move all plotting to `.plot(...)`-method
+- for `Worklist` use Seaborn to plot all samples in one figure?
+  - use `hue` for sample names
+  - maybe `col` for different SQERR
+- for `Worklist` use Sample.plot and add all to same axis?
 
 ## General
 - reduce amount of logging
@@ -77,10 +76,10 @@
 - add automated testing for
   - inititialization
   - plotting
-  - correction
   - fitting
+
 - for different input data
-- all possible args, kwargs
+- all(?) possible args, kwargs
 
 ## Other
 - `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
@@ -96,3 +95,8 @@
 # Documentation
 - add docstrings, signatures for every function
 - add example folder
+- Calibration method max explanation missing
+- explain robustness
+- reorganize/reorder Class-specific methods
+- saving
+  - make to_... default

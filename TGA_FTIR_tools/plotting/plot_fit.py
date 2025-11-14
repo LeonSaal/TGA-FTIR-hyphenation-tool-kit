@@ -87,8 +87,8 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
 
         # plotting of absolute difference
         abs_max = 0.05 * max(y_data)
-        sqerr = sample.results["fit"][reference].loc[
-            (ref,sample_name, alias, run, "total", gas), "sumsqerr"
+        rmse = sample.results["fit"][reference].loc[
+            (ref,sample_name, alias, run, "total", gas), "RMSE"
         ]
         total = sample.results["fit"][reference].loc[
             (ref,sample_name, alias, run, "total", gas), ega_values
@@ -96,7 +96,7 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         error.text(
             0,
             abs_max,
-            f"SQERR: {sqerr:.2e} ({100 * sqerr / total:.2f} %)",
+            f"NRMSE: {rmse:.2e} ({100 * rmse / total:.2f} %)",
         )  # percentage SQERR
 
         diff = y_data - yall

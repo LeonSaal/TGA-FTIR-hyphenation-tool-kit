@@ -14,6 +14,8 @@ fmt = "[{levelname:^7s}] {module:}.{funcName}: {message}"
 logging.basicConfig(level=logging.INFO, format=fmt, style="{")
 logger = logging.getLogger(__name__)
 
+config ={"ini":"settings.ini", "fitting_params":"Fitting_parameter.xlsx"}
+
 # Define links to GitHub repository and wiki
 class LINKS():
     API = 'https://api.github.com/repos/LeonSaal/TGA-FTIR-hyphenation-tool-kit/contents'
@@ -58,11 +60,30 @@ def list_gh_profiles(device: str):
 
     return profiles
 
+# read, write, update settings
+def read_config(cfg_file: Union[str, PathLike] = config["ini"]) -> configparser.ConfigParser:
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_file, encoding='ANSI')
+    return cfg
+
+def write_config(cfg) -> configparser.ConfigParser:
+    with open(config["ini"], "w", encoding='latin-1') as configfile:
+        cfg.write(configfile)
+    logger.info(f"Configuration written to {config['ini']!r}.")
+    return cfg
+
+def update_config(section: str, key: str, value: Union[str, int, float, bool]):
+    cfg = read_config()
+    if section not in cfg:
+        cfg[section] = {}
+    cfg[section][key] = str(value)
+    write_config(cfg)
+    logger.info(f"Updated {section!r} section: {key} = {value!r}.")
+    return cfg[section][key]
+
 # define package path and other paths
 PATH_DIR = Path(os.path.dirname(__file__))
 PATH_SET = PATH_DIR / "settings"
-
-config ={"ini":"settings.ini", "fitting_params":"Fitting_parameter.xlsx"}
 PATHS = {name: PATH_SET/ file for name, file in config.items()}
 
 # copy fresh settings into working directory 
@@ -74,8 +95,7 @@ for name, filename in config.items():
             logger.error(f"Unable to find {filename!r} in module!")
 
 # read settings
-cfg = configparser.ConfigParser()
-cfg.read(config["ini"], encoding='ANSI')
+cfg = read_config()
 
 PLOTTING = cfg["plotting"]
 STYLE = cfg["plotting"]["mpl-style"]
@@ -117,8 +137,7 @@ if PATHS["data"] == Path() or not PATHS["data"].exists():
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 
-with open(config["ini"], "w", encoding='latin-1') as configfile:
-    cfg.write(configfile)
+write_config(cfg)
 
 # define default units
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
@@ -128,23 +147,3 @@ for key, val in zip(keys, units):
 
 
 
-# read, write, update settings
-def read_config(cfg_file: Union[str, PathLike] = config["ini"]) -> configparser.ConfigParser:
-    cfg = configparser.ConfigParser()
-    cfg.read(cfg_file, encoding='ANSI')
-    return cfg
-
-def write_config(cfg) -> configparser.ConfigParser:
-    with open(config["ini"], "w", encoding='latin-1') as configfile:
-        cfg.write(configfile)
-    logger.info(f"Configuration written to {config['ini']!r}.")
-    return cfg
-
-def update_config(section: str, key: str, value: Union[str, int, float, bool]):
-    cfg = read_config()
-    if section not in cfg:
-        cfg[section] = {}
-    cfg[section][key] = str(value)
-    write_config(cfg)
-    logger.info(f"Updated {section!r} section: {key} = {value!r}.")
-    return cfg[section][key]

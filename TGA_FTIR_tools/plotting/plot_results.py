@@ -15,7 +15,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['sumsqerr','center', 'height', 'hwhm', 'area', 'mmol', 'mmol_per_mg']="mmol_per_mg", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
+def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['RMSE','center', 'height', 'hwhm', 'area', 'mmol', 'mmol_per_mg']="mmol_per_mg", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
     y = value if orient =="v" else "group"
     x = value if orient =="h" else "group"
     row = "reference" if compare in ["sample", "alias", "run"] else "sample"

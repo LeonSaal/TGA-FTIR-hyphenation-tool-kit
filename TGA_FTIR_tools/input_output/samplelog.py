@@ -30,7 +30,7 @@ def samplelog(data=None, create=True, overwrite=False, sheet_name=0,**kwargs) ->
         samplelog = samplelog[~samplelog.index.duplicated(keep="last" if overwrite else "first")]
 
         try:
-            with pd.ExcelWriter(path, if_sheet_exists="replace") as writer:
+            with pd.ExcelWriter(path, if_sheet_exists="replace", mode="a") as writer:
                 samplelog.to_excel(writer, merge_cells=MERGE_CELLS, sheet_name=sheet_name)
             logger.info("Successfully updated 'Samplelog.xlsx'.")
         except PermissionError:

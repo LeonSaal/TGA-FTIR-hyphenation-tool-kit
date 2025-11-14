@@ -1,3 +1,7 @@
+# 2025-11
+- use `skiprows: str` in `load_data` to skip rows starting with given string
+- fix bug in calibration without plotting
+
 # 2025-09
 - added option to `samplelog` to read/write specific sheets
 - added `Worklist.from_samplelog` to create worklist from specific sheet in samplelog
@@ -17,6 +21,8 @@
 - cleanup of code and logging
 - update testing
 - updated `settings.ini`
+- changed `SQERR` to `RMSE`
+- reorganise testing
 
 # 2025-08-25
 - improved integration plot from calibration

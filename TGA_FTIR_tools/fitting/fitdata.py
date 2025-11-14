@@ -33,7 +33,7 @@ class FitData:
             names=["group", "gas"],
         )
         columns = [
-            "sumsqerr",
+            "RMSE",
             "center",
             "height",
             "hwhm",
@@ -130,7 +130,7 @@ class FitData:
         fit = multi_gauss(x, *popt)
         diff = y - fit
         self.peaks.loc[("total", gas), "area"] = np.sum(y)
-        self.peaks.loc[("total", gas), "sumsqerr"] = np.sum(np.power(diff, 2))
+        self.peaks.loc[("total", gas), "RMSE"] = np.sqrt(np.mean(np.power(diff, 2)))
 
         profiles["sample_temp"] = x
         profiles["data "] = y
