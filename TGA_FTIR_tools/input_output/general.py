@@ -107,8 +107,9 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
 
     # iterate over devices
     for key, values in profile_specs["data"].items():
+        logger.debug(f"Looking for {key.upper()}-data.")
         paths = find_files_re(sample_name, values["ext"], PATHS["data"])
-        
+        logger.debug(f"Found {len(paths)} files(s).")
         if not paths:
             continue
 
@@ -121,6 +122,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         frames = []
         for path in paths:
             filename = Path(path).name
+            logger.debug(f"Reading {filename!r} from {Path(path).parent.as_posix()}")
             if (skiprows:=kwargs.get("skiprows")) is not None:
                 if isinstance(skiprows, str):
                     # match empty rows
@@ -135,7 +137,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                                 continue
                             break
                     kwargs["skiprows"] = ridx
-                    logger.debug(f"skipping {ridx} rows.")
+                logger.debug(f"Skipping {kwargs["skiprows"]} rows.")
 
             # load data from path
             try:
@@ -143,8 +145,8 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                 init_paths.append(path)
                 info.update(read_info(path, values))
 
-            except PermissionError:
-                logger.error(f"Failed to read {key}-data from {path}")
+            except PermissionError as e:
+                logger.error(f"Failed to read {key}-data from {path}. {e}")
 
             # rename columns
             if "(?P<suffix>" in values["ext"]:
@@ -167,6 +169,8 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         # concatenate data and remove duplicate columns
         concat = pd.concat(frames, axis=1)
         concat = concat.loc[:, ~concat.columns.duplicated()]
+
+        logger.debug(f"Available columns: {', '.join(concat.columns)}")
 
         # fill na
         concat = concat.interpolate(method="cubicspline")
@@ -200,9 +204,10 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
                                 indices.update({concat.columns.get_loc(col) for col, bidx in zip(concat.columns, bidxs) if bidx})
                                 rename.update({col:re.sub(val, repl, col) for col, bidx in zip(concat.columns, bidxs) if bidx and repl})
                             else:
-                                logger.debug(f"{val!r} is neither a valid slice, a matching regular expression nor a valid column name.")
+                                logger.debug(f"Ignoring {val!r} as it is neither a valid column name, a valid slice nor a matching regular expression.")
                     case _:
                         logger.warning(f"Invalid type of element in 'usecols': {val}, {type(val)}")
+            
             concat = concat.iloc[:,list(indices)]
         
         # get units
@@ -240,6 +245,8 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         # rename unit indices
         newnames = concat.columns
         mapper = {old:new for old, new in zip(oldnames, newnames)}
+        renamer = [f"{old!r}->{new!r}" for old, new in mapper.items() if new!=old]
+        logger.debug(f"Using and renaming columns: {', '.join(renamer)}")
         units = {mapper[oldname]: units.get(oldname) if units.get(oldname) else "dimensionless" for oldname in oldnames}
 
         # assign units to columns

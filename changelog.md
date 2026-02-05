@@ -1,4 +1,5 @@
 # 2026-02
+- add debug statements to `read_data` and fix logging level issue.
 - adjusted default savgol `window_length_rel = .05` (previously `0.01`)
 - bugfix in baseline correction (always subtracted self, when not specified)
 - more logging for calibration
