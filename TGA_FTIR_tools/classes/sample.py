@@ -638,6 +638,9 @@ class Baseline(Sample):
                 data = sample.__dict__[name].copy()
             all_signals = data.columns
             
+            nomatch = list(set(signal for pattern in methods.keys() for signal in all_signals if not re.match(pattern, signal)))
+            data.loc[:, nomatch] = 0
+
             for pattern, method in methods.items():
                 signals = [signal for signal in all_signals if re.match(pattern, signal)]
 
@@ -646,7 +649,7 @@ class Baseline(Sample):
                     continue
 
                 kwargs = method.get("kwargs", {})
-                match method.get("method"):
+                match method.get("method", "none"):
                     case "als":
                         fn = lambda x: corrections.baseline_als(x.astype(np.float64), **kwargs)
                     case "arpls":

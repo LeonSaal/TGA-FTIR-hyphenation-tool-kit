@@ -35,6 +35,10 @@ def integrate_peaks(
         baselines[gas] = {}
         for i in range(len(step_ends_idx)):
             subset = ega_data[gas].iloc[step_starts_idx[i]:step_ends_idx[i]]
+            
+            if subset.size == 0:
+                logger.warning(f"Decomposition step {i} for {gas!r} has no length. Consider adjusting preliminary corrections. Skipping.")
+                continue
 
             # baseline correction
             if corr_baseline == "linear":
@@ -167,15 +171,22 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         data = []
         for i, sample_data in enumerate(worklist):
+            logger.info(f"Sample {i+1}/{len(worklist)}: {sample_data.name!r}")
             # calculating mass steps and integrating FTIR_data signals
             # calculate width in terms of indices from supplied temperature width
             #width_idxs = width_T / sp.stats.mode(np.diff(sample_data.tga.sample_temp.values._data)).mode
+            logger.info(f"Determining mass steps ...")
             steps, _, step_starts_idx, step_ends_idx, peaks_idx = sample_data.mass_step(
                 plot=plot,
                 ax=None if not plot else axs[i, 0],
                 min_rel_height=min_rel_height, #only allow positive peaks
                 width_T=width_T,
             )
+            if (lm:=len(step_starts_idx)) > 5:
+                logger.warning(f"Determined more than 5 mass steps ({lm}). Consider adjusting Savitzky-Golay smooting parameters. Skipping...")
+                continue
+            
+            logger.info(f"Integrating mass steps ...")
             integrals = integrate_peaks(
                 sample_data.ega,
                 step_starts_idx,

@@ -1,3 +1,8 @@
+# 2026-02
+- adjusted default savgol `window_length_rel = .05` (previously `0.01`)
+- bugfix in baseline correction (always subtracted self, when not specified)
+- more logging for calibration
+
 # 2025-11
 - use `skiprows: str` in `load_data` to skip rows starting with given string
 - fix bug in calibration without plotting

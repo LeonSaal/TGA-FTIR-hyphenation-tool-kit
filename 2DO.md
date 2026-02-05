@@ -31,6 +31,8 @@
   - restructure import profile to better distinguish required and optional fields
   - merge log messages from loops for fewer outputs
   - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
+  - calculate file hash of import profile to check for updates in remote repo
+  - add more gases/groups to Netzsch *aromatics, acetic acid, carbonyls, ...*
 
 ## Fitting
 - `.robustness()` for single `Sample`
