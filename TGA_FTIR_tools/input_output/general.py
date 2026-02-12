@@ -47,7 +47,7 @@ def read_profile_json(profile: str) -> Mapping:
         with open(filename, encoding="UTF-8") as json_file:
             profile = json.load(json_file)
         for device, file in profile["data"].items():
-            with open(file) as json_file:
+            with open(file, encoding="UTF-8") as json_file:
                 profile["data"][device] = json.load(json_file)
         return profile
     
