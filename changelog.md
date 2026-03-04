@@ -1,3 +1,8 @@
+# 2026-03
+- bugfix in `mass_step`, resulting in wrong heights
+- decreased default `samples` for `mass_step` from 20 to 10
+- fixed calibration message
+
 # 2026-02
 - add debug statements to `read_data` and fix logging level issue.
 - adjusted default savgol `window_length_rel = .05` (previously `0.01`)

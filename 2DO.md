@@ -5,6 +5,7 @@
 ## Config
 - make config a function that reads from / writes to each time
     - use it everytime
+- encoding of `settings.ini` (requires *ANSI* atm)
 
 ## Import
 - helper to determine `kwargs` for `read_csv`
@@ -33,6 +34,7 @@
   - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
   - calculate file hash of import profile to check for updates in remote repo
   - add more gases/groups to Netzsch *aromatics, acetic acid, carbonyls, ...*
+  - take correction info from file header
 
 ## Fitting
 - `.robustness()` for single `Sample`
@@ -93,6 +95,11 @@
 - passing of worklist as positional argument? 
 - polyorder = 2, rel_window_lenght = .01
 - integration bounds (baseline not constant due to window width)
+- only calibrate gases with apparent differences between mass steps
+- add option for automatic correction (buoyancy reference $\approx a\cdot \log x+b$)
+
+## Installation
+- add auxiliary files to project definition for download during install
 
 # Documentation
 - add docstrings, signatures for every function

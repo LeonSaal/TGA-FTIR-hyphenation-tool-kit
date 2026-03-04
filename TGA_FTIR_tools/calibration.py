@@ -115,7 +115,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
         if not PATHS["calibration"].exists():
             PATHS["calibration"].mkdir()
             logger.warning(
-                "No calibration data found. To obtain quantitative EGA data run .calibrate(mode='recalibrate')!"
+                "No calibration data found. To obtain quantitative EGA data run Sample.calibrate(worklist=Worklist, mode='recalibrate') or Worklist.recalibrate()!"
             )
             return None, None, None, None
         os.chdir(PATHS["calibration"])

@@ -6,7 +6,7 @@ import pandas as pd
 import pint
 ureg = pint.get_application_registry()
 
-def mass_step(sample, samples= 20, width_T=np.array([0, np.inf]), min_rel_height=0.2, rel_height_bounds=.7, **kwargs):  # rel_height=.963
+def mass_step(sample, samples= 10, width_T=np.array([0, np.inf]), min_rel_height=0.2, rel_height_bounds=.7, **kwargs):  # rel_height=.963
     "deriving mass steps via peaks in DTG signal"
     # calculation and smoothing of DTG
     y = sample.tga['sample_mass']
@@ -43,12 +43,12 @@ def mass_step(sample, samples= 20, width_T=np.array([0, np.inf]), min_rel_height
     # calculate mass steps
     start_masses = pd.Series(np.zeros(len(step_starts_idx)), dtype=y.dtype)
     for i, step_start in enumerate(step_starts_idx):
-        start_masses[i] = y[step_start : step_start + samples].mean()
+        start_masses[i] = y[step_start - samples : step_start].mean()
 
     # calculate step height
     step_height = pd.Series(np.zeros(len(step_starts_idx)), dtype=y.dtype)
     for i, (start_mass, step_end) in enumerate(zip(start_masses, step_ends_idx)):
-        step_height[i] = start_mass - y[step_end - samples : step_end].mean()
+        step_height[i] = start_mass - y[step_end : step_end + samples ].mean()
 
     rel_step_height = step_height / sample.reference_mass
 
