@@ -122,11 +122,11 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
         # try to load saved calibration
         try:
-            cali = pd.read_excel(PATHS["calibration"] / "cali.xlsx", sheet_name=None, index_col=[0,1], header=[0,1])
+            cali = pd.read_excel(PATHS["calibration"] / "cali.xlsx", sheet_name=None, index_col=[0,1,2], header=[0,1])
             #cali["data"] = pd.read_excel("cali.xlsx", sheet_name="data", index_col=[0, 1])
             # cali["data"].reset_index(inplace=True)
             # cali["data"].set_index(cali["data"].columns[:3].to_list(), inplace=True)
-            cali = {name: data.xs(profile).pint.quantify() for name, data in cali.items()}
+            cali = {name: data.xs((profile, data.index.get_level_values("time").max())).pint.quantify() for name, data in cali.items()}
 
             gases = cali["linreg"].index
 
@@ -148,7 +148,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
             # make directory
             PATHS["calibration"].mkdir()
         os.chdir(PATHS["calibration"])
-        output_path = Path(f"{start_time}_calibration_{profile}")
+        output_path = Path(f"{profile}_{start_time}")
         output_path.mkdir()
 
         # setting up output DataFrames
@@ -290,11 +290,11 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                     # transform before saving
                     data = data.pint.dequantify()
                     data = data.rename({"":"dimensionless"}, level=1, axis=1)
-                    data_new = pd.concat({profile:data}, names=["profile"])
+                    data_new = pd.concat({profile: pd.concat({start_time:data}, names=["time"])}, names=["profile"])
 
                     # get old contents of file and update rows with new data
                     if path_exists:
-                        data_old = pd.read_excel(writer, sheet_name=name, header=[0,1], index_col=[0,1])
+                        data_old = pd.read_excel(writer, sheet_name=name, header=[0,1], index_col=[0,1,2])
                         data_new = pd.concat([data_old, data_new]).drop_duplicates(keep="last")
                     data_new.to_excel(writer, sheet_name=name,merge_cells=MERGE_CELLS)
 

@@ -3,6 +3,7 @@
 - decreased default `samples` for `mass_step` from 20 to 10
 - fixed calibration message
 - made `Worklist.profiles` `@property` and removed option to initialize `Worklist` with different profiles (still possible to add `Worklists` with different profiles)
+- add timestamp to calibration data
 
 # 2026-02
 - add debug statements to `read_data` and fix logging level issue.
