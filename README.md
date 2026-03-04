@@ -117,7 +117,7 @@ Sample(name, alias=None, mode="construct", profile=None)
 #### Worklist
 
 ```python
-Worklist(samples, name=None, profiles=[], aliases=[])
+Worklist(samples, name=None, profile=str, aliases=[])
 ```
 **Parameters**
 
@@ -125,7 +125,7 @@ Worklist(samples, name=None, profiles=[], aliases=[])
 | -------- | ------------------------------------ | ------- | --------------------------------------------------------------- |
 | samples  | list[str \| Sample] \| Sample \| str | —       | List of Sample objects or names or single sample name or Sample |
 | name     | str                                  | None    | Name of the worklist                                            |
-| profiles | list \| str                                 | []      | Data loading profile(s)                                           |
+| profile | str                                 |  Default import profile in [settings-File](#settingsini-file)     | Data loading profile(s)                                           |
 | aliases  | list                                 | []      | Sample aliases                                                  |
 
 Or from samplelog:

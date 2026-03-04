@@ -35,24 +35,22 @@ import os
 class Worklist:
     samples: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
-    profiles: Union[List, str] = DEFAULTS["profile"]
+    profile: Union[List, str] = DEFAULTS["profile"]
     aliases: list = field(default_factory=list)
     _results: dict = field(default_factory=lambda: {"fit": pd.DataFrame(), "robustness": pd.DataFrame()})
 
     def __post_init__(self):
-        if isinstance(self.profiles, str):
-            self.profiles = [self.profiles]*len(self)
         match self.samples:
             case str():
-                self.samples = [Sample(self.samples, profile=self.profiles[0] if len(self.profiles)==1 else DEFAULTS["profile"], alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
+                self.samples = [Sample(self.samples, profile=self.profile, alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
             case list():
                 self.samples = [
                     (
                         sample
                         if isinstance(sample, Sample)
-                        else Sample(sample, profile=profile, alias = alias if alias else sample)
+                        else Sample(sample, profile=self.profile, alias = alias if alias else sample)
                     )
-                    for sample, profile, alias in zip_longest(self.samples, self.profiles, self.aliases)
+                    for sample, alias in zip_longest(self.samples, self.aliases)
                 ]
             case Sample():
                 self.samples = [self.samples]
@@ -304,16 +302,19 @@ class Worklist:
     @property
     def info(self) -> pd.DataFrame:
         return pd.concat([sample.info.to_row() for sample in self.samples])
+    
+    @property
+    def profiles(self) -> list:
+        return [s.profile for s in self.samples]
         
     def calibrate(self, **kwargs):
         from ..calibration import calibrate
-        profiles=[profile for profile in self.profiles]
 
-        if not len(set(profiles))==1:
-            logger.error(f"The worklist contains multiple profiles: {profiles!r}")
+        if not len(set(self.profiles))==1:
+            logger.error(f"The worklist contains multiple profiles: {self.profiles!r}")
             return
 
-        return calibrate(worklist = self, mode="recalibrate",profile=profiles[0], **kwargs)
+        return calibrate(worklist = self, mode="recalibrate", profile=self.profiles[0], **kwargs)
         
     def from_samplelog(sheet_name=0):
         worklist = samplelog(sheet_name=sheet_name)
