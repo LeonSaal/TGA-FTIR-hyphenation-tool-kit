@@ -317,10 +317,10 @@ def FTIR_to_DTG(
     # setup IR data and calculating DTG
     gases = gases_temp
     data = pd.merge(
-        sample.tga, sample.ega, how="left", on=["time", "sample_temp"]
+        sample.tga, sample.ega.drop("sample_mass", errors="ignore", axis=1), how="left", on=["time", "sample_temp"]
     ).dropna()
     DTG = -sp.signal.savgol_filter(
-        data["sample_mass"].to_numpy(dtype=np.float64), 13, 3, deriv=1
+        data["sample_mass"].pint.to("mg").to_numpy(dtype=np.float64), 13, 3, deriv=1
     )
 
     x = data[x_axis]
@@ -336,7 +336,7 @@ def FTIR_to_DTG(
         tot_mass = (
             (tot_area - sample.linreg["intercept"][gas])
             / sample.linreg["slope"][gas]
-            * sample.linreg["molmass"][gas]
+            * sample.linreg["molmass"].pint.to("mg/mol")[gas]
         )
         y[i][:] = sample.ega[gas] / tot_area * tot_mass
         out[gas] = y[i][:]
@@ -371,7 +371,11 @@ def FTIR_to_DTG(
     )
 
     if legend:
-        stack.legend()
+        stack.legend(
+                loc="center left",
+                bbox_to_anchor=(1, 0.5),
+                frameon=False
+            )
 
     # plot error of reconstruction
     error.plot(x, DTG - cumul)

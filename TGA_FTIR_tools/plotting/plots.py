@@ -18,7 +18,7 @@ def plots(
     plot: Literal["TG", "EGA", "DTG", "heat_flow"],
     ax=None,
     x_axis="sample_temp",
-    y_axis="orig",
+    y_axis=Literal["orig", "rel"],
     ylim="auto",
     xlim=[None, None],
     gas=None,
@@ -57,7 +57,7 @@ def plots(
                     logger.warning(f"{gas} is not calibrated for {sample.name}")
 
         if y_axis == "rel":
-            if calibrated == set():
+            if gas not in calibrated:
                 logger.warning(
                     f"{gas} is not calibrated. Change y_axis to 'orig' and rerun command."
                 )
@@ -65,20 +65,22 @@ def plots(
 
     ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower())}$")
     if plot != "EGA":
-        if y_axis == "orig":
-            ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS.get(ylabel, '?')}$")
-        elif y_axis == "rel":
-            if plot == "DTG":
-                ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
-            else:
-                ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
+        match y_axis:
+            case "orig":
+                ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS.get(ylabel, '?')}$")
+            case "rel":
+                if plot == "DTG":
+                    ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
+                else:
+                    ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
     elif plot == "EGA":
-        if y_axis == "orig":
-            ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS.get(ylabel, '?')}$")
-        elif y_axis == "rel":
-            ax.set_ylabel(
-                f"{get_label(gas)} {SEP} ${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}$"
-            )
+        match y_axis:
+            case "orig":
+                ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS.get(ylabel, '?')}$")
+            case "rel":
+                ax.set_ylabel(
+                    f"{get_label(gas)} {SEP} ${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}$"
+                )
 
     # actual plotting
     for sample in samples:
@@ -178,7 +180,11 @@ def plots(
     ax.set_xlim(xlim)
 
     if legend:
-        ax.legend()
+        ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1, 0.5),
+                frameon=False
+            )
 
     ax.xaxis.set_minor_locator(
         ticker.AutoMinorLocator()
