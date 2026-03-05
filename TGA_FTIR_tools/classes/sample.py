@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from traitlets import signature_has_traits
 import pint_pandas
+from pathlib import Path
 
 import pint
 from pint import DimensionalityError
@@ -335,7 +336,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False,reference=None, **kwargs):
+    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False, directory=None,reference=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
         "plotting TG and or IR data"
         options = [
@@ -417,7 +418,7 @@ class Sample:
                         warn_msg = f"Multiple fitting results available. Specify with keyword 'reference'= one of {avail_refs}"
                         logger.warning(warn_msg)
                         return
-                plot_fit(self, reference, **kwargs)
+                fig, ax = plot_fit(self, reference, **kwargs)
                     
             case "calibration":
                 if (gas := kwargs.get("gas")) and kwargs.get("gas") in self._info["gases"]:
@@ -461,12 +462,22 @@ class Sample:
                 fig, ax = plot_results(data, **args)
 
         if save:
-            path_plots = PATHS["plots"]/ plot
+            path_plots = PATHS["plots"]/ plot if not directory else directory
             if not path_plots.exists():
                 path_plots.mkdir(parents=True)
 
-            path_pic = path_plots / f"{self.name}_{'_'.join(kwargs.keys())}"
-            ax.get_figure().savefig(path_pic)
+            match fig:
+                case dict():
+                    for key, plot in fig.items():
+                        path_pic = path_plots / f"{self.name}_{key}_{'_'.join(kwargs.keys())}"
+                        plot.savefig(path_pic)
+                case plt.figure():
+                    path_pic = path_plots / f"{self.name}_{'_'.join(kwargs.keys())}"
+                    ax.get_figure().savefig(path_pic)
+                case _:
+                    print("no match")
+
+            
         return ax
 
     def fit(
@@ -475,6 +486,7 @@ class Sample:
         T_max=None,
         T_max_tol=50,
         save=True,
+        make_path=True,
         plot=True,
         presets=None,
         mod_sample=True,
@@ -483,6 +495,7 @@ class Sample:
     ):
         "deconvolution of IR data"
         from ..fitting import fitting, get_presets
+        
         if self.ega is None:
             logger.error("No EGA data to fit available.")
             return
@@ -518,10 +531,12 @@ class Sample:
             # setting up output directory
             if save:
                 path = (
-                    PATHS["fitting"] / f'{general.time()}{reference_name}_{self._info["name"]}'
-                )
-                os.makedirs(path)
-                os.chdir(path)
+                        PATHS["fitting"] / f'{general.time()}{reference_name}_{self._info["name"]}'
+                    ) if make_path else Path.cwd()
+                
+                if make_path:
+                    os.makedirs(path)
+                    os.chdir(path)
 
             # fitting
             logger.info(
@@ -532,9 +547,7 @@ class Sample:
             temp.tga = temp.tga[temp.tga["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
             temp.ega = temp.ega[temp.ega["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
             peaks = fitting(temp, presets, save=save, **kwargs)
-            if save:
-                logger.info(f"Plots and results are saved.\n'{path=}'.")
-                os.chdir(PATHS["home"])
+            
 
             logger.info("Fitting finished!")
 
@@ -548,13 +561,24 @@ class Sample:
 
         # plotting
         if plot:
-            self.plot("fit", reference=reference_name, **kwargs)
+            kwargs["save"]=save
+            self.plot("fit", reference=reference_name, directory=path, **kwargs)
+
+        if save:
+            logger.info(f"Plots and results are saved.\n'{path=}'.")
+        
+        if make_path:
+            os.chdir(PATHS["home"])
 
         return results
 
-    def robustness(self, ref, **kwargs):
+    def robustness(self, ref, plot:bool=True,**kwargs):
         from ..fitting import robustness
-        data, summary = robustness(self, ref, **kwargs)
+        from ..classes import Worklist
+        temp_wl = Worklist(self)
+        data, summary = temp_wl.robustness(ref, plot=plot, **kwargs)
+        if plot:
+            temp_wl.plot("robustness")
         self.results["robustness"].update({ref: {"data":data,"summary":summary}})
         return data, summary
 

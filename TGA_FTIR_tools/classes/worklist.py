@@ -144,8 +144,14 @@ class Worklist:
                     presets=presets,
                     mod_sample=mod_samples,
                     **kwargs,
-                    save=False,
+                    save=save,
+                    make_path=False
                 )
+
+        if save:
+            with pd.ExcelWriter("summary.xlsx") as writer:
+                self.results["fit"].to_excel(writer)
+
         os.chdir(PATHS["home"])
         return self.results["fit"]
 
@@ -191,7 +197,7 @@ class Worklist:
         self._results["robustness"], summary
         if plot:
             self.plot("robustness")
-        return self._results["robustness"]
+        return self._results["robustness"], summary
 
     def plot(self, plot=None, ax=None, save=False, reference=None, **kwargs) -> None:
         if plot in ["fit", "robustness"]:

@@ -38,8 +38,7 @@
   - first init: in Worklist don't ask for profile each time
 
 ## Fitting
-- `.robustness()` for single `Sample`
-    - Workaround: Make Worklist from Single `Sample` to perform `.robustness()`
+
 - `.fit()` plot 
     - remove error x-axis and add tick-marks at the top of the subplot
     - move **SQERR** to bottom 
@@ -49,6 +48,12 @@
 - calculate statistical values and append to ``.results["fit"]`` or add as new key:value-pair $\rightarrow$ maybe not necessary if plotting with `seaborn`
 - default ``plot=False``
 - arrows narrower and labels outside box area
+- fix plotting
+- use linearized gaussian model to enhance fitting performance
+
+## Robustness
+- `.robustness()` for single `Sample`
+    - *current* Workaround: Make Worklist from Single `Sample` to perform `.robustness()`
 
 ## Plotting
 - `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
@@ -76,6 +81,8 @@
 - ``settings[units] int_ega = ega``
 - auto-save objects after changes -> global setting
 - remove functions that are not used anymore
+- unify kwargs for plotting and saving
+  - make_dir / directory -> parent_dir?
 
 ## Testing
 - add automated testing for
@@ -114,3 +121,4 @@
 - reorganize/reorder Class-specific methods
 - saving
   - make to_... default
+- escape **\$** in **README.md** under *settings.ini File*

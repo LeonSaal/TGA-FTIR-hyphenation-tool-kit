@@ -15,6 +15,8 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
 
     fit_data = sample.results["fit"][reference][["center", "height", "hwhm"]].dropna()
 
+    figs = {}
+    axs =  {}
     for gas, params in fit_data.groupby("gas"):
         fig = plt.figure(constrained_layout=True)
         gs = fig.add_gridspec(8, 1)
@@ -111,5 +113,9 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         )  # switch on minor ticks on each axis
         fitting.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         error.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-        fig.savefig(f'{sample.info["name"]}_{gas}.png')
+        figs[gas] = fig
+        axs[gas] = [fitting, error]
+        #fig.savefig(f'{sample.info["name"]}_{gas}.png')
+    return figs, axs 
+
 

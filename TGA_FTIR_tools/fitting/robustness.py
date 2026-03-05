@@ -52,7 +52,7 @@ def robustness(
     logger.info("Initial results:")
     start = tm.time()
     res = worklist.fit(
-        reference=reference,
+        reference,
         save=False,
         T_max=T_max,
         presets=presets_rob,
@@ -126,7 +126,7 @@ def robustness(
                                     gas,
                                 ),
                                 "mmol_per_mg",
-                            ]
+                            ].astype(np.float64)
                         )
                         del res
             else:

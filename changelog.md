@@ -1,4 +1,7 @@
 # 2026-03
+- added workaround to perform robustness on `Sample`-object
+- bugfix in saving of fit-plots
+- bugfix in ``robustness.py``
 - bugfix in `mass_step`, resulting in wrong heights
 - decreased default `samples` for `mass_step` from 20 to 10
 - fixed calibration message
