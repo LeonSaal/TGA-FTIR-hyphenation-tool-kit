@@ -91,4 +91,4 @@ def plot_residuals_single(x,y, linreg, ax):
     Y_cali = x.mul(ureg.Quantity(linreg["slope"], y_unit/x_unit)).add(ureg.Quantity(linreg["intercept"], y_unit))
     ax.scatter(Y_cali, y - Y_cali, label=f"data (N = {len(x)})")
     ax.hlines(0, Y_cali.min(), Y_cali.max())
-    ax.set_ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS['int_ega']}")
+    ax.set_ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")

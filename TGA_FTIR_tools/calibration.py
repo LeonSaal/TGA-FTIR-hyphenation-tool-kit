@@ -319,8 +319,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 axs[i, 0].set_title("Regression")
                 axs[i, 1].set_title("Residuals")
             if i == len(plot_gases)-1:
-                axs[i, 0].set_xlabel(UNITS["molar_amount"])
-                axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS['int_ega']}")
+                axs[i, 0].set_xlabel(UNITS.get("molar_amount", '?'))
+                axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")
         fig.savefig(output_path / f"regression.png")
 
         x = cali["x_mol"]

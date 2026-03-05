@@ -44,15 +44,15 @@ def plot_TGA(
         if plot == "sample_mass":
             ylabel = f"{get_label('sample_mass')} {SEP} $\\%$"
         elif plot == "heat_flow":
-            ylabel = f'{get_label("heat_flow")} {SEP} $ {UNITS["heat_flow"]}\,{UNITS["sample_mass"]}^{{-1}}$'
+            ylabel = f'{get_label("heat_flow")} {SEP} $ {UNITS.get("heat_flow", '?')}\,{UNITS.get("sample_mass", '?')}^{{-1}}$'
 
     elif y_axis == "orig":
         y = sample.tga[plot]
         yDTG = sample.tga["dtg"] * 60  # turning dtg from mg/s in mg/min
-        ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS['sample_mass']}\\,min^{{-1}}$"
-        ylabel = f"{get_label(plot)} {SEP} ${UNITS[plot]}$"
+        ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS.get('sample_mass', '?')}\\,min^{{-1}}$"
+        ylabel = f"{get_label(plot)} {SEP} ${UNITS.get(plot, '?')}$"
 
-    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
 
     # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis == "time":
@@ -61,12 +61,12 @@ def plot_TGA(
         temp.plot(
             x,
             sample.tga["sample_temp"],
-            label=f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$",
+            label=f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$",
             ls="dashed",
             color="black",
         )
         temp.spines["right"].set_position(("axes", 1.15))
-        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
+        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
         if legend:
             temp.legend(loc=1)
 
@@ -182,17 +182,17 @@ def plot_FTIR(
     # setup figure
     graphs = []
     graphs.append(ax)
-    graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
     color = next(colors)
     if x_axis == "time":
         x = x / 60
     match y_axis:
         case "orig":
-            #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS['int_ega']}$")
+            #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS.get('int_ega', '?')}$")
             graphs[0].yaxis.label.set_color(color)
         case "rel_mol":
             graphs[0].set_ylabel(
-                f"${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
+                f"${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}\\,{UNITS.get('time', '?')}^{{-1}}$"
             )
         case "rel":
             graphs[0].set_ylabel("relative intensity")
@@ -281,7 +281,7 @@ def FTIR_to_DTG(
     title=True,
 ):
     "reconstructing DTG from calibrated IR data"
-    gases_temp = set([gas.upper() for gas in gases])
+    gases_temp = set(gases)
 
     # catching possible input errors
     try:
@@ -352,22 +352,22 @@ def FTIR_to_DTG(
 
     error = fig.add_subplot(gs[-1, 0], sharex=stack)
 
-    stack.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
-    error.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    stack.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
+    error.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
 
     # actual plotting
     if x_axis == "time":
         x = x / 60
         temp = stack.twinx()
         temp.plot(x, data["sample_temp"], ls="dashed", color="black", label="T")
-        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
+        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
         if legend:
             temp.legend()
 
     stack.stackplot(x, y, labels=[get_label(gas) for gas in gases])
     stack.plot(x, DTG, label=get_label("dtg"))
     stack.set_ylabel(
-        f"{get_label('dtg')}, {', '.join([get_label(gas) for gas in gases])} {SEP} ${UNITS['sample_mass']}\\,{UNITS['time']}^{{-1}}$"
+        f"{get_label('dtg')}, {', '.join([get_label(gas) for gas in gases])} {SEP} ${UNITS.get('sample_mass', '?')}\\,{UNITS.get('time', '?')}^{{-1}}$"
     )
 
     if legend:

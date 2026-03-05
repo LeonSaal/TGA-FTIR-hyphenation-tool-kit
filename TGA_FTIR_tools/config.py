@@ -106,7 +106,7 @@ BOUNDS = cfg["fitting"]
 CORRECTION = cfg["correction"]
 MERGE_CELLS = True
 UNITS = cfg["units"]
-SEP = UNITS["sep"]
+SEP = UNITS.get("sep", '?')
 
 # hint location of fit parameters
 def fit_references(open=False):
@@ -145,7 +145,7 @@ write_config(cfg)
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
 units = ["mg", "min", "°C", "mmol", "mW", "mg\\,min^{{-1}}"]
 for key, val in zip(keys, units):
-    UNITS[key] = val
+    UNITS.get(key, '?') = val
 
 
 

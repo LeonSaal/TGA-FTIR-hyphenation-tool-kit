@@ -19,9 +19,9 @@ def plot_corr(originalData: pd.DataFrame, BaselineData:pd.DataFrame, label: str)
 
     ax.legend()
     if x.name == "time":
-        ax.set_xlabel(f"{get_label('time')} {SEP} {UNITS['time']}")
+        ax.set_xlabel(f"{get_label('time')} {SEP} {UNITS.get('time', '?')}")
     elif x.name == "sample_temp":
-        ax.set_xlabel(f"{get_label('sample_temp')} {SEP} {UNITS['sample_temp']}")
-    ax.set_ylabel(f"{get_label(label)} {SEP} {UNITS['EGA' if label not in UNITS else label]}")
+        ax.set_xlabel(f"{get_label('sample_temp')} {SEP} {UNITS.get('sample_temp', '?')}")
+    ax.set_ylabel(f"{get_label(label)} {SEP} {UNITS.get('EGA' if label not in UNITS else label, '?')}")
     ax.set(title=f"{get_label(label)} baseline correction")
 

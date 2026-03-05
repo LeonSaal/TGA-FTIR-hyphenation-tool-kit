@@ -44,8 +44,8 @@ def plot_dweight(
             f"$ML$ {get_label(names[i])}: {mass_loss[i]:.2f} mg ({mass_loss[i] / sample.reference_mass * 100:.1f} %)",
         )
     ax.hlines(weights[:-1], x[times[:-1]], x[times[1:]], color="black")
-    ax.set_ylabel(f"{get_label('sample_mass')} {SEP} {UNITS['sample_mass']}")
-    ax.set_xlabel(f"{get_label('sample_temp')} {SEP} {UNITS['sample_temp']}")
+    ax.set_ylabel(f"{get_label('sample_mass')} {SEP} {UNITS.get('sample_mass', '?')}")
+    ax.set_xlabel(f"{get_label('sample_temp')} {SEP} {UNITS.get('sample_temp', '?')}")
     ax.set_ylim(ylim)
     if type(how_dry) == str:
         ax2 = plt.twinx()

@@ -61,12 +61,12 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
             fitting.plot(x, y, linestyle="dashed", zorder=i)  #
 
         fitting.legend()
-        fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
+        fitting.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
         if y_axis == "orig":
-            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS['int_ega']}$")
+            fitting.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS.get('int_ega', '?')}$")
         elif y_axis == "rel":
             fitting.set_ylabel(
-                f"{get_label(gas)} {SEP} ${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}\\,{UNITS['time']}^{{-1}}$"
+                f"{get_label(gas)} {SEP} ${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}\\,{UNITS.get('time', '?')}^{{-1}}$"
             )
 
         # mark center on x-axis
@@ -104,7 +104,7 @@ def plot_fit(sample, reference, title=False, y_axis="orig", **kwargs):
         diff = y_data - yall
         error.plot(x, diff)
         error.hlines(0, min(x), max(x), ls="dashed")
-        error.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS['sample_temp']}$")
+        error.set_xlabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
         error.set_ylabel("error")
         error.set_ylim(-abs_max, abs_max)
 

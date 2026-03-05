@@ -66,7 +66,7 @@ def plot_robustness(data, save=False, ylim=[0, None], **kwargs):
             plt.legend()
             plt.title(f"{sample}: {label}")
             plt.ylim(ylim)
-            plt.ylabel(f"${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}$")
+            plt.ylabel(f"${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}$")
             plt.legend()
             plt.xticks(rotation=45, ha="right")
             plt.tight_layout()

@@ -43,7 +43,6 @@ def plots(
             logger.warning("Supply 'gas = '")
             return
         else:
-            gas = gas.upper()
             if gas not in samples[0].ega.columns:
                 logger.warning(f"{gas} was not found in IR data.")
                 return
@@ -64,10 +63,10 @@ def plots(
                 )
                 return
 
-    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS[x_axis.lower()]}$")
+    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower())}$")
     if plot != "EGA":
         if y_axis == "orig":
-            ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS[ylabel]}$")
+            ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS.get(ylabel, '?')}$")
         elif y_axis == "rel":
             if plot == "DTG":
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
@@ -75,10 +74,10 @@ def plots(
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%$")
     elif plot == "EGA":
         if y_axis == "orig":
-            ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS[ylabel]}$")
+            ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS.get(ylabel, '?')}$")
         elif y_axis == "rel":
             ax.set_ylabel(
-                f"{get_label(gas)} {SEP} ${UNITS['molar_amount']}\\,{UNITS['sample_mass']}^{{-1}}$"
+                f"{get_label(gas)} {SEP} ${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}$"
             )
 
     # actual plotting
