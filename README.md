@@ -452,7 +452,7 @@ The `settings.ini` file is created in the home directory upon first import of th
 |            | title             | False                 |         Show title.                           |
 |            | legend            | True                  |         Show legend.                           |
 |       |                   |                       |                                    |  
-| **labels**     |                   |                       |       Labels for parameters found in data. Styling with $\LaTeX$ possible *e.g.* \$m_0\$ $\rightarrow$ $m_0$                             |
+| **labels**     |                   |                       |       Labels for parameters found in data. Styling with $\LaTeX$ possible *e.g.* '\$m_0\$' $\rightarrow$ $m_0$                             |
 |       |                   |                       |                                    |  
 |            | sample_mass       | mass                  |                                    |
 |            | time              | t                     |                                    |
