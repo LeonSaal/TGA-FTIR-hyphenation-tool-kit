@@ -1,4 +1,5 @@
 # 2026-03
+- bugfix in ``dry_weight`` (#92)
 - added workaround to perform robustness on `Sample`-object
 - bugfix in saving of fit-plots
 - bugfix in ``robustness.py``

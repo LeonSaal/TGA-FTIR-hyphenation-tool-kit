@@ -88,11 +88,6 @@ class Sample:
         self.run = log.get("run", {}).get(self.name, 0) if not self.run else self.run
         self.raw = copy.deepcopy(self)
 
-        if corrs:=self.info.get("corrections"):
-            self.baseline = Baseline().from_sample(self, corrs=corrs)
-            self.__dict__.update(corrections.corr_baseline(self.raw, self.baseline))
-            self.reference = self.baseline.name
-
     def post_init_tga(self):
         if self.tga is None:
             logger.error(f"No TGA data found for {self.name!r}.")
@@ -174,6 +169,13 @@ class Sample:
                 )#.dropna(axis=0)
             except Exception as e:
                 logger.debug(f"Unable to merge temperature data. {e}")
+
+        # make corrections 
+        if corrs:=self.info.get("corrections"):
+            self.baseline = Baseline().from_sample(self, corrs=corrs)
+            self.__dict__.update(corrections.corr_baseline(self.raw, self.baseline))
+            self.reference = self.baseline.name
+
         try:
             self.dry_weight(plot=False, **kwargs)
         except Exception as e:

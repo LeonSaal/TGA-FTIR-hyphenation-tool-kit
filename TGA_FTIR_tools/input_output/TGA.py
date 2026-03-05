@@ -42,7 +42,7 @@ def dry_weight(sample, how_dry="H2O"):
         case float() | int():
             # check if value is within the temperature range
             if (min_temp < ureg.Quantity(how_dry, "degreeC") < max_temp):
-                dry_point_idx = sample.tga["time"][sample.tga["sample_temp"].astype(np.float64) >= how_dry].argmax()
+                dry_point_idx = sample.tga["time"][sample.tga["sample_temp"].astype(np.float64) >= how_dry].idxmin()
             else:
                 logger.error(f"Supplied value is out of range. Must be within {min_temp:.2f} to {max_temp:.2f}")
                 return 
@@ -66,7 +66,7 @@ def dry_weight(sample, how_dry="H2O"):
                 return
             
             # look for signal peak between 50 and 200 °C
-            peak_signal_idx = ref[how_dry][(ureg.Quantity(50, "degreeC") < ref["sample_temp"]) & (ref["sample_temp"] < ureg.Quantity(200, "degreeC"))].argmax()
+            peak_signal_idx = ref[how_dry][(ureg.Quantity(50, "degreeC") < ref["sample_temp"]) & (ref["sample_temp"] < ureg.Quantity(200, "degreeC"))].idxmax()
             min_T = ref["sample_temp"].iloc[peak_signal_idx]
             max_T = min_T + ureg.Quantity(50, "delta_degreeC")
             range_T = (min_T < ref["sample_temp"]) & (ref["sample_temp"]< max_T)
@@ -78,7 +78,7 @@ def dry_weight(sample, how_dry="H2O"):
 
             intersection = (ref["sample_temp"] >= ureg.Quantity(-intercept / slope, ref["sample_temp"].dtypes.units))
             if intersection.any():
-                dry_point_idx = ref["sample_temp"][intersection].argmax()
+                dry_point_idx = ref["sample_temp"][intersection].idxmin()
             else:
                 logger.error(f"Unable to determine dry point from {how_dry}-trace.")
                 return
