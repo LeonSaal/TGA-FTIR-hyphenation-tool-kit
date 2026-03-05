@@ -18,7 +18,7 @@ def plots(
     plot: Literal["TG", "EGA", "DTG", "heat_flow"],
     ax=None,
     x_axis="sample_temp",
-    y_axis=Literal["orig", "rel"],
+    y_axis=Literal["orig", "rel_mol"],
     ylim="auto",
     xlim=[None, None],
     gas=None,
@@ -53,10 +53,10 @@ def plots(
             try:
                 calibrated.update(set(sample.linreg.index))
             except AttributeError:
-                if y_axis == "rel":
+                if y_axis == "rel_mol":
                     logger.warning(f"{gas} is not calibrated for {sample.name}")
 
-        if y_axis == "rel":
+        if y_axis == "rel_mol":
             if gas not in calibrated:
                 logger.warning(
                     f"{gas} is not calibrated. Change y_axis to 'orig' and rerun command."
@@ -68,7 +68,7 @@ def plots(
         match y_axis:
             case "orig":
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS.get(ylabel, '?')}$")
-            case "rel":
+            case "rel_mol":
                 if plot == "DTG":
                     ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
                 else:
@@ -77,7 +77,7 @@ def plots(
         match y_axis:
             case "orig":
                 ax.set_ylabel(f"{get_label(gas)} {SEP} ${UNITS.get(ylabel, '?')}$")
-            case "rel":
+            case "rel_mol":
                 ax.set_ylabel(
                     f"{get_label(gas)} {SEP} ${UNITS.get('molar_amount', '?')}\\,{UNITS.get('sample_mass', '?')}^{{-1}}$"
                 )
@@ -101,7 +101,7 @@ def plots(
                 x /= 60
             if y_axis == "orig":
                 y = sample.tga["sample_mass"]
-            elif y_axis == "rel":
+            elif y_axis == "rel_mol":
                 y = 100 * sample.tga["sample_mass"] / ref_mass
             if (
                 ylim == "auto"
@@ -119,7 +119,7 @@ def plots(
                 x /= 60
             if y_axis == "orig":
                 y = sample.tga["dtg"] * 60
-            elif y_axis == "rel":
+            elif y_axis == "rel_mol":
                 y = sample.tga["dtg"] * 60 / ref_mass * 100
             if (
                 ylim == "auto"
@@ -136,7 +136,7 @@ def plots(
                 x /= 60
             if y_axis == "orig":
                 y = sample.tga["heat_flow"]
-            elif y_axis == "rel":
+            elif y_axis == "rel_mol":
                 y = sample.tga["heat_flow"] / ref_mass
             if (
                 ylim == "auto"
@@ -162,7 +162,7 @@ def plots(
                     y,
                     linewidth=linewidth,
                     label=label)
-            elif y_axis == "rel":
+            elif y_axis == "rel_mol":
                 y = sample.ega[gas] / sample.linreg["slope"][gas] / ref_mass
                 if (
                     ylim == "auto"
