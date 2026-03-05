@@ -16,6 +16,7 @@ def corr_baseline(sample, baseline):
     # subtract baselines
     for data in ["tga", "ega"]:
         if sample.get(data) is None or baseline.get(data) is None:
+            logger.debug(f"{data} not in Sample or respective Baseline")
             continue
         if  type(sample.get(data)) != type(baseline.get(data)):
             logger.warning(f"Sample and baseline are not of the same type for {data!r}! Sample:{type(sample.get(data))}, baseline:{type(baseline.get(data)) }")

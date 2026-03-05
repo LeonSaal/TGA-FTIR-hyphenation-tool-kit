@@ -10,8 +10,9 @@ from typing import Any, Literal, Mapping, Optional, List
 from webbrowser import get
 import matplotlib.pyplot as plt
 from typing import get_args
-from inspect import signature
+from inspect import signature, getsource
 import inspect
+import functools as ft
 
 import numpy as np
 import pandas as pd
@@ -654,20 +655,25 @@ class Baseline(Sample):
     def from_sample(self, sample:Sample, corrs: dict):
         self.name = "from data"
         self._info = SampleInfo(self.name, reference = None, alias = "Baseline", profile="from_sample", initial_mass = ureg.Quantity(0, "mg"), final_mass = ureg.Quantity(0, "mg")) 
+        self._info["gases"] = []
         for name, methods in corrs.items():
             if not (sample.get(name) is not None and isinstance(sample.get(name), pd.DataFrame)):
                 logger.warning(f"{name} is no correctable attribute of {sample.name}.")
                 continue
             else:
                 data = sample.__dict__[name].copy()
+                if name == "ega":
+                    self._info["gases"] = sample.info["gases"]
             all_signals = data.columns
             
-            nomatch = list(set(signal for pattern in methods.keys() for signal in all_signals if not re.match(pattern, signal)))
-            data.loc[:, nomatch] = 0
+            # nomatch = list(set(signal for pattern in methods.keys() for signal in all_signals if not re.match(pattern, signal)))
+            nomatches = [{signal for signal in all_signals if not re.match(pattern, signal)} for pattern in methods.keys()]
+            nomatch = list(ft.reduce(lambda x,y: x&y, nomatches))
+            logger.debug(f"Ignore columns: {nomatch!r}")
+            data.loc[:, nomatch] = data.loc[:, nomatch] * 0
 
             for pattern, method in methods.items():
                 signals = [signal for signal in all_signals if re.match(pattern, signal)]
-
                 if not signals:
                     logger.warning(f"{pattern!r} did not match any signal!")
                     continue
@@ -688,8 +694,11 @@ class Baseline(Sample):
                         fn = lambda x: np.zeros_like(x)
                     case _:
                         fn = lambda x: np.zeros_like(x)
-
+                
+                logger.debug(f"Correcting {signals=!r}")
+                logger.debug(f"...with {method=!r}, using function {getsource(fn).strip()!r}")
                 data.update(data[signals].apply(fn))
-            index_cols = sample.__dict__[name].filter(items=['time', 'sample_temp', 'reference_temp', 'sample_mass'])
-            self.__dict__[name] = pd.concat([index_cols, data], axis=1)
+            idx_colnames = ['time', 'sample_temp', 'reference_temp', 'sample_mass']
+            index_cols = sample.__dict__[name].filter(items=idx_colnames)
+            self.__dict__[name] = pd.concat([index_cols, data.drop(idx_colnames, axis=1, errors="ignore")], axis=1)
         return self
