@@ -1,124 +1,64 @@
-# Errors
-- `.corr(...)` if `plot=dict`, fill missing keys
-
-# Further Improvements
-## Config
-- make config a function that reads from / writes to each time
-    - use it everytime
-- encoding of `settings.ini` (requires *ANSI* atm)
-
-## Import
-- helper to determine `kwargs` for `read_csv`
-	- auto 
-		- encoding from chardet, python-magic
-		- read first n lines
-		- count delimiter, quotes, \\t
-			- guess delim and skiprows
-		- count numbers and seps to guess header length
-			- after skiprows guess first numerical row
-			- merge multiindex header to single row afterwards
-	- CLI?
-        - first ask for required kwargs
-        - only if not successful ask for other kwargs 
-		- update preview or errors
-    - combination of above
-  - move device specific settings to profile (e.g. mass resolution)
-    - savgol-settings?
-    - move fields specific to ``Sample``-level to combined profile
-    - or have global default overwritten by profile
-  - select profile on init?
-  - ask to save as default in settings
-  - or move init operations to separate methods (e.g. `load_sample`)?
-  - restructure import profile to better distinguish required and optional fields
-  - merge log messages from loops for fewer outputs
-  - calculate ``_info``, ``.dry_weight`` usw. on the fly in ``.info``-property 
-  - calculate file hash of import profile to check for updates in remote repo
-  - add more gases/groups to Netzsch *aromatics, acetic acid, carbonyls, ...*
-  - take correction info from file header
-  - first init: in Worklist don't ask for profile each time
-
-## Fitting
-
-- `.fit()` plot 
-    - remove error x-axis and add tick-marks at the top of the subplot
-    - move **SQERR** to bottom 
-    - move _SOG_-names to legend 
-- remove extra markers from _fit-plot_
-- parallelize computations
-- calculate statistical values and append to ``.results["fit"]`` or add as new key:value-pair $\rightarrow$ maybe not necessary if plotting with `seaborn`
-- default ``plot=False``
-- arrows narrower and labels outside box area
-- fix plotting
-- use linearized gaussian model to enhance fitting performance
-
-## Robustness
-- `.robustness()` for single `Sample`
-    - *current* Workaround: Make Worklist from Single `Sample` to perform `.robustness()`
-
-## Plotting
-- `.plot()` add corrected plot. `Baseline`, `.raw` and corrected data are all available
-- make plot interactive?
-  - measure mass-, temperature- or time-differences
-- add DTG to mass-steps (optional)
-- DTG for worklists (adhere to `README.md`)
-- move all plotting to `.plot(...)`-method
-- for `Worklist` use Seaborn to plot all samples in one figure?
-  - use `hue` for sample names
-  - maybe `col` for different SQERR
-- for `Worklist` use Sample.plot and add all to same axis?
-
-## General
-- reduce amount of logging
-    - adjust level for initialization substeps from *INFO* to *DEBUG*
-- don't log `Baseline`
-- add `**kwargs` to every function for flexibility
-- use root-folder names as profiles?
-  - or set folder pattern(s) in profile definition (top-level)
-  - warn if none found
-- ``setup.py`` $\rightarrow$ ``pyproject.toml``
-- formatting of code 
-- use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)
-- ``settings[units] int_ega = ega``
-- auto-save objects after changes -> global setting
-- remove functions that are not used anymore
-- unify kwargs for plotting and saving
-  - make_dir / directory -> parent_dir?
-
-## Testing
-- add automated testing for
-  - inititialization
-  - plotting
-  - fitting
-
-- for different input data
-- all(?) possible args, kwargs
-
-## Other
-- `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments
-
-## Calibration
-- add sample labels to points (if specified)
-- check unit for calibration methods other than "max"
-- add date column
-- passing of worklist as positional argument? 
-- polyorder = 2, rel_window_lenght = .01
-- integration bounds (baseline not constant due to window width)
-- add option for automatic correction (buoyancy reference $\approx a\cdot \log x+b$)
-- add option to pass gases to calibrate explicitly
-- add option to load specific calibration (not newest)
-- integration plot
-  - add legend
-  - reduce padding bewteen subfigures
-
-## Installation
-- add auxiliary files to project definition for download during install
-
-# Documentation
-- add docstrings, signatures for every function
-- add example folder
-- Calibration method max explanation missing
-- explain robustness
-- reorganize/reorder Class-specific methods
-- saving
-  - make to_... default
-- escape **\$** in **README.md** under *settings.ini File*
+| Category      | Task                                                                                   | Priority | First Noted |
+| ------------- | -------------------------------------------------------------------------------------- | -------- | ----------- |
+| Errors        | `.corr(...)` if `plot=dict`, fill missing keys                                         | Medium   |             |
+| Config        | Make config a function that reads from / writes to each time                           | Medium   |             |
+| Config        | Encoding of `settings.ini` (requires *ANSI* atm)                                       | Low      |             |
+| Import        | Helper to determine `kwargs` for `read_csv` (auto encoding, delimiter detection, etc.) | High     |             |
+| Import        | Move device specific settings to profile (e.g. mass resolution, savgol-settings)       | Medium   |             |
+| Import        | Select profile on init and ask to save as default in settings                          | Medium   |             |
+| Import        | Restructure import profile to distinguish required and optional fields                 | Medium   |             |
+| Import        | Merge log messages from loops for fewer outputs                                        | Low      |             |
+| Import        | Calculate `_info`, `.dry_weight` on the fly in `.info`-property                        | Medium   |             |
+| Import        | Calculate file hash of import profile to check for updates in remote repo              | Low      |             |
+| Import        | Add more gases/groups to Netzsch (aromatics, acetic acid, carbonyls, etc.)             | Low      |             |
+| Import        | Merge init operations to separate methods (e.g. `load_sample`)                         | Medium   |             |
+| Import        | Take correction info from file header                                                  | Medium   |             |
+| Import        | In Worklist, don't ask for profile each time on first init                             | Medium   |             |
+| Fitting       | `.fit()` plot improvements (remove error x-axis, move SQERR, move SOG-names)           | Medium   |             |
+| Fitting       | Remove extra markers from fit-plot                                                     | Low      |             |
+| Fitting       | Parallelize computations                                                               | High     |             |
+| Fitting       | Calculate statistical values and append to `.results["fit"]`                           | Medium   |             |
+| Fitting       | Set default `plot=False`                                                               | Low      |             |
+| Fitting       | Make arrows narrower and labels outside box area                                       | Low      |             |
+| Fitting       | Use linearized gaussian model to enhance fitting performance                           | High     |             |
+| Robustness    | `.robustness()` for single `Sample`                                                    | High     |             |
+| Plotting      | Add corrected plot (Baseline, raw and corrected data)                                  | Medium   |             |
+| Plotting      | Make plot interactive (measure mass-, temperature- or time-differences)                | Low      |             |
+| Plotting      | Add DTG to mass-steps (optional)                                                       | Medium   |             |
+| Plotting      | DTG for worklists (adhere to README.md)                                                | Medium   |             |
+| Plotting      | Move all plotting to `.plot(...)`-method                                               | High     |             |
+| Plotting      | For `Worklist` use Seaborn to plot all samples in one figure                           | Medium   |             |
+| Plotting      | For `Worklist` use Sample.plot and add all to same axis                                | Medium   |             |
+| General       | Reduce amount of logging (adjust level to DEBUG)                                       | Medium   |             |
+| General       | Don't log `Baseline`                                                                   | Low      |             |
+| General       | Add `**kwargs` to every function for flexibility                                       | Medium   |             |
+| General       | Use root-folder names as profiles or set folder patterns in profile definition         | Low      |             |
+| General       | Convert `setup.py` to `pyproject.toml`                                                 | Medium   |             |
+| General       | Code formatting                                                                        | Low      |             |
+| General       | Use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)                 | Low      |             |
+| General       | Settings for `units` int_ega = ega                                                     | Low      |             |
+| General       | Auto-save objects after changes (global setting)                                       | Low      |             |
+| General       | Remove unused functions                                                                | Medium   |             |
+| General       | Unify kwargs for plotting and saving (make_dir / directory → parent_dir)               | Low      |             |
+| Testing       | Add automated testing for initialization, plotting, fitting                            | High     |             |
+| Testing       | Add automated testing for different input data                                         | High     |             |
+| Testing       | Test all possible args and kwargs                                                      | High     |             |
+| Other         | `dry_weight(step_temp=..., mass_steps=..., step_time=...)` as arguments                | Medium   |             |
+| Calibration   | Add sample labels to points (if specified)                                             | Low      |             |
+| Calibration   | Check unit for calibration methods other than "max"                                    | Medium   |             |
+| Calibration   | Add option to pass gases to calibrate explicitly                                       | Medium   |             |
+| Calibration   | Add option to load specific calibration (not newest)                                   | Medium   |             |
+| Plotting      | Integration plot: add legend and reduce padding between subfigures                     | Medium   |             |
+| General       | Add date column                                                                        | Low      |             |
+| General       | Allow passing of worklist as positional argument                                       | Low      |             |
+| General       | Polyorder = 2, rel_window_length = .01 (settings)                                      | Low      |             |
+| Fitting       | Integration bounds (baseline not constant due to window width)                         | Medium   |             |
+| General       | Add option for automatic correction (buoyancy reference ≈ a·log x + b)                 | Medium   |             |
+| Installation  | Add auxiliary files to project definition for download during install                  | Medium   |             |
+| Documentation | Add docstrings and signatures for every function                                       | High     |             |
+| Documentation | Add example folder                                                                     | Medium   |             |
+| Documentation | Add Calibration method max explanation                                                 | Medium   |             |
+| Documentation | Explain robustness                                                                     | Medium   |             |
+| Documentation | Reorganize/reorder Class-specific methods                                              | Low      |             |
+| Documentation | Make `to_...` methods default for saving                                               | Medium   |             |
+| Documentation | Escape `$` in README.md under settings.ini File section                                | Low      |             |
