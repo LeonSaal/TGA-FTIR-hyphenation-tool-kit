@@ -145,7 +145,7 @@ write_config(cfg)
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
 units = ["mg", "min", "°C", "mmol", "mW", "mg\\,min^{{-1}}"]
 for key, val in zip(keys, units):
-    UNITS.get(key, '?') = val
+    UNITS[key] = val
 
 
 
