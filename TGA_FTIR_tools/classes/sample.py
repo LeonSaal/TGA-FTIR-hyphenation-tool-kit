@@ -501,14 +501,14 @@ class Sample:
             logger.error("No EGA data to fit available.")
             return
 
-        if reference_name in self.results["fit"]:
+        if (reference_name in self.results["fit"]) and mod_sample:
             if not overwrite:
                 logger.warning(f"Fitting with{reference_name!r} already in results! Pass overwrite=True to redo fit.")
                 results = self.results["fit"][reference_name]
             else:
                 logger.warning(f"Fitting with{reference_name!r} was already in results! Overwriting.")
 
-        if reference_name not in self.results["fit"] or overwrite:
+        if (reference_name not in self.results["fit"] or overwrite) or not mod_sample:
             # setting upper limit for data
             if T_max is None:
                 T_max = max(self.tga["sample_temp"]).magnitude

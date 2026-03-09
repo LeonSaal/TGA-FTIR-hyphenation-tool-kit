@@ -167,7 +167,7 @@ def robustness(
     logger.info("Calculationg statistic values.")
     # make subdirectory to save data
     if save:
-        path = PATHS["robustness"] / "_".join([time(), reference, f"_{var_T}_{var_rel}"])
+        path = PATHS["robustness"] / "_".join([time(), reference, f"{var_T=}_{var_rel=}"])
         os.makedirs(path)
         os.chdir(path)
 

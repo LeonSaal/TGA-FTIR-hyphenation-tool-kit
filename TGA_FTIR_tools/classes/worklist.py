@@ -136,25 +136,26 @@ class Worklist:
             os.chdir(path)
 
         # cycling through samples
+        fits = []
         for sample in self.samples:
             # writing data to output DataFrames
-            if reference not in sample.results["fit"]:
-                sample.fit(
+            if reference not in sample.results["fit"] or not mod_samples:
+                fits.append(sample.fit(
                     reference,
                     presets=presets,
                     mod_sample=mod_samples,
                     **kwargs,
                     save=save,
                     make_path=False
-                )
+                ))      
+        res = self.results["fit"] if mod_samples else pd.concat(fits)
 
         if save:
             with pd.ExcelWriter("summary.xlsx") as writer:
-                self.results["fit"].to_excel(writer)
+                res.to_excel(writer)
 
         os.chdir(PATHS["home"])
-        return self.results["fit"]
-
+        return res
     @property
     def results(self):
         out = {"fit": None, "robustness": None}

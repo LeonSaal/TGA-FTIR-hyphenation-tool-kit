@@ -116,9 +116,9 @@ def fit_references(open=False):
     return path
 
 # update settings and paths for data and working directory
-logger.info(logging.__dict__[DEFAULTS["logging_level"]])
+logger.debug(f"Logging level: {logging.__dict__[DEFAULTS["logging_level"]]}")
 logging.basicConfig(level=DEFAULTS["logging_level"], format=fmt, style="{", force=True)
-logger.debug("SET")
+
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
 if PATHS["home"] == Path() or not PATHS["home"].exists():
     cwd = os.getcwd().replace(os.sep, os.altsep)
