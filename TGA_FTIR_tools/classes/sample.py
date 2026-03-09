@@ -85,7 +85,7 @@ class Sample:
         # assigning alias, sample, run from samplelog
         log = samplelog(create=False)
         self.alias = log.get("alias", {}).get(self.name, self.name) if not self.alias else str(self.alias)
-        self.sample = log.get("sample", {}).get(self.name, self.alias) if not self.alias else str(self.alias)
+        self.sample = log.get("sample", {}).get(self.name, "unknown") if not self.sample else str(self.sample)
         self.run = log.get("run", {}).get(self.name, 0) if not self.run else self.run
         self.raw = copy.deepcopy(self)
 
@@ -554,8 +554,8 @@ class Sample:
 
             results = pd.concat(
                 [peaks],
-                keys=[(reference_name, self.sample, self.alias, self.run)],
-                names=["reference", "sample", "alias", "run"],
+                keys=[(reference_name, self.name, self.sample, self.alias, self.run)],
+                names=["reference", "name", "sample", "alias", "run"],
             )
             if mod_sample:
                 self.results["fit"].update({reference_name: results})

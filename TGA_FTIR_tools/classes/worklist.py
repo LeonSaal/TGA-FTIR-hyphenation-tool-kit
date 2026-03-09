@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import pickle
 import re
 from dataclasses import dataclass, field
@@ -7,7 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import chain, zip_longest
 from ..classes import Sample, Baseline
-from ..config import PATHS, DEFAULTS
+from ..config import PATHS, DEFAULTS, MERGE_CELLS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
 from ..plotting import plot_results, plot_robustness, plots
@@ -33,38 +34,48 @@ import os
 
 @dataclass
 class Worklist:
-    samples: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
+    names: Union[List[Union[Sample, str]], str, Sample] = field(default_factory=list)
     name: Optional[str] = "worklist"
-    profile: Union[List, str] = DEFAULTS["profile"]
+    profile: str = DEFAULTS["profile"]
     aliases: list = field(default_factory=list)
+    samples: list = field(default_factory=list)
     _results: dict = field(default_factory=lambda: {"fit": pd.DataFrame(), "robustness": pd.DataFrame()})
 
     def __post_init__(self):
+        len_names = 1 if isinstance(self.names, str) else len(self.names)
+        match self.aliases:
+            case str():
+                self.aliases = [self.aliases] * len_names 
+
         match self.samples:
             case str():
-                self.samples = [Sample(self.samples, profile=self.profile, alias = self.aliases[0] if len(self.aliases)==1 else self.samples)]
+                self.samples = [self.samples] * len_names 
+
+        match self.names:
+            case str():
+                self.names = [Sample(self.names, profile=self.profile, alias = self.aliases[0], sample = self.samples[0])]
             case list():
-                self.samples = [
+                self.names = [
                     (
-                        sample
-                        if isinstance(sample, Sample)
-                        else Sample(sample, profile=self.profile, alias = alias if alias else sample)
+                        name
+                        if isinstance(name, Sample)
+                        else Sample(name, profile=self.profile, alias = alias if alias else name, sample=sample)
                     )
-                    for sample, alias in zip_longest(self.samples, self.aliases)
+                    for name, alias, sample in zip_longest(self.names, self.aliases, self.samples)
                 ]
             case Sample():
-                self.samples = [self.samples]
+                self.names = [self.names]
             case _:
                 logger.warning(
-                    f"{self.samples!r} has wrong input type ({type(self.samples)}). Supply one of: str, Sample, list[str|Sample]."
+                    f"{self.names!r} has wrong input type ({type(self.names)}). Supply one of: str, Sample, list[str|Sample]."
                 )
 
     def __add__(self, other):
         if isinstance(other, Sample):
-            return Worklist(self.samples + [other], name=f"{self.name}+{other.name}")
+            return Worklist(self.names + [other], name=f"{self.name}+{other.name}")
         elif isinstance(other, Worklist):
             return Worklist(
-                self.samples + other.samples, name=f"{self.name}+{other.name}"
+                self.names + other.names, name=f"{self.name}+{other.name}"
             )
         else:
             logger.warning("Can only add Sample or other Worklist")
@@ -73,20 +84,20 @@ class Worklist:
         return (
             f"Worklist(name='{self.name}', samples= \n"
             + "\n".join(
-                [f"[{i}] {sample.__repr__()}" for i, sample in enumerate(self.samples)]
+                [f"[{i}] {sample.__repr__()}" for i, sample in enumerate(self.names)]
             )
             + "\n)"
         )
 
     def __getitem__(self, i):
         if type(i) == int:
-            return self.samples[i]
+            return self.names[i]
         elif type(i) == slice:
             return Worklist(
-                samples=self.samples[i], name=f"{self.name}_({i.start}-{i.stop})"
+                names=self.names[i], name=f"{self.name}_({i.start}-{i.stop})"
             )
         elif type(i) == str:
-            if i in (d := {sample.name: sample for sample in self.samples}):
+            if i in (d := {sample.name: sample for sample in self.names}):
                 return d[i]
         elif type(i) == list and i is not []:
             samples = []
@@ -94,16 +105,16 @@ class Worklist:
                 samples.append(self.__getitem__(elem))
             if len(samples) == 1:
                 return samples[0]
-            return Worklist(samples=samples, name=f"{self.name} {repr(i)}")
+            return Worklist(names=samples, name=f"{self.name} {repr(i)}")
 
     def __iter__(self):
-        yield from self.samples
+        yield from self.names
 
     def get(self, pattern: str, attr: str = "name"):
         return Worklist(
-            samples=[
+            names=[
                 sample
-                for sample in self.samples
+                for sample in self.names
                 if re.search(pattern, sample.__dict__[attr])
             ],
             name=pattern,
@@ -111,9 +122,9 @@ class Worklist:
 
     def append(self, other) -> None:
         if isinstance(other, Worklist):
-            self.samples.extend(other.samples)
+            self.names.extend(other.names)
         if isinstance(other, Sample):
-            self.samples.append(other)
+            self.names.append(other)
 
     def fit(
         self, reference: str, save=True, mod_samples=True, presets=None, **kwargs
@@ -137,7 +148,7 @@ class Worklist:
 
         # cycling through samples
         fits = []
-        for sample in self.samples:
+        for sample in self.names:
             # writing data to output DataFrames
             if reference not in sample.results["fit"] or not mod_samples:
                 fits.append(sample.fit(
@@ -193,14 +204,26 @@ class Worklist:
             ).set_index(idx_cols+[new_col])
         return out
 
-    def robustness(self, reference: str, plot=True, **kwargs) -> pd.DataFrame:
+    def robustness(self, reference: str, plot=True, save=True, var_T=10, var_rel=0.3, **kwargs) -> pd.DataFrame:
         self._results["robustness"], summary = robustness(self, reference, **kwargs)
-        self._results["robustness"], summary
+
+        if save:
+            path = PATHS["robustness"] / "_".join([time(), reference, f"{var_T=}_{var_rel=}"])
+            os.makedirs(path)
+            os.chdir(path)
+            logger.info(f"Plots and results are saved.'{path=}'.")
+            with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
+                summary.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
+                self._results["robustness"].to_excel(writer, sheet_name="data", merge_cells=MERGE_CELLS)
+
         if plot:
-            self.plot("robustness")
+            self.plot("robustness", save=True, save_dir=Path("."))
+        os.chdir(PATHS["home"])
+        
         return self._results["robustness"], summary
 
-    def plot(self, plot=None, ax=None, save=False, reference=None, **kwargs) -> None:
+    def plot(self, plot=None, ax=None, save=False, save_dir=None, reference=None, **kwargs) -> None:
+       
         if plot in ["fit", "robustness"]:
             results = self.results[plot]
             if results is None:
@@ -240,10 +263,10 @@ class Worklist:
         else:
             if not ax:
                 fig, ax = plt.subplots()
-            plots(self.samples, plot, ax, **kwargs)
+            plots(self.names, plot, ax, **kwargs)
 
         if save:
-            path_plot = PATHS["plots"] / plot
+            path_plot = save_dir if save_dir else PATHS["plots"] / plot
             if not path_plot.exists():
                 path_plot.mkdir(parents=True)
 
@@ -252,7 +275,7 @@ class Worklist:
         return ax
 
     def __len__(self) -> int:
-        return len(self.samples)
+        return len(self.names)
 
     def corr(self, baselines, corrs, **kwargs) -> None:
         if type(baselines) == list:
@@ -264,7 +287,7 @@ class Worklist:
         else:
             baselines = list(baselines)*len(self)
         
-        for sample, baseline in zip(self.samples, baselines):
+        for sample, baseline in zip(self.names, baselines):
             match baseline:
                 case str():
                     baseline = Baseline(baseline)
@@ -278,7 +301,7 @@ class Worklist:
             sample.corr(baseline, corrs, **kwargs)
 
     def pop(self, i: int) -> None:
-        return self.samples.pop(i)
+        return self.names.pop(i)
 
     def save(
         self,
@@ -308,11 +331,11 @@ class Worklist:
     
     @property
     def info(self) -> pd.DataFrame:
-        return pd.concat([sample.info.to_row() for sample in self.samples])
+        return pd.concat([sample.info.to_row() for sample in self.names])
     
     @property
     def profiles(self) -> list:
-        return [s.profile for s in self.samples]
+        return [s.profile for s in self.names]
         
     def calibrate(self, **kwargs):
         from ..calibration import calibrate

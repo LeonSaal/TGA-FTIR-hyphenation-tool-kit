@@ -122,6 +122,7 @@ def robustness(
                                     slice(None),
                                     slice(None),
                                     slice(None),
+                                    slice(None),
                                     group,
                                     gas,
                                 ),
@@ -165,17 +166,12 @@ def robustness(
 
     logger.info("Fittings finished!")
     logger.info("Calculationg statistic values.")
-    # make subdirectory to save data
-    if save:
-        path = PATHS["robustness"] / "_".join([time(), reference, f"{var_T=}_{var_rel=}"])
-        os.makedirs(path)
-        os.chdir(path)
 
     data = pd.concat([df for df in results.values()], axis=1)
-    data.index.rename(names=["reference","sample","alias", "run", "group", "gas"], inplace=True)
+    data.index.rename(names=["reference","name","sample","alias", "run", "group", "gas"], inplace=True)
 
     # make further statistical data
-    summary = data.pint.convert_object_dtype().astype(np.float64).groupby(["alias", "group", "gas"]).agg(["mean", "std", "min", "max"]).reset_index()
+    summary = data.pint.convert_object_dtype().astype(np.float64).groupby(["sample", "group", "gas"]).agg(["mean", "std", "min", "max"]).reset_index()
     # stat_names = ["err_dev", "rel_err_dev", "rel_stddev", "stddev", "mean"]
     # stat_cond = ~data.index.get_level_values(1).isin(stat_names)
     # columns = ["mean", "stddev", "meanstddev", "min", "max"]
@@ -202,13 +198,13 @@ def robustness(
     # summary = pd.concat(stats)
 
     # save results to excel file
-    if save:
-        logger.info(f"Plots and results are saved.'{path=}'.")
-        with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
-            summary.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
-            data.to_excel(writer, sheet_name="data", merge_cells=MERGE_CELLS)
+    # if save:
+    #     logger.info(f"Plots and results are saved.'{path=}'.")
+    #     with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
+    #         summary.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
+    #         data.to_excel(writer, sheet_name="data", merge_cells=MERGE_CELLS)
 
-    os.chdir(PATHS["home"])
+    # os.chdir(PATHS["home"])
     logger.info("Robustness test finished!")
     data.sort_index(level="group", inplace=True)
     return data.drop("total", level="group"), summary
