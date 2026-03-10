@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+from types import NoneType
 
 from ..config import SEP, UNITS
 from .utils import get_label
 
 
-def plot_corr(originalData: pd.DataFrame, BaselineData:pd.DataFrame, label: str) -> None:
+def plot_corr(originalData: pd.DataFrame, BaselineData:pd.DataFrame, label: str) -> NoneType:
     try:
         x = originalData["sample_temp"]
     except:

@@ -15,6 +15,7 @@ from ..utils import multi_gauss
 from .fitdata import FitData
 import pint_pandas
 import pint
+from types import NoneType
 ureg = pint.get_application_registry()
 
 logger = logging.getLogger(__name__)
@@ -88,7 +89,7 @@ def fitting(
     if save:
         data.save(y_axis)
 
-    return data.peaks
+    return data.peaks, data.profiles
 
 def get_presets(reference, file = config["fitting_params"]) -> dict[pd.DataFrame]:
     "load deconvolution presets from excel file"
@@ -172,7 +173,7 @@ def check_LODQ(val: float, gas: str, *, stats: pd.DataFrame):
     return "> LOQ"
 
 
-def check_LODQ_frame(peaks: pd.DataFrame, stats: pd.DataFrame) -> None:
+def check_LODQ_frame(peaks: pd.DataFrame, stats: pd.DataFrame) -> NoneType:
     total_cond = peaks.index.get_level_values("group") == "total"
     total = peaks[total_cond].dropna(subset=["area"])
     peaks.loc[("total", slice(None)), "limits"] = total.apply(

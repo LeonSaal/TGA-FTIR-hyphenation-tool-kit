@@ -15,6 +15,7 @@ from ..plotting import plot_results, plot_robustness, plots
 from concurrent.futures import ProcessPoolExecutor
 from inspect import signature
 from typing import get_args
+from types import NoneType
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class Worklist:
             name=pattern,
         )
 
-    def append(self, other) -> None:
+    def append(self, other) -> NoneType:
         if isinstance(other, Worklist):
             self.names.extend(other.names)
         if isinstance(other, Sample):
@@ -222,7 +223,7 @@ class Worklist:
         
         return self._results["robustness"], summary
 
-    def plot(self, plot:Literal["fit", "robustness", "TG", "EGA", "DTG", "heat_flow"]=None, ax:Union[None, plt.Axes]=None, save:bool=False, save_dir:Union[str, None]=None, reference_name:str=None, **kwargs) -> None:
+    def plot(self, plot:Literal["fit", "robustness", "TG", "EGA", "DTG", "heat_flow"]=None, ax:Union[None, plt.Axes]=None, save:bool=False, save_dir:Union[str, None]=None, reference_name:str=None, **kwargs) -> NoneType:
        
         if plot in ["fit", "robustness"]:
             results = self.results[plot]
@@ -277,7 +278,7 @@ class Worklist:
     def __len__(self) -> int:
         return len(self.names)
 
-    def corr(self, baselines, corrs:dict, **kwargs) -> None:
+    def corr(self, baselines, corrs:dict, **kwargs) -> NoneType:
         if type(baselines) == list:
             if (ls := len(self)) != (lb := len(baselines)):
                 logger.error(
@@ -300,21 +301,21 @@ class Worklist:
                     continue
             sample.corr(baseline, corrs, **kwargs)
 
-    def pop(self, i: int) -> None:
+    def pop(self, i: int) -> NoneType:
         return self.names.pop(i)
 
     def save(
         self,
         how: Literal["samplelog", "pickle"] = "samplelog",
         **kwargs,
-    ) -> None:
+    ) -> NoneType:
         if how == "samplelog":
             samplelog(self.info, how="samplelog")
 
         elif how == "pickle":
             self.to_pickle()
 
-    def from_pickle(name: str) -> None:
+    def from_pickle(name: str) -> NoneType:
         if (p:= PATHS["output"] / f"{name}.pkl").exists():
             with open(p , "rb") as inp:
                 obj = pickle.load(inp)

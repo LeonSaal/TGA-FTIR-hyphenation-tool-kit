@@ -1,3 +1,4 @@
+from ast import Tuple
 import copy
 import json
 import logging
@@ -59,7 +60,7 @@ class Sample:
         if self.name:
             self.init(**kwargs)
 
-    def init(self, **kwargs):
+    def init(self, **kwargs) -> NoneType:
         # check and get import profile
         self.check_profile()
         self.profile_data = read_profile_json(self.profile)
@@ -94,7 +95,7 @@ class Sample:
             self.__dict__.update(corrections.corr_baseline(self.raw, self.baseline))
             self.reference = self.baseline.name
 
-    def post_init_tga(self):
+    def post_init_tga(self) -> NoneType:
         if self.tga is None:
             logger.error(f"No TGA data found for {self.name!r}.")
             self._info = SampleInfo(name=self.name, alias=self.alias, profile=self.profile)
@@ -137,7 +138,7 @@ class Sample:
             except AttributeError as e:
                 print(e)
 
-    def post_init_ega(self, **kwargs):
+    def post_init_ega(self, **kwargs) -> NoneType:
         if self.ega is None:
             logger.error(f"No EGA data found for {self.name!r}.")
             return
@@ -190,7 +191,7 @@ class Sample:
         else:
             logger.error(f"{p.as_posix()!r} does not exist!")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attr_names = ["name", "alias", "profile","sample", "reference", "run"]
         attr_vals = ", ".join(
             [f"{key}={repr(self.__dict__[key])}" for key in attr_names]
@@ -206,7 +207,7 @@ class Sample:
         else:
             logger.debug("Can only add to Sample- or Worklist-type")
 
-    def get(self, key:str):
+    def get(self, key:str) -> Any:
         return self.__dict__.get(key)
 
     @property
@@ -227,7 +228,7 @@ class Sample:
         step_data = self.step_data()
         return step_data[step_data.step == ref_mass_name].sample_mass.values[0]
 
-    def step_data(self, ref_mass_name:Literal["initial_mass", "final_mass", "dry_mass"]=None):
+    def step_data(self, ref_mass_name:Literal["initial_mass", "final_mass", "dry_mass"]=None)-> pd.DataFrame:
         idxs = self.info.steps_idx
         step_data = self.tga.iloc[list(idxs.values()),:].assign(step= idxs.keys()).sort_index()
         step_data["mass_loss"] = step_data.sample_mass.diff()
@@ -241,7 +242,7 @@ class Sample:
 
         return step_data
 
-    def check_profile(self):
+    def check_profile(self) -> NoneType:
         # check if profile is supplied
         if not check_profile_exists(self.profile):
             self.profile = select_import_profile()
@@ -249,7 +250,7 @@ class Sample:
             logger.info(f"Updated profile in {PATHS["ini"].name!r} to {self.profile!r}.")
         
 
-    def missing_tga_columns(self):
+    def missing_tga_columns(self) -> list | None:
         "check if required columns are present in TGA data"
         required_columns = [
             "sample_mass",
@@ -259,7 +260,7 @@ class Sample:
         missing = [col for col in required_columns if col not in self.tga.columns]
         return missing if missing else None
 
-    def corr(self, baseline, corrs: dict, **kwargs):
+    def corr(self, baseline, corrs: dict, **kwargs) -> NoneType:
         """_summary_
 
         Args:
@@ -291,7 +292,7 @@ class Sample:
             self.baseline.info["gases"] = to_update.columns.to_list()
             
 
-    def get_value(self, *values, which="sample_mass", at="sample_temp"):
+    def get_value(self, *values, which="sample_mass", at="sample_temp") -> pd.DataFrame:
         "extract values from TG data at e.g. certain temperatures"
         new_idx = pd.Series(values, dtype=np.float64, name="sample_temp")
         tmp = self.tga[[at, which]].copy().sort_values(at)
@@ -301,7 +302,7 @@ class Sample:
         return tmp
     
 
-    def dry_weight(self, plot:bool=False, **kwargs):
+    def dry_weight(self, plot:bool=False, **kwargs) -> NoneType:
         "determine dry point and mass of sample"
 
         try:
@@ -317,7 +318,7 @@ class Sample:
 
     def mass_step(
         self, ax:Union[None, plt.Axes]=None, plot:bool=True, min_rel_height:float=0.2, width_T:np.array=np.array([0, np.inf]),**kwargs
-    ):
+    ) -> Tuple:
         #calculate width in terms of indices from supplied temperature width
         step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
             self,
@@ -337,7 +338,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot:Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax:Union[None, plt.Axes]=None, save:bool=False, directory:str=None,reference_name:str=None, **kwargs):
+    def plot(self, plot:Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax:Union[None, plt.Axes]=None, save:bool=False, save_dir:str=None,reference_name:str=None, **kwargs) -> plt.Axes | None:
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
         "plotting TG and or IR data"
         options = [
@@ -463,7 +464,7 @@ class Sample:
                 fig, ax = plot_results(data, **args)
 
         if save:
-            path_plots = PATHS["plots"]/ plot if not directory else directory
+            path_plots = PATHS["plots"]/ plot if not save_dir else save_dir
             if not path_plots.exists():
                 path_plots.mkdir(parents=True)
 
@@ -487,13 +488,13 @@ class Sample:
         T_max:float=None,
         T_max_tol:float=50,
         save:bool=True,
-        make_path:bool=True,
+        save_dir:str=None,
         plot:bool=True,
         presets:dict[pd.DataFrame]=None,
         mod_sample:bool=True,
         overwrite:bool=False,
         **kwargs,
-    ):
+    ) -> pd.DataFrame:
         "deconvolution of IR data"
         from ..fitting import fitting, get_presets
         
@@ -507,6 +508,17 @@ class Sample:
                 results = self.results["fit"][reference_name]
             else:
                 logger.warning(f"Fitting with{reference_name!r} was already in results! Overwriting.")
+        
+        # setting up potential output directory
+        if save:
+            path = (
+                    PATHS["fitting"] / f'{general.time()}{reference_name}_{self._info["name"]}'
+                ) if not save_dir else Path(save_dir)
+            
+            if not path.exists():
+                path.mkdir(parents=True)
+        else: 
+            path = None
 
         if (reference_name not in self.results["fit"] or overwrite) or not mod_sample:
             # setting upper limit for data
@@ -522,6 +534,7 @@ class Sample:
                 presets = get_presets(reference_name)
 
             if presets is None:
+                logger.warning(f"Unable to load presets for {reference_name=}.")
                 return
 
             for gas in presets:
@@ -529,17 +542,10 @@ class Sample:
                     presets[gas].index[presets[gas].loc[:, "center_0"] > T_max + T_max_tol]
                 )
 
-            # setting up output directory
-            if save:
-                path = (
-                        PATHS["fitting"] / f'{general.time()}{reference_name}_{self._info["name"]}'
-                    ) if make_path else Path.cwd()
-                
-                if make_path:
-                    os.makedirs(path)
-                    os.chdir(path)
-
             # fitting
+            if save:
+                os.chdir(path)
+
             logger.info(
                 f'Fitting of "{self.name}" according to "{reference_name}" in Fitting_parameters.xlsx is in progress ...'
             )
@@ -547,9 +553,8 @@ class Sample:
             temp_unit = temp.tga.sample_temp.dtypes.units
             temp.tga = temp.tga[temp.tga["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
             temp.ega = temp.ega[temp.ega["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
-            peaks = fitting(temp, presets, save=save, **kwargs)
+            peaks, profiles = fitting(temp, presets, save=save, **kwargs)
             
-
             logger.info("Fitting finished!")
 
             results = pd.concat(
@@ -559,21 +564,21 @@ class Sample:
             )
             if mod_sample:
                 self.results["fit"].update({reference_name: results})
+            
+            if save:
+                logger.info(f"Plots and results are saved.\n'{path.as_posix()=}'.")
 
         # plotting
         if plot:
             kwargs["save"]=save
-            self.plot("fit", reference_name=reference_name, directory=path, **kwargs)
+            self.plot("fit", reference_name=reference_name, save_dir=path, **kwargs)
 
-        if save:
-            logger.info(f"Plots and results are saved.\n'{path=}'.")
-        
-        if make_path:
+        if save_dir is None:
             os.chdir(PATHS["home"])
 
         return results
 
-    def robustness(self, reference_name:str, plot:bool=True,**kwargs):
+    def robustness(self, reference_name:str, plot:bool=True,**kwargs) -> tuple[pd.DataFrame, pd.DataFrame]:
         from ..fitting import robustness
         from ..classes import Worklist
         temp_wl = Worklist(self)
@@ -583,7 +588,7 @@ class Sample:
         self.results["robustness"].update({reference_name: {"data":data,"summary":summary}})
         return data, summary
 
-    def save(self, how: Literal["samplelog", "excel", "pickle"]="samplelog", **kwargs):
+    def save(self, how: Literal["samplelog", "excel", "pickle"]="samplelog", **kwargs) -> NoneType:
         "save object or its contents as pickle file or excel"
         options = ["samplelog", "excel", "pickle"]
         if how not in options:
@@ -600,13 +605,13 @@ class Sample:
             case _:
                 pass
 
-    def to_pickle(self):
+    def to_pickle(self) -> NoneType:
         if not PATHS["output"].exists():
             os.makedirs(PATHS["output"])
         with open(PATHS["output"] / f"{self.name}.pkl", "wb") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
-    def to_excel(self):
+    def to_excel(self)-> NoneType:
         if not PATHS["output"].exists():
             os.makedirs(PATHS["output"])
 
@@ -628,7 +633,7 @@ class Sample:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
                     )
-    def calibrate(self, profile:str=None,**kwargs):
+    def calibrate(self, profile:str=None,**kwargs)-> tuple[pd.DataFrame, pd.DataFrame,pd.DataFrame, pd.DataFrame] |None:
         "calibrate object"
         from ..calibration import calibrate
         if not profile:
@@ -645,7 +650,7 @@ class Sample:
 
 
 class Baseline(Sample):
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls) -> NoneType:
         return super().__init_subclass__()
 
     def __repr__(self):
