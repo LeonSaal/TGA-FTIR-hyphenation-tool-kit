@@ -1,5 +1,13 @@
 import numpy as np
 import scipy as sp
+import inspect
+import typing
+from collections.abc import Iterable
+import itertools as it
+from pathlib import Path
+from typing import get_args
+import pytest
+from .conftest import get_options
 
 def corr_CO2(x, y, co2_offs = 0):
     "corrects IR data by setting minimal adsorption to 0 "
@@ -76,3 +84,81 @@ def corr_CO2(x, y, co2_offs = 0):
         z = np.ones_like(x)*x.min()
 
     return z
+
+
+def test_class(cls):
+    members = inspect.getmembers(cls, predicate=lambda x: (inspect.isroutine(x) and not inspect.isbuiltin(x)))
+    dunders = [member for member in members if member[0].startswith("__")]
+    others = [member for member in members if not member[0].startswith("__")]
+
+    # par = {}
+    # total_calls = {}
+    for name, fun in others:
+        sig = inspect.signature(fun)
+        params = sig.parameters
+        if get_args(ret_ann:=sig.return_annotation): 
+            ret_args = get_args(ret_ann)
+        else:
+            ret_args = (ret_ann, )
+
+        kwargs = {}
+        for key, value in params.items():
+
+            if len(params)==1:
+                match key:
+                    case "self":
+                        pass
+                    case _:
+                        pass
+
+            if key in ["self", "kwargs"]:
+                continue
+            default = value.default
+            annot = value.annotation
+            args = get_args(annot)
+            
+            # kwargs
+            match default:
+                case float():
+                    kwargs[key] = (default*.8, default,  default*1.2)
+                case str():
+                    kwargs[key] = (default,)
+                case bool():
+                    kwargs[key] = (True, False)
+                case Iterable():
+                    kwargs[key] = args
+                case _:
+                    kwargs[key] = get_options().get(key)
+    
+        # cartesian product of arguments
+        calls = [{key:val for key, val in zip(kwargs.keys(), vals)} for vals in it.product(*kwargs.values())]
+        #total_calls[name]=len(calls)
+        #errs = []
+        for call in calls:
+            #with pytest.raises(Exception):
+            # try:
+            ret = cls.__getattribute__(name)(**call)
+            # except Exception as e:
+            #     errs.append(f"{call}: {e}")
+                #continue
+                
+            if isinstance(iter:=ret, Iterable):
+                args = tuple(type(i) for i in iter)
+                assert args == ret_args
+                # if not args == ret_args:
+                #     errs.append(f"{call}: Type mismatch: {args} <=> {ret_args}")
+            else:
+                args = type(iter)
+                assert args in ret_args
+                # if not args in ret_args:
+                #     errs.append(f"{call}: Type mismatch: {args} <=> {ret_args}")
+                        
+            # if errs:
+            #     par[name] = errs
+
+    # total_errors = {key: len(val) for key, val in par.items()}
+    # print(f"In total {sum(total_calls.values())} calls and {sum(total_errors.values())}.")
+    # [print(f"> {key!r}: {val} calls, {total_errors.get(key, 0)} errors ({total_errors.get(key, 0)/val:.2%})") for key, val in total_calls.items() if val >0] 
+    
+    return #par
+

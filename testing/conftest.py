@@ -1,5 +1,7 @@
 from TGA_FTIR_tools import Sample, Worklist, Baseline
 from pytest import fixture
+from pathlib import Path
+import matplotlib.pyplot as plt
 
 cali_sample_names = {
     "Netzsch": [f'ExpDat_250605_dd_Calciumoxalat_0{i}_spline' for i in range(2, 8)],
@@ -11,7 +13,6 @@ sample_names = {
     "Otto": ["dd_220721_AS5000_01", "dd_220722_FU1_01", cali_sample_names["Otto"][0]]
 }
 
-sample_names.keys() = ["Netzsch", "Otto"]
 
 @fixture(params = [(profile, samples) for profile, samples in cali_sample_names.items()], ids=cali_sample_names.keys())
 def get_cali_worklist(request):
@@ -22,7 +23,7 @@ def get_cali_worklist(request):
 def get_sample(request):
     profile, names = request.param
     #TODO other init methods
-    for name in names:
+    for name in names:  
         yield Sample(name, profile=profile)
 
 @fixture()
@@ -40,3 +41,25 @@ def get_worklist(request):
             init = fun(*request.param)
             yield Worklist(init)
     return init_options
+
+@fixture(params = [(profile) for profile, samples in sample_names.items()])
+def get_options(request, get_baseline):
+    profile, samples = request.param
+    ax = plt.subplots()
+    #baseline = (get_baseline, ) #Baseline()
+    yield {
+        'ax':(ax, None),
+        'baseline':(None, ),
+        'corrs':({}, {},),
+        'directory':(None, Path(".")),
+        'key':(None, ),
+        'name': tuple(samples),
+        'plot':(None, ),
+        'presets':(None, ),
+        'profile': tuple(sample_names.keys()),
+        'ref_mass_name':(None, ),
+        'reference_name':("test", "dittmann2021c"),
+        'T_max':(600, 1200),
+        'T_max_tol':(None, ),
+        'values':(None, )
+    }

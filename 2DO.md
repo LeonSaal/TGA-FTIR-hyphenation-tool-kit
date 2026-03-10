@@ -27,6 +27,7 @@
 | Fitting       | Integration bounds (baseline not constant due to window width)                         |             |
 | Fitting       | Parallelize computations                                                       |             |
 | Fitting       | Use linearized gaussian model to enhance fitting performance                   |             |
+| Fitting       | Move saving of results to `Sample` level                   |             |
 | Plotting      | Add corrected plot (Baseline, raw and corrected data)                                  |             |
 | Plotting      | Add DTG to mass-steps (optional)                                                       |             |
 | Plotting      | DTG for worklists (adhere to README.md)                                                |             |

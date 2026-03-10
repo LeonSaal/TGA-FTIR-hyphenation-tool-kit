@@ -5,7 +5,7 @@ from typing import get_args
 
 import pytest
 import matplotlib as mpl
-from .utils import corr_CO2
+from ..utils import corr_CO2, test_class
 
 @pytest.mark.usefixtures("get_sample")
 class TestSampleInit:
@@ -82,3 +82,7 @@ class TestSamplePropsAttribs():
     # linreg
     pass
 
+@pytest.mark.usefixtures("get_sample")
+class TestSample():
+    def test_samples(get_sample):
+        test_class(get_sample)
