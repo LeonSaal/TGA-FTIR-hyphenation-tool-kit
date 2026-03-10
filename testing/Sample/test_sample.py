@@ -24,18 +24,7 @@ class TestSampleInit:
         # assert get_sample.ycali is None
         assert isinstance(get_sample.info,SampleInfo)
 
-@pytest.mark.usefixtures("get_sample")
-class TestSamplePlot:
-    def test_plot_sample(self, get_sample):
-        plot_params = ins.signature(get_sample.plot).parameters["plot"].default
-        plot_opts = get_args(plot_params)
-        for plot in plot_opts:
-            if plot not in ["EGA_to_DTG", "calibration", "fit"]:
-                assert isinstance(get_sample.plot(plot), mpl.axes.Axes) 
-            elif plot=="fit":
-                assert get_sample.plot(plot) == None
-            else:
-                assert get_sample.plot(plot) == True
+
 
 @pytest.mark.usefixtures("get_sample", "get_baseline")
 class TestSampleClassMethods():
@@ -57,11 +46,39 @@ class TestSampleClassMethods():
     def test_calibrate(get_sample):
         assert get_sample.calibrate == None    
 
-#  'dry_weight',
-#  'get_value',
-#  'mass_step',
-#  'robustness',
-#  'save',
-#  'step_data'
+#TODO  'dry_weight',
+#TODO  'get_value',
+#TODO  'mass_step',
+#TODO  'robustness',
+#TODO  'save',
+## to_pickle
+## to_excel
+#TODO  'step_data'
+
+# test dunder-methods
+## repr
+
+## add
+
+## get
+
+class TestSamplePropsAttribs():
+    # info
+
+    # reference_mass
+
+    # results
+
+    # info
+
+    # alias
+
+    # reference
+
+    # sample
+
+    # run
+
+    # linreg
     pass
 

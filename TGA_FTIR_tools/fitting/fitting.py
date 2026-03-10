@@ -90,7 +90,7 @@ def fitting(
 
     return data.peaks
 
-def get_presets(reference, file = config["fitting_params"]):
+def get_presets(reference, file = config["fitting_params"]) -> dict[pd.DataFrame]:
     "load deconvolution presets from excel file"
     # load raw data from file
     presets = dict()

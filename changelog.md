@@ -1,4 +1,6 @@
 # 2026-03
+- restructure testing
+- bugfix in `.robustness`, resulting in identical results
 - bugfix in `Baseline.from_sample` that resulted in `Baseline` with all zeros
 - bugfix in ``dry_weight`` (#92)
 - added workaround to perform robustness on `Sample`-object

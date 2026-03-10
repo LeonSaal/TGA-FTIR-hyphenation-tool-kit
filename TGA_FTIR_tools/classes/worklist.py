@@ -89,7 +89,7 @@ class Worklist:
             + "\n)"
         )
 
-    def __getitem__(self, i):
+    def __getitem__(self, i:Union[int, slice, str, list]):
         if type(i) == int:
             return self.names[i]
         elif type(i) == slice:
@@ -127,7 +127,7 @@ class Worklist:
             self.names.append(other)
 
     def fit(
-        self, reference: str, save=True, mod_samples=True, presets=None, **kwargs
+        self, reference: str, save:bool=True, mod_samples:bool=True, presets:dict[pd.DataFrame]=None, **kwargs
     ) -> pd.DataFrame:
 
         # load default presets
@@ -204,7 +204,7 @@ class Worklist:
             ).set_index(idx_cols+[new_col])
         return out
 
-    def robustness(self, reference: str, plot=True, save=True, var_T=10, var_rel=0.3, **kwargs) -> pd.DataFrame:
+    def robustness(self, reference: str, plot:bool=True, save:bool=True, var_T:float=10, var_rel:float=0.3, **kwargs) -> pd.DataFrame:
         self._results["robustness"], summary = robustness(self, reference, **kwargs)
 
         if save:
@@ -222,7 +222,7 @@ class Worklist:
         
         return self._results["robustness"], summary
 
-    def plot(self, plot=None, ax=None, save=False, save_dir=None, reference=None, **kwargs) -> None:
+    def plot(self, plot:Literal["fit", "robustness", "TG", "EGA", "DTG", "heat_flow"]=None, ax:Union[None, plt.Axes]=None, save:bool=False, save_dir:Union[str, None]=None, reference_name:str=None, **kwargs) -> None:
        
         if plot in ["fit", "robustness"]:
             results = self.results[plot]
@@ -277,7 +277,7 @@ class Worklist:
     def __len__(self) -> int:
         return len(self.names)
 
-    def corr(self, baselines, corrs, **kwargs) -> None:
+    def corr(self, baselines, corrs:dict, **kwargs) -> None:
         if type(baselines) == list:
             if (ls := len(self)) != (lb := len(baselines)):
                 logger.error(
@@ -346,7 +346,7 @@ class Worklist:
 
         return calibrate(worklist = self, mode="recalibrate", profile=self.profiles[0], **kwargs)
         
-    def from_samplelog(sheet_name=0):
+    def from_samplelog(sheet_name:Union[str, int, list,None]=0):
         worklist = samplelog(sheet_name=sheet_name)
         samples = worklist.index.to_list()
         profiles = worklist.profile

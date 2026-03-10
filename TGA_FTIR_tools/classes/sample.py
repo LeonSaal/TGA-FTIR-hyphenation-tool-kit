@@ -6,7 +6,7 @@ import pickle
 import re
 from dataclasses import InitVar, dataclass, field
 from types import NoneType
-from typing import Any, Literal, Mapping, Optional, List
+from typing import Any, Literal, Mapping, Optional, List, Union
 from webbrowser import get
 import matplotlib.pyplot as plt
 from typing import get_args
@@ -181,7 +181,7 @@ class Sample:
             logger.warning(f"Failed to derive dry weight: {e}")
                     
     # initialize object from pickle file
-    def from_pickle(name):
+    def from_pickle(name: str):
         if (p:= PATHS["output"] / f"{name}.pkl").exists():
             with open(p , "rb") as inp:
                 obj = pickle.load(inp)
@@ -206,8 +206,8 @@ class Sample:
         else:
             logger.debug("Can only add to Sample- or Worklist-type")
 
-    def get(self, name):
-        return self.__dict__.get(name)
+    def get(self, key:str):
+        return self.__dict__.get(key)
 
     @property
     def info(self):
@@ -227,7 +227,7 @@ class Sample:
         step_data = self.step_data()
         return step_data[step_data.step == ref_mass_name].sample_mass.values[0]
 
-    def step_data(self, ref_mass_name=None):
+    def step_data(self, ref_mass_name:Literal["initial_mass", "final_mass", "dry_mass"]=None):
         idxs = self.info.steps_idx
         step_data = self.tga.iloc[list(idxs.values()),:].assign(step= idxs.keys()).sort_index()
         step_data["mass_loss"] = step_data.sample_mass.diff()
@@ -301,7 +301,7 @@ class Sample:
         return tmp
     
 
-    def dry_weight(self, plot=False, **kwargs):
+    def dry_weight(self, plot:bool=False, **kwargs):
         "determine dry point and mass of sample"
 
         try:
@@ -316,7 +316,7 @@ class Sample:
             logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(
-        self, ax=None, plot=True, min_rel_height=0.2, width_T=np.array([0, np.inf]),**kwargs
+        self, ax:Union[None, plt.Axes]=None, plot:bool=True, min_rel_height:float=0.2, width_T:np.array=np.array([0, np.inf]),**kwargs
     ):
         #calculate width in terms of indices from supplied temperature width
         step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx = mass_step(
@@ -337,7 +337,7 @@ class Sample:
             )
         return step_height, rel_step_height, step_starts_idx, step_ends_idx, peaks_idx
 
-    def plot(self, plot=Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax=None, save=False, directory=None,reference=None, **kwargs):
+    def plot(self, plot:Literal["TG","mass_steps","heat_flow","EGA", "cumsum","EGA_to_DTG","fit", "calibration", "results"], ax:Union[None, plt.Axes]=None, save:bool=False, directory:str=None,reference_name:str=None, **kwargs):
         from ..plotting import FTIR_to_DTG, plot_fit, plot_FTIR, plot_TGA
         "plotting TG and or IR data"
         options = [
@@ -406,20 +406,20 @@ class Sample:
                         'No fitting results available for plotting. Run ".fit()" first.'
                     )
                     return
-                if reference not in self.results["fit"]:
+                if reference_name not in self.results["fit"]:
                     logger.warning(
-                        f"No fit performed with {reference}. Available options are {[self.results['fit'].keys()]}"
+                        f"No fit performed with {reference_name}. Available options are {[self.results['fit'].keys()]}"
                     )
                     return
                 else:
                     if len(self.results["fit"].keys()) == 1:
-                        reference = list(self.results["fit"].keys())[0]
+                        reference_name = list(self.results["fit"].keys())[0]
                     else:
                         avail_refs = [self.results['fit'].keys()]
                         warn_msg = f"Multiple fitting results available. Specify with keyword 'reference'= one of {avail_refs}"
                         logger.warning(warn_msg)
                         return
-                fig, ax = plot_fit(self, reference, **kwargs)
+                fig, ax = plot_fit(self, reference_name, **kwargs)
                     
             case "calibration":
                 if (gas := kwargs.get("gas")) and kwargs.get("gas") in self._info["gases"]:
@@ -483,15 +483,15 @@ class Sample:
 
     def fit(
         self,
-        reference_name,
-        T_max=None,
-        T_max_tol=50,
-        save=True,
-        make_path=True,
-        plot=True,
-        presets=None,
-        mod_sample=True,
-        overwrite=False,
+        reference_name:str,
+        T_max:float=None,
+        T_max_tol:float=50,
+        save:bool=True,
+        make_path:bool=True,
+        plot:bool=True,
+        presets:dict[pd.DataFrame]=None,
+        mod_sample:bool=True,
+        overwrite:bool=False,
         **kwargs,
     ):
         "deconvolution of IR data"
@@ -563,7 +563,7 @@ class Sample:
         # plotting
         if plot:
             kwargs["save"]=save
-            self.plot("fit", reference=reference_name, directory=path, **kwargs)
+            self.plot("fit", reference_name=reference_name, directory=path, **kwargs)
 
         if save:
             logger.info(f"Plots and results are saved.\n'{path=}'.")
@@ -573,14 +573,14 @@ class Sample:
 
         return results
 
-    def robustness(self, ref, plot:bool=True,**kwargs):
+    def robustness(self, reference_name:str, plot:bool=True,**kwargs):
         from ..fitting import robustness
         from ..classes import Worklist
         temp_wl = Worklist(self)
-        data, summary = temp_wl.robustness(ref, plot=plot, **kwargs)
+        data, summary = temp_wl.robustness(reference_name, plot=plot, **kwargs)
         if plot:
             temp_wl.plot("robustness")
-        self.results["robustness"].update({ref: {"data":data,"summary":summary}})
+        self.results["robustness"].update({reference_name: {"data":data,"summary":summary}})
         return data, summary
 
     def save(self, how: Literal["samplelog", "excel", "pickle"]="samplelog", **kwargs):
@@ -628,7 +628,7 @@ class Sample:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
                     )
-    def calibrate(self, profile=None,**kwargs):
+    def calibrate(self, profile:str=None,**kwargs):
         "calibrate object"
         from ..calibration import calibrate
         if not profile:

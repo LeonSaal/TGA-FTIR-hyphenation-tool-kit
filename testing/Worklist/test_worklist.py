@@ -27,3 +27,33 @@ class TestWorklistClassMethods():
         get_worklist.to_pickle()
 
         assert Worklist.from_pickle(get_worklist.name) == get_worklist
+
+        # Test dunder-methods
+        ## .[]
+
+        ## a + b
+
+
+        ## len
+
+        ## for a in b
+
+        ##
+
+        # corr
+
+        # pop
+
+        # save
+
+# test properties
+class TestWorklistProperties():
+     pass
+
+     # results
+
+    # info
+
+    # profiles
+
+    
