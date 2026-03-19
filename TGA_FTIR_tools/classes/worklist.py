@@ -143,9 +143,11 @@ class Worklist:
 
         # make subdirectory to save data
         if save:
-            path = PATHS["fitting"] / f"{time()}{reference}_{self.name}"
+            path = PATHS["fitting"] / f"{time()}_{reference}_{self.name}"
             os.makedirs(path)
             os.chdir(path)
+        else:
+            path = None
 
         # cycling through samples
         fits = []
