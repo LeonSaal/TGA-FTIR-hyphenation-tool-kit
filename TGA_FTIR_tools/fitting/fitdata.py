@@ -55,11 +55,11 @@ class FitData:
                 self.presets[gas].loc[:, f"height_{key}"].multiply(max(sample.ega[gas]))
             )
         if gas in self.gas_links:
-            df = self.links.dropna(thresh=2).replace("0", np.nan).dropna(thresh=1)
+            df = self.links.dropna(thresh=2).replace("none", np.nan).dropna(thresh=1)
             for group in df.index:
                 other = (
                     self.links.loc[group, :]
-                    .index[self.links.loc[group] == "0"]
+                    .index[self.links.loc[group] == "none"]
                     .values[0]
                 )
                 for letter in df.loc[group, gas]:
@@ -207,10 +207,10 @@ def link_groups(presets):
     for key in presets:
         data += [presets[key].loc[:, "link"].rename(key)]
     links = pd.concat(data, axis=1)
-    gas_links = links.replace("0", np.nan).dropna(thresh=1).dropna(thresh=1, axis=1)
+    gas_links = links.replace("none", np.nan).dropna(thresh=1).dropna(thresh=1, axis=1)
     if (
         gas_links.dropna(axis=1).empty
-        and not links.replace("0", np.nan).dropna(thresh=1).empty
+        and not links.replace("none", np.nan).dropna(thresh=1).empty
     ):
         logger.warning("You cannnot predefine fitting parameters for all supplied gases!")
         gas_links = pd.DataFrame()

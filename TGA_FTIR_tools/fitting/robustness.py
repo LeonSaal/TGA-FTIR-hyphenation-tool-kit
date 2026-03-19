@@ -6,7 +6,7 @@ import time as tm
 import numpy as np
 import pandas as pd
 
-from ..config import BOUNDS, MERGE_CELLS, PATHS
+from ..config import BOUNDS, MERGE_CELLS, PATHS, DEFAULTS
 from ..input_output.general import time
 from .fitting import get_presets
 
@@ -49,6 +49,10 @@ def robustness(
     )
 
     # Calculating initial results and timing initial fit for estimation of remaining time
+    # silence loggers of sample and worklist to reduce amount of output
+    logging.getLogger("TGA_FTIR_tools.classes.sample").setLevel(logging.WARNING)
+    logging.getLogger("TGA_FTIR_tools.classes.worklist").setLevel(logging.WARNING)
+    
     logger.info("Initial results:")
     start = tm.time()
     res = worklist.fit(
@@ -108,6 +112,8 @@ def robustness(
                                 0,
                             ]
                         )
+                        #logging.disable(logging.CRITICAL)
+
                         res = worklist.fit(
                             plot=False,
                             reference=reference,
@@ -116,6 +122,7 @@ def robustness(
                             mod_samples=False,
                             **kwargs,
                         )
+                        #logging.disable(logging.NOTSET)
                         results[run].update(
                             res.loc[
                                 (
@@ -207,5 +214,10 @@ def robustness(
 
     # os.chdir(PATHS["home"])
     logger.info("Robustness test finished!")
+
+    # reestablish loglevel
+    logging.getLogger("TGA_FTIR_tools.classes.sample").setLevel(DEFAULTS.get("logging_level", logging.INFO))
+    logging.getLogger("TGA_FTIR_tools.classes.worklist").setLevel(DEFAULTS.get("logging_level", logging.INFO))
+    
     data.sort_index(level="group", inplace=True)
-    return data.drop("total", level="group"), summary
+    return data.drop("total", level="group").pint.convert_object_dtype(), summary.pint.convert_object_dtype()

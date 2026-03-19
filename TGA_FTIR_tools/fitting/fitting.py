@@ -155,7 +155,7 @@ def get_presets(reference, file = config["fitting_params"]) -> dict[pd.DataFrame
             pd.Series(presets[gas].loc[:, "center_0"] + BOUNDS.getfloat("tol_center")),
             BOUNDS.getfloat("hwhm_max"),
             BOUNDS.getfloat("height_max"),
-            "0",
+            "none",
         ]
         infill = dict(zip(params, vals))
         presets[gas] = presets[gas].fillna(infill).dropna()

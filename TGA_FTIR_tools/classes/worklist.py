@@ -162,7 +162,7 @@ class Worklist:
                     save=save,
                     save_dir = path
                 ))      
-        res = self.results["fit"] if mod_samples else pd.concat(fits)
+        res = self.results["fit"] if mod_samples else pd.concat(fits).pint.convert_object_dtype()
 
         if save:
             with pd.ExcelWriter("summary.xlsx") as writer:
@@ -197,6 +197,7 @@ class Worklist:
             new_col = "varied"
             out["robustness"] = (
                 self._results["robustness"]
+                .astype(np.float64)
                 .reset_index()
                 .melt(
                     id_vars=idx_cols,
