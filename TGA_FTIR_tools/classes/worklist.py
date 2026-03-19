@@ -158,7 +158,7 @@ class Worklist:
                     mod_sample=mod_samples,
                     **kwargs,
                     save=save,
-                    make_path=False
+                    save_dir = path
                 ))      
         res = self.results["fit"] if mod_samples else pd.concat(fits)
 

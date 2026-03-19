@@ -57,6 +57,7 @@ def robustness(
         T_max=T_max,
         presets=presets_rob,
         plot=False,
+        mod_samples = False,
         **kwargs,
     )["mmol_per_mg"]
     t_fit = tm.time() - start
