@@ -309,8 +309,8 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
         figdim = len(plot_gases),2
         fig, axs = plt.subplots(*figdim ,gridspec_kw = {"hspace":.5, "wspace":.25}, figsize=FIGSIZE*figdim[::-1],**fig_args)
         for i,gas in enumerate(plot_gases):
-            x = cali["x_mol"][gas]
-            y = cali["y"][gas]
+            x = cali["x_mol"][gas].pint.convert_object_dtype()
+            y = cali["y"][gas].pint.convert_object_dtype()
             plot_calibration_single(x, y, cali["linreg"].loc[gas,:], axs[i, 0])
             plot_residuals_single(x, y, cali["linreg"].loc[gas,:], axs[i, 1])
 
@@ -323,7 +323,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")
         fig.savefig(output_path / f"regression.png")
 
-        x = cali["x_mol"]
+        x = cali["x_mol"].pint.convert_object_dtype()
         y = cali["y"].pint.convert_object_dtype()
         fig, axs = plot_calibration_combined(x, y, cali["linreg"], plot_gases)
         fig.savefig(output_path / f"regression_combined.png")

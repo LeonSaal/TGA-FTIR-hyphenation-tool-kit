@@ -1,4 +1,5 @@
 # 2026-03
+- add config option ``defaults|warnings_action`` to handle warning supression `pint.UnitStrippedWarning`
 - restructure testing
 - bugfix in `.robustness`, resulting in identical results
 - bugfix in `Baseline.from_sample` that resulted in `Baseline` with all zeros

@@ -41,7 +41,7 @@ def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_
 def plot_calibration_single(x,y, linreg, ax):
     x_unit = x.dtype.units
     y_unit = y.dtype.units
-    ax.scatter(x, y)
+    ax.scatter(x.to_numpy(), y.to_numpy())
     x_bounds = x.agg(["min", "max"]).astype(x.dtype)
     ax.plot(
         x_bounds,
@@ -74,7 +74,7 @@ def plot_calibration_combined(x,y, linreg, gases):
         x_unit = xgas.dtype.units
         y_unit = ygas.dtype.units
 
-        axdict[y_unit].scatter(xgas, ygas, label=f"data {get_label(gas)} (N = {len(x)})")
+        axdict[y_unit].scatter(xgas.to_numpy(), ygas.to_numpy(), label=f"data {get_label(gas)} (N = {len(x)})")
         xrange = xgas.agg(["min", "max"]).astype(xgas.dtype)
         axdict[y_unit].plot(
             xrange,
@@ -89,6 +89,6 @@ def plot_residuals_single(x,y, linreg, ax):
     x_unit = x.dtype.units
     y_unit = y.dtype.units
     Y_cali = x.mul(ureg.Quantity(linreg["slope"], y_unit/x_unit)).add(ureg.Quantity(linreg["intercept"], y_unit))
-    ax.scatter(Y_cali, y - Y_cali, label=f"data (N = {len(x)})")
+    ax.scatter(Y_cali.to_numpy(), (y - Y_cali).to_numpy(), label=f"data (N = {len(x)})")
     ax.hlines(0, Y_cali.min(), Y_cali.max())
     ax.set_ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")

@@ -343,12 +343,7 @@ class Worklist:
         
     def calibrate(self, **kwargs):
         from ..calibration import calibrate
-
-        if not len(set(self.profiles))==1:
-            logger.error(f"The worklist contains multiple profiles: {self.profiles!r}")
-            return
-
-        return calibrate(worklist = self, mode="recalibrate", profile=self.profiles[0], **kwargs)
+        return calibrate(worklist = self, mode="recalibrate", profile=self.profile, **kwargs)
         
     def from_samplelog(sheet_name:Union[str, int, list,None]=0):
         worklist = samplelog(sheet_name=sheet_name)
