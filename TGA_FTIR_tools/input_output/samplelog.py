@@ -21,7 +21,9 @@ def samplelog(data=None, create=True, overwrite=False, sheet_name=0,**kwargs) ->
             samplelog.to_excel(path, merge_cells=MERGE_CELLS)
             logger.info(f"Empty 'Samplelog.xlsx' created in {path}")
     else:
-        samplelog = pd.read_excel(path, index_col=0, sheet_name=sheet_name)
+        with pd.ExcelFile(path) as ef:
+            sheet_name = ef.sheet_names[sheet_name] if isinstance(sheet_name, int) else sheet_name 
+            samplelog = pd.read_excel(ef, index_col=0, sheet_name=sheet_name)
 
     # update existing samplelog file
     if isinstance(data, pd.DataFrame):
@@ -31,6 +33,7 @@ def samplelog(data=None, create=True, overwrite=False, sheet_name=0,**kwargs) ->
 
         try:
             with pd.ExcelWriter(path, if_sheet_exists="replace", mode="a", engine="openpyxl") as writer:
+                sheet_name = f"Sheet{sheet_name + 1}" if isinstance(sheet_name, int) else sheet_name
                 samplelog.to_excel(writer, merge_cells=MERGE_CELLS, sheet_name=sheet_name)
             logger.info("Successfully updated 'Samplelog.xlsx'.")
         except PermissionError:
