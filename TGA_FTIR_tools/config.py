@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Literal, Union, Dict, Any
 from os import PathLike
 import requests
+import warnings
+import pint
 
 # set up logging
 fmt = "[{levelname:^7s}] {module:}.{funcName}: {message}"
@@ -107,6 +109,9 @@ CORRECTION = cfg["correction"]
 MERGE_CELLS = True
 UNITS = cfg["units"]
 SEP = UNITS.get("sep", '?')
+
+# filter warnings
+warnings.simplefilter(DEFAULTS.get("warnings_action", "ignore"), pint.UnitStrippedWarning)
 
 # hint location of fit parameters
 def fit_references(open=False):
