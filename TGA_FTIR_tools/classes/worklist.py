@@ -343,8 +343,14 @@ class Worklist:
         
     def from_samplelog(sheet_name:Union[str, int, list,None]=0):
         worklist = samplelog(sheet_name=sheet_name)
+        if worklist is None:
+            logger.error("Failed to load data from samplelog.")
+            return
+        
         samples = worklist.index.to_list()
-        profile = worklist.profile
+        if worklist.profile.unique().size !=1:
+            logger.warning("Sheet contains multiple data loading profiles. Using first one.")
+        profile = worklist.profile.iloc[0]
         aliases = worklist.alias
 
         return Worklist(samples, name = sheet_name, profile=profile, aliases=aliases)
