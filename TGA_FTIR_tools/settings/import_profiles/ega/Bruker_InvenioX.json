@@ -1,0 +1,20 @@
+{
+    "spec": {
+        "manufacturer": "Bruker",
+        "device": "Invenio X",
+        "software": "OPUS",
+        "version": "6"
+    },
+    "ext": ".0_Trace_\\d+_(?P<suffix>.+).0.DPT",
+    "kwargs": {
+        "delimiter": ",",
+        "decimal": ".",
+        "names": [
+            "time",
+            "suffix"
+        ]
+    },
+    "units": {
+        "time": "sec"
+    }  
+}
