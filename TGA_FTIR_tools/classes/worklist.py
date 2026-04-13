@@ -313,7 +313,7 @@ class Worklist:
         **kwargs,
     ) -> NoneType:
         if how == "samplelog":
-            samplelog(self.info, how="samplelog")
+            samplelog(self.info, sheet_name=kwargs.get("sheet_name", self.name))
 
         elif how == "pickle":
             self.to_pickle()
@@ -336,10 +336,6 @@ class Worklist:
     @property
     def info(self) -> pd.DataFrame:
         return pd.concat([sample.info.to_row() for sample in self.names])
-    
-    @property
-    def profiles(self) -> list:
-        return [s.profile for s in self.names]
         
     def calibrate(self, **kwargs):
         from ..calibration import calibrate
@@ -348,7 +344,7 @@ class Worklist:
     def from_samplelog(sheet_name:Union[str, int, list,None]=0):
         worklist = samplelog(sheet_name=sheet_name)
         samples = worklist.index.to_list()
-        profiles = worklist.profile
+        profile = worklist.profile
         aliases = worklist.alias
 
-        return Worklist(samples, name = sheet_name, profiles=profiles, aliases=aliases)
+        return Worklist(samples, name = sheet_name, profile=profile, aliases=aliases)

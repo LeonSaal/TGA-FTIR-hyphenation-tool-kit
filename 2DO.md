@@ -3,6 +3,7 @@
 | Category      | Task                                                                           | First Noted |
 | ------------- |------------------------------------------------------------------------------ | ----------- |
 | General | Use `.get()`-method where feasible with sensible defaults (config)                               |             |
+| General | Better error messages (Daniels issues)                            |             |
 | Robustness    | `.robustness()` for single `Sample`                                            |             |
 | Plotting      | Move all plotting to `.plot(...)`-method                                       |             |
 | Testing       | Add automated testing for initialization, plotting, fitting                    |             |
