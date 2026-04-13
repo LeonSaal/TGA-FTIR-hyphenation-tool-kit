@@ -22,14 +22,17 @@ def samplelog(data=None, create=True, overwrite=False, sheet_name=0,**kwargs) ->
             logger.info(f"Empty 'Samplelog.xlsx' created in {path}")
     else:
         with pd.ExcelFile(path) as ef:
+            sheet_names = ef.sheet_names
             if isinstance(sheet_name, int):
-                sheet_names = ef.sheet_names
                 if 0  <= sheet_name < len(sheet_names):
                     sheet_name = sheet_names[sheet_name]
                 else:
                     logger.warning(f"{sheet_name} is an invalid sheet index. {path.name!r} has {len(sheet_names)} sheet(s) (zero-indexed).")
                     return
-            samplelog = pd.read_excel(ef, index_col=0, sheet_name=sheet_name)
+            if sheet_name in sheet_names:
+                samplelog = pd.read_excel(ef, index_col=0, sheet_name=sheet_name)
+            else:
+                samplelog = pd.DataFrame(columns=["alias", "sample", "run", "reference", "profile"])
 
     # update existing samplelog file
     if isinstance(data, pd.DataFrame):
