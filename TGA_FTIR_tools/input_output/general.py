@@ -49,6 +49,16 @@ def read_profile_json(profile: str) -> Mapping:
         for device, file in profile["data"].items():
             with open(file, encoding="UTF-8") as json_file:
                 profile["data"][device] = json.load(json_file)
+
+        # validate part of profile
+        if corrs:=profile.get("corrections"):
+            new = {}
+            for key, value in corrs.items():
+                if key not in profile["data"]:
+                    logger.debug(f"Correction for {key!r} was stripped, as it is not part of the profile data.")
+                else:
+                    new[key] = value  
+            profile["corrections"] = new 
         return profile
     
 def read_info(path:str, profile:dict):

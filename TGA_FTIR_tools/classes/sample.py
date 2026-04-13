@@ -74,8 +74,10 @@ class Sample:
             return
         self._info = SampleInfo(self.name, info=self._info, profile=self.profile)
 
-        self.post_init_tga()
-        self.post_init_ega(**kwargs)
+        if "tga" in self.profile_data["data"]:
+            self.post_init_tga()
+        if "ega" in self.profile_data["data"]:
+            self.post_init_ega(**kwargs)
 
         if self.ega is None and self.tga is None:
             logger.error(f"Failed to initialize '{self.name}'.")
