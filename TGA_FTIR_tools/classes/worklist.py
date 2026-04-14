@@ -319,10 +319,10 @@ class Worklist:
             self.to_pickle()
 
     def from_pickle(name: str) -> NoneType:
-        if (p:= PATHS["output"] / f"{name}.pkl").exists():
-            with open(p , "rb") as inp:
+        if (p := PATHS["output"] / f"{name}.pkl").exists():
+            with open(p, "rb") as inp:
                 obj = pickle.load(inp)
-            if isinstance(obj, Sample):
+            if isinstance(obj, Worklist):
                 return obj
         else:
             logger.error(f"{p.as_posix()!r} does not exist!")

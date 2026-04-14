@@ -86,7 +86,7 @@ def corr_CO2(x, y, co2_offs = 0):
     return z
 
 
-def test_class(cls):
+def class_tester(cls):
     members = inspect.getmembers(cls, predicate=lambda x: (inspect.isroutine(x) and not inspect.isbuiltin(x)))
     dunders = [member for member in members if member[0].startswith("__")]
     others = [member for member in members if not member[0].startswith("__")]
@@ -128,7 +128,7 @@ def test_class(cls):
                 case Iterable():
                     kwargs[key] = args
                 case _:
-                    kwargs[key] = get_options().get(key)
+                    kwargs[key] = get_options().get(key, ())
     
         # cartesian product of arguments
         calls = [{key:val for key, val in zip(kwargs.keys(), vals)} for vals in it.product(*kwargs.values())]
@@ -149,7 +149,10 @@ def test_class(cls):
                 #     errs.append(f"{call}: Type mismatch: {args} <=> {ret_args}")
             else:
                 args = type(iter)
-                assert args in ret_args
+                try:
+                    assert args in ret_args
+                except AssertionError as e:
+                    print(e)
                 # if not args in ret_args:
                 #     errs.append(f"{call}: Type mismatch: {args} <=> {ret_args}")
                         

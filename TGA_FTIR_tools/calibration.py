@@ -139,9 +139,6 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
     # new calibration
     elif mode == "recalibrate":
-        if not len(profiles:=set([profile for profile in worklist.profiles]))==1:
-            logger.error(f"The worklist contains multiple profiles: {profiles!r}")
-            return
         start_time=time()
         # check if calibration folder is present
         if not PATHS["calibration"].exists():

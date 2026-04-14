@@ -19,12 +19,12 @@ def get_cali_worklist(request):
     profile, names = request.param
     yield Worklist(names, profile=profile)
 
-@fixture(params = [(profile, samples) for profile, samples in sample_names.items()], ids=sample_names.keys())
+@fixture(params = [(profile, sample) for profile, samples in sample_names.items() for sample in samples], ids=[f"{profile}:{sample}" for profile, samples in sample_names.items() for sample in samples])
 def get_sample(request):
-    profile, names = request.param
+    profile, name= request.param
     #TODO other init methods
-    for name in names:  
-        yield Sample(name, profile=profile)
+    yield Sample(name, profile=profile)
+
 
 @fixture()
 def get_baseline(request):
@@ -37,23 +37,23 @@ def get_worklist(request):
         yield Worklist(names, profile=profile)
 
         #TODO add from_pickle, from_samplelog
-        for fun in [lambda x, y: Sample(x, profile=y), lambda x, y: [Sample(x, profile=y)]]:
+        for fun in [lambda x, y: Sample(y, profile=x), lambda x, y: [Sample(y, profile=x)]]:
             init = fun(*request.param)
             yield Worklist(init)
-    return init_options
+    yield init_options
 
-@fixture(params = [(profile) for profile, samples in sample_names.items()])
-def get_options(request, get_baseline):
-    profile, samples = request.param
+#@fixture(params = [(profile) for profile, samples in sample_names.items()])
+def get_options():
+    #profile, samples = request.param
     ax = plt.subplots()
     #baseline = (get_baseline, ) #Baseline()
-    yield {
+    return {
         'ax':(ax, None),
         'baseline':(None, ),
         'corrs':({}, {},),
         'directory':(None, Path(".")),
         'key':(None, ),
-        'name': tuple(samples),
+        'name': tuple(samples for samples in sample_names.values()),
         'plot':(None, ),
         'presets':(None, ),
         'profile': tuple(sample_names.keys()),

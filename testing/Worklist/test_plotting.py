@@ -7,7 +7,7 @@ import pytest
 import matplotlib as mpl
 
 # Sample
-@pytest.mark.usefixtures("get_sample")
+@pytest.mark.usefixtures("get_worklist")
 class TestSamplePlot:
     def test_plot_sample(self, get_sample):
         plot_params = ins.signature(get_sample.plot).parameters["plot"].default
