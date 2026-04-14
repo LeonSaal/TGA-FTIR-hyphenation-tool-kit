@@ -353,4 +353,4 @@ class Worklist:
         profile = worklist.profile.iloc[0]
         aliases = worklist.alias
 
-        return Worklist(samples, name = sheet_name, profile=profile, aliases=aliases)
+        return Worklist(samples, name = str(sheet_name), profile=profile, aliases=aliases)

@@ -10,8 +10,11 @@ from ..config import PATHS, SEP, UNITS
 from ..input_output.general import time
 from .utils import get_label, make_title, ylim_auto
 
+import pint
+
 logger = logging.getLogger(__name__)
 
+ureg = pint.get_application_registry()
 
 def plots(
     samples,
@@ -94,11 +97,12 @@ def plots(
         else:
             ref_mass = sample.reference_mass
 
+        dtg_time_factor = ureg.Quantity(sample.tga.time.pint.units).to("min").magnitude
         label = make_title(sample)
         if plot == "TG":
             x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
-                x /= 60
+                x = x.pint
             if y_axis == "orig":
                 y = sample.tga["sample_mass"]
             elif y_axis == "rel_mol":
@@ -116,11 +120,11 @@ def plots(
         if plot == "DTG":
             x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
-                x /= 60
+                x = x.pint.to(UNITS.get("time"))
             if y_axis == "orig":
-                y = sample.tga["dtg"] * 60
+                y = sample.tga["dtg"] * dtg_time_factor
             elif y_axis == "rel_mol":
-                y = sample.tga["dtg"] * 60 / ref_mass * 100
+                y = sample.tga["dtg"] * dtg_time_factor / ref_mass * 100
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
@@ -133,7 +137,7 @@ def plots(
         if plot == "heat_flow":
             x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
-                x /= 60
+                x = x.pint.to(UNITS.get("time"))
             if y_axis == "orig":
                 y = sample.tga["heat_flow"]
             elif y_axis == "rel_mol":
@@ -150,7 +154,7 @@ def plots(
         if plot == "EGA":
             x = copy.deepcopy(sample.ega[x_axis])
             if x_axis == "time":
-                x /= 60
+                x = x.pint.to(UNITS.get("time"))
             if y_axis == "orig":
                 y = sample.ega[gas]
                 if (

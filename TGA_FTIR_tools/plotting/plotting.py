@@ -7,6 +7,7 @@ from matplotlib.ticker import PercentFormatter, ScalarFormatter
 import numpy as np
 import pandas as pd
 import scipy as sp
+import pint
 from itertools import cycle
 
 from ..config import MERGE_CELLS, PATHS, SAVGOL, SEP, UNITS
@@ -15,6 +16,7 @@ from .utils import get_label, make_title, ylim_auto
 import logging
 
 logger = logging.getLogger(__name__)
+ureg = pint.get_application_registry()
 
 
 def plot_TGA(
@@ -35,11 +37,11 @@ def plot_TGA(
     x = copy.deepcopy(sample.tga[x_axis])
 
     # if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
-
+    dtg_time_factor = ureg.Quantity(sample.tga.time.pint.units).to("min").magnitude
     # adjusting y data and setting axis labels according to y_axis
     if y_axis == "rel":
         y = (sample.tga[plot] / sample.reference_mass) * 100
-        yDTG = sample.tga["dtg"] * 60 / sample.reference_mass * 100
+        yDTG = sample.tga["dtg"] * dtg_time_factor / sample.reference_mass * 100
         ylabelDTG = rf'{get_label("dtg")} {SEP} $ \%\,min^{{-1}}$'
         if plot == "sample_mass":
             ylabel = f"{get_label('sample_mass')} {SEP} $\\%$"
@@ -48,7 +50,7 @@ def plot_TGA(
 
     elif y_axis == "orig":
         y = sample.tga[plot]
-        yDTG = sample.tga["dtg"] * 60  # turning dtg from mg/s in mg/min
+        yDTG = sample.tga["dtg"] * dtg_time_factor  # turning dtg from mg/s in mg/min
         ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS.get('sample_mass', '?')}\\,min^{{-1}}$"
         ylabel = f"{get_label(plot)} {SEP} ${UNITS.get(plot, '?')}$"
 
@@ -56,7 +58,7 @@ def plot_TGA(
 
     # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis == "time":
-        x = x / 60
+        x = x.pint.to(UNITS.get("time", "min"))
         temp = ax.twinx()
         temp.plot(
             x,
@@ -188,7 +190,7 @@ def plot_FTIR(
     graphs[0].set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
     color = next(colors)
     if x_axis == "time":
-        x = x / 60
+        x = x.pint.to(UNITS.get("time", "min"))
     match y_axis:
         case "orig":
             #graphs[0].set_ylabel(f"{get_label(gases[0])} {SEP} ${UNITS.get('int_ega', '?')}$")
@@ -360,7 +362,7 @@ def FTIR_to_DTG(
 
     # actual plotting
     if x_axis == "time":
-        x = x / 60
+        x = x.pint.to(UNITS.get("time", "min"))
         temp = stack.twinx()
         temp.plot(x, data["sample_temp"], ls="dashed", color="black", label="T")
         temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
