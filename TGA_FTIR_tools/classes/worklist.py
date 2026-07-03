@@ -12,6 +12,7 @@ from ..config import PATHS, DEFAULTS, MERGE_CELLS
 from ..fitting import get_presets, robustness
 from ..input_output import samplelog, time
 from ..plotting import plot_results, plot_robustness, plots
+from ..utils import check_profile_exists, select_import_profile
 from concurrent.futures import ProcessPoolExecutor
 from inspect import signature
 from typing import get_args
@@ -44,6 +45,11 @@ class Worklist:
 
     def __post_init__(self):
         len_names = 1 if isinstance(self.names, str) else len(self.names)
+        
+        # check profile
+        if not check_profile_exists(self.profile):
+            self.profile=select_import_profile()
+
         match self.aliases:
             case str():
                 self.aliases = [self.aliases] * len_names 
@@ -95,7 +101,7 @@ class Worklist:
             return self.names[i]
         elif type(i) == slice:
             return Worklist(
-                names=self.names[i], name=f"{self.name}_({i.start}-{i.stop})"
+                names=self.names[i], name=f"{self.name}_({i.start}-{i.stop})", profile=self.profile
             )
         elif type(i) == str:
             if i in (d := {sample.name: sample for sample in self.names}):
@@ -106,7 +112,7 @@ class Worklist:
                 samples.append(self.__getitem__(elem))
             if len(samples) == 1:
                 return samples[0]
-            return Worklist(names=samples, name=f"{self.name} {repr(i)}")
+            return Worklist(names=samples, name=f"{self.name} {repr(i)}", profile=self.profile)
 
     def __iter__(self):
         yield from self.names
@@ -119,6 +125,7 @@ class Worklist:
                 if re.search(pattern, sample.__dict__[attr])
             ],
             name=pattern,
+            profile=self.profile
         )
 
     def append(self, other) -> NoneType:
@@ -162,11 +169,11 @@ class Worklist:
                     save=save,
                     save_dir = path
                 ))      
-        res = self.results["fit"] if mod_samples else pd.concat(fits).pint.convert_object_dtype()
+        res = self.results["fit"].pint.convert_object_dtype() if mod_samples else pd.concat(fits).pint.convert_object_dtype()
 
         if save:
             with pd.ExcelWriter("summary.xlsx") as writer:
-                res.to_excel(writer)
+                res.pint.dequantify().to_excel(writer)
 
         os.chdir(PATHS["home"])
         return res

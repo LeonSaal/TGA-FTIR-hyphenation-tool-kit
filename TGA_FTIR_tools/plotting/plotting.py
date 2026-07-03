@@ -37,7 +37,7 @@ def plot_TGA(
     x = copy.deepcopy(sample.tga[x_axis])
 
     # if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
-    dtg_time_factor = ureg.Quantity(sample.tga.time.pint.units).to("min").magnitude
+    dtg_time_factor = ureg.Quantity(1, sample.tga.time.pint.units).to("min").magnitude
     # adjusting y data and setting axis labels according to y_axis
     if y_axis == "rel":
         y = (sample.tga[plot] / sample.reference_mass) * 100
@@ -324,9 +324,10 @@ def FTIR_to_DTG(
     data = pd.merge(
         sample.tga, sample.ega.drop("sample_mass", errors="ignore", axis=1), how="left", on=["time", "sample_temp"]
     ).dropna()
-    DTG = -sp.signal.savgol_filter(
-        data["sample_mass"].pint.to("mg").to_numpy(dtype=np.float64), 13, 3, deriv=1
-    )
+    DTG = data.dtg
+    # -sp.signal.savgol_filter(
+    #     data["sample_mass"].pint.to("mg").to_numpy(dtype=np.float64), 13, 3, deriv=1
+    # )
 
     x = data[x_axis]
     y = np.zeros((len(gases), len(sample.ega)))

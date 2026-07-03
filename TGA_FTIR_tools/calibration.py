@@ -38,6 +38,7 @@ def integrate_peaks(
             
             if subset.size == 0:
                 logger.warning(f"Decomposition step {i} for {gas!r} has no length. Consider adjusting preliminary corrections. Skipping.")
+                baselines[gas][i] = np.zeros_like(subset)
                 continue
 
             # baseline correction
@@ -49,7 +50,7 @@ def integrate_peaks(
                 baseline = min(subset.iloc[0], subset.iloc[len(subset) - 1]) * np.ones(
                     len(subset)
                 )  # np.linspace(min(subset),min(subset),len(subset))
-            elif corr_baseline == None:
+            else:
                 baseline = np.zeros(len(subset))
 
             integral = sp.integrate.simpson(subset - baseline)
@@ -286,7 +287,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 for name, data in cali.items():
                     # transform before saving
                     data = data.pint.dequantify()
-                    data = data.rename({"":"dimensionless"}, level=1, axis=1)
+                    data = data.rename({"":"No Unit"}, level=1, axis=1)
                     data_new = pd.concat({profile: pd.concat({start_time:data}, names=["time"])}, names=["profile"])
 
                     # get old contents of file and update rows with new data
@@ -316,7 +317,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 axs[i, 0].set_title("Regression")
                 axs[i, 1].set_title("Residuals")
             if i == len(plot_gases)-1:
-                axs[i, 0].set_xlabel(UNITS.get("molar_amount", '?'))
+                axs[i, 0].set_xlabel("µmol")
                 axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")
         fig.savefig(output_path / f"regression.png")
 

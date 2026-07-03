@@ -8,7 +8,7 @@ import matplotlib.ticker as ticker
 
 from ..config import PATHS, SEP, UNITS
 from ..input_output.general import time
-from .utils import get_label, make_title, ylim_auto
+from .utils import get_label, make_title, ylim_auto, _validate_xlim
 
 import pint
 
@@ -16,12 +16,14 @@ logger = logging.getLogger(__name__)
 
 ureg = pint.get_application_registry()
 
+
+
 def plots(
     samples,
     plot: Literal["TG", "EGA", "DTG", "heat_flow"],
     ax=None,
     x_axis="sample_temp",
-    y_axis=Literal["orig", "rel_mol"],
+    y_axis=Literal["orig", "rel","rel_mol"],
     ylim="auto",
     xlim=[None, None],
     gas=None,
@@ -71,7 +73,7 @@ def plots(
         match y_axis:
             case "orig":
                 ax.set_ylabel(f"{get_label(ylabel)} {SEP} ${UNITS.get(ylabel, '?')}$")
-            case "rel_mol":
+            case "rel":
                 if plot == "DTG":
                     ax.set_ylabel(f"{get_label(ylabel)} {SEP} $\\%\\,min^{{-1}}$")
                 else:
@@ -97,20 +99,26 @@ def plots(
         else:
             ref_mass = sample.reference_mass
 
-        dtg_time_factor = ureg.Quantity(sample.tga.time.pint.units).to("min").magnitude
+        dtg_time_factor = ureg.Quantity(1, sample.tga.time.pint.units).to("min").magnitude
         label = make_title(sample)
+        if x_axis not in sample.tga.columns and x_axis not in sample.ega.columns:
+            logger.warning(f"{x_axis!r} not found in data.")
+            continue
+
         if plot == "TG":
             x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
                 x = x.pint
-            if y_axis == "orig":
-                y = sample.tga["sample_mass"]
-            elif y_axis == "rel_mol":
+            if  y_axis == "rel":
                 y = 100 * sample.tga["sample_mass"] / ref_mass
+            else:
+                y = sample.tga["sample_mass"]
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
+            else:
+                x, y, ylim_temp = x,y, [None, None]
             ax.plot(
                 x,
                 y,
@@ -121,14 +129,16 @@ def plots(
             x = copy.deepcopy(sample.tga[x_axis])
             if x_axis == "time":
                 x = x.pint.to(UNITS.get("time"))
-            if y_axis == "orig":
-                y = sample.tga["dtg"] * dtg_time_factor
-            elif y_axis == "rel_mol":
+            if y_axis == "rel":
                 y = sample.tga["dtg"] * dtg_time_factor / ref_mass * 100
+            else: 
+                y = sample.tga["dtg"] * dtg_time_factor
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
+            else:
+                x, y, ylim_temp = x,y, [None, None]
             ax.plot(
                 x,
                 y,
@@ -140,12 +150,14 @@ def plots(
                 x = x.pint.to(UNITS.get("time"))
             if y_axis == "orig":
                 y = sample.tga["heat_flow"]
-            elif y_axis == "rel_mol":
+            elif y_axis == "rel":
                 y = sample.tga["heat_flow"] / ref_mass
             if (
                 ylim == "auto"
             ):  # only select relevant range of x data, to auto-scale the y axis
                 x, y, ylim_temp = ylim_auto(x, y, xlim)
+            else:
+                x, y, ylim_temp = x,y, [None, None]
             ax.plot(
                 x,
                 y,
@@ -157,31 +169,22 @@ def plots(
                 x = x.pint.to(UNITS.get("time"))
             if y_axis == "orig":
                 y = sample.ega[gas]
-                if (
-                    ylim == "auto"
-                ):  # only select relevant range of x data, to auto-scale the y axis
-                    x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(
-                    x,
-                    y,
-                    linewidth=linewidth,
-                    label=label)
             elif y_axis == "rel_mol":
                 y = sample.ega[gas] / sample.linreg["slope"][gas] / ref_mass
-                if (
-                    ylim == "auto"
-                ):  # only select relevant range of x data, to auto-scale the y axis
-                    x, y, ylim_temp = ylim_auto(x, y, xlim)
-                ax.plot(
-                    x,
-                    y,
-                    linewidth=linewidth,
-                    label=label)
+            if (
+                ylim == "auto"
+            ):  # only select relevant range of x data, to auto-scale the y axis
+                x, y, ylim_temp = ylim_auto(x, y, xlim)
+            else:
+                x, y, ylim_temp = x,y, ylim
+            ax.plot(
+                x,
+                y,
+                linewidth=linewidth,
+                label=label)
 
-    if ylim == "auto":  # reset ylim to [None,None]
-        ylim = ylim_temp
-    ax.set_ylim(ylim)
-    ax.set_xlim(xlim)
+        ax.set_ylim(ylim_temp)
+        ax.set_xlim(_validate_xlim(xlim, x))
 
     if legend:
         ax.legend(

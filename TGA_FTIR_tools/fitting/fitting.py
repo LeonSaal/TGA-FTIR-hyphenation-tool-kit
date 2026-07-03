@@ -72,6 +72,9 @@ def fitting(
         except ValueError:
             logger.error(f"Failed to fit {gas} signal")
             break
+        except RuntimeError:
+            logger.error(f"Failed to fit {gas} signal")
+            break
 
         # return values
         data.update_peaks(popt, gas, (x, y))
@@ -177,7 +180,7 @@ def check_LODQ_frame(peaks: pd.DataFrame, stats: pd.DataFrame) -> NoneType:
     total_cond = peaks.index.get_level_values("group") == "total"
     total = peaks[total_cond].dropna(subset=["area"])
     peaks.loc[("total", slice(None)), "limits"] = total.apply(
-        lambda x: check_LODQ(x.mmol, x.name[1], stats=stats), axis=1
+        lambda x: check_LODQ(x.n, x.name[1], stats=stats), axis=1
     )
     for gas, _ in peaks.groupby("gas"):
         peaks["limits"] = peaks.loc[("total", gas), "limits"]

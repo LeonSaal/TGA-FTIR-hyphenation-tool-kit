@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 import pandas as pd
+import pint
 from ..config import DEFAULTS
 
 
@@ -10,7 +11,7 @@ class SampleInfo:
     reference: str = None
     alias: str = None
     profile: str = None
-    corrected: bool = False
+    # corrected: bool = False
     initial_mass: float = None
     final_mass: float=None
     reference_mass_name: Optional[str] = "initial_mass"
@@ -51,8 +52,13 @@ class SampleInfo:
 
     
     def to_dict(self):
+        def make_value(val):
+            if not isinstance(val, pint.Quantity):
+                return pint.Quantity([str(val)], "dimensionless")
+            return pint.Quantity([val.magnitude], units=val.units)
+
         return {
-            key: str(value)
+            key: make_value(value)
             for key, value in self.__dict__.items()
             if value is not None
         }
@@ -61,4 +67,4 @@ class SampleInfo:
         return (pd.DataFrame
                 .from_dict(self.to_dict(), orient="index")
                 .T
-                .set_index("name"))
+                .set_index("name").pint.convert_object_dtype())

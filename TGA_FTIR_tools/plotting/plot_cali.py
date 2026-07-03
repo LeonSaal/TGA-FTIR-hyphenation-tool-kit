@@ -39,13 +39,14 @@ def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_
             )
 
 def plot_calibration_single(x,y, linreg, ax):
+    x = x.pint.to("umol")
     x_unit = x.dtype.units
     y_unit = y.dtype.units
     ax.scatter(x.to_numpy(), y.to_numpy())
     x_bounds = x.agg(["min", "max"]).astype(x.dtype)
     ax.plot(
         x_bounds,
-        x_bounds * ureg.Quantity(linreg["slope"], y_unit / x_unit) + ureg.Quantity(linreg["intercept"], y_unit),
+        x_bounds / 1e6 * ureg.Quantity(linreg["slope"], y_unit / x_unit) + ureg.Quantity(linreg["intercept"], y_unit),
         label="regression",
         ls="dashed",
     )
@@ -69,7 +70,7 @@ def plot_calibration_combined(x,y, linreg, gases):
     axdict =  {unit: ax for unit, ax in zip(y_units, axs[0])}
 
     for gas in gases:
-        xgas = x[gas]
+        xgas = x[gas].pint.to("umol")
         ygas = y[gas]
         x_unit = xgas.dtype.units
         y_unit = ygas.dtype.units
@@ -78,7 +79,7 @@ def plot_calibration_combined(x,y, linreg, gases):
         xrange = xgas.agg(["min", "max"]).astype(xgas.dtype)
         axdict[y_unit].plot(
             xrange,
-            xrange * ureg.Quantity(linreg["slope"][gas], y_unit / x_unit) + ureg.Quantity(linreg["intercept"][gas], y_unit),
+            xrange / 1e6 * ureg.Quantity(linreg["slope"][gas], y_unit / x_unit) + ureg.Quantity(linreg["intercept"][gas], y_unit),
             ls="dashed",
         )
         axdict[y_unit].set_xlim(0, max(xgas) + abs(min(xgas)))

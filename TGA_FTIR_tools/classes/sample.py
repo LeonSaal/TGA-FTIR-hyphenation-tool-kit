@@ -630,7 +630,7 @@ class Sample:
             for key in ["tga", 'ega']:
                 try:
                     if self.__dict__[key] is not None:
-                        self.__dict__[key].to_excel(writer, sheet_name=key)
+                        self.__dict__[key].pint.dequantify().rename({"":"No Unit"}).to_excel(writer, sheet_name=key)
                 except PermissionError:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."

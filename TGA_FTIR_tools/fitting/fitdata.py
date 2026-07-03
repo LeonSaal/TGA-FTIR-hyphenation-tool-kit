@@ -38,8 +38,8 @@ class FitData:
             "height",
             "hwhm",
             "area",
-            "mmol",
-            "mmol_per_mg",
+            "n",
+            "n_rel",
         ]
         
         self.peaks = pd.DataFrame(columns=columns, index=index).sort_index()
@@ -149,14 +149,14 @@ class FitData:
             .apply(lambda x: self.info[f"area_{x}"])
             .values
         )
-        tot_mmol = (
+        tot_n = (
             pd.Series(self.peaks.index.get_level_values(1))
-            .apply(lambda x: self.info[f"mmol_{x}"])
+            .apply(lambda x: self.info[f"n_{x}"])
             .values
         )
-        self.peaks.mmol = self.peaks.area / tot_area * tot_mmol
-        self.peaks.mmol_per_mg = (
-            self.peaks.mmol / self.info[self.sample.info.reference_mass_name].magnitude
+        self.peaks.n = self.peaks.area / tot_area * tot_n
+        self.peaks.n_rel = (
+            self.peaks.n / (np.ones_like(self.peaks.n) * self.info[self.info.reference_mass_name])
         )
 
     def summarize(self):
@@ -174,7 +174,7 @@ class FitData:
         sums, means = [], []
         for group in all_groups:
             sel = self.peaks.index.get_level_values("group").str.startswith(group)
-            subset = self.peaks[sel][["mmol", "mmol_per_mg"]]
+            subset = self.peaks[sel][["n", "n_rel"]]
             summa = subset.sum(min_count=2).dropna()
             mean = subset.mean()
             sums.append(
@@ -199,7 +199,7 @@ class FitData:
             for gas, profiles in self.profiles.items():
                 profiles.to_excel(writer, sheet_name=gas, merge_cells=MERGE_CELLS)
                 self.presets[gas].to_excel(writer, sheet_name=f"presets {gas}", merge_cells=MERGE_CELLS)
-            self.peaks.dropna(axis=1, how="all").to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
+            self.peaks.dropna(axis=1, how="all").pint.convert_object_dtype().pint.dequantify().to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
 
 
 def link_groups(presets):

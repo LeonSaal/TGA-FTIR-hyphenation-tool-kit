@@ -2,10 +2,16 @@
 import pandas as pd
 import re
 from ..config import LABELS, UNITS
+import pint
 
+def _validate_xlim(xlim, x):
+    if not isinstance(xlim, pint.Quantity) and xlim != [None, None]:
+        return pint.Quantity(xlim, x.pint.units)
+    return xlim
 
 def ylim_auto(x, y, xlim):
     "truncate x and y according to xlim"
+    xlim = _validate_xlim(xlim, x)
     x_min = xlim[0]
     x_max = xlim[1]
     if pd.isnull(xlim[0]):
@@ -48,7 +54,7 @@ def get_label(key:str) -> str:
             return LABELS[int(key)]
 
     mf_latex = format_mf_latex(key)
-    return f'${mf_latex}$'
+    return f'${mf_latex}$' if len(mf_latex) != 0 else "?"
 
 
 def make_title(sample):

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from molmass import Formula
 import logging
+import pint
 logger = logging.getLogger(__name__)
 
 
@@ -12,30 +13,30 @@ def FTIR_info(sample):
     # calculate total area of each gas
     for gas in sample._info["gases"]:
         area = sample.ega[gas].sum()
-        info[f"area_{gas}"] = area if area > 0 else pd.NA
+        info[f"area_{gas}"] = area if area > 0 else np.nan
 
         # add molar amount for calibrated traces
         if gas in sample.linreg.index:
             if pd.isna(area):
                 continue
             molar_amount = (area.magnitude - sample.linreg["intercept"][gas]) / sample.linreg["slope"][gas]
-            info[f"mmol_{gas}"] = molar_amount if molar_amount >= 0 else 0
+            info[f"n_{gas}"] = pint.Quantity(molar_amount if molar_amount >= 0 else 0, "mol").to("umol")
             
 
     # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters
     try:
         cali_substances = sample.linreg.filter(gases, axis=0).molecular_formula
         substances = [Formula(mf) for _, mf in cali_substances.items()]
-        elems = {f.composition().keys() for f in substances}
+        elems = {elem for f in substances for elem in f.composition().keys()}
         for elem in elems:
             temp = 0
             for name, mf in cali_substances.items():
                 gas = Formula(mf)
                 if elem in gas.composition().keys():
-                    n = gas.composition[elem].count
-                    temp += n * info[f"mmol_{name}"]
-            if temp != 0:
-                info[f"mmol_{elem}"] = temp
+                    n = gas.composition()[elem].count
+                    temp += n * info[f"n_{name}"]
+            #if temp != 0:
+            info[f"n_{elem}"] = temp
     except Exception as e:
         logger.warning(f"Unable to calculate released molar masses. {e}")
 
