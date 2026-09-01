@@ -133,7 +133,7 @@ class Sample:
                 dtg = savgol_filter(
                     self.tga["sample_mass"].values._data, window_length, POLYORDER, deriv=1
                 )
-                dtype =  self.tga["sample_mass"].dtype
+                dtype =  (self.tga["sample_mass"] / self.tga["time"]).dtype
                 self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
             except ValueError as e:
                 print(e)
@@ -475,7 +475,7 @@ class Sample:
                     for key, plot in fig.items():
                         path_pic = path_plots / f"{self.name}_{key}_{'_'.join(kwargs.keys())}"
                         plot.savefig(path_pic)
-                case plt.figure():
+                case plt.Figure():
                     path_pic = path_plots / f"{self.name}_{'_'.join(kwargs.keys())}"
                     ax.get_figure().savefig(path_pic)
                 case _:

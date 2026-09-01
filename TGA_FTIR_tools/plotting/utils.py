@@ -4,14 +4,14 @@ import re
 from ..config import LABELS, UNITS
 import pint
 
-def _validate_xlim(xlim, x):
-    if not isinstance(xlim, pint.Quantity) and xlim != [None, None]:
-        return pint.Quantity(xlim, x.pint.units)
-    return xlim
+def _validate_lim(lim, x):
+    if not isinstance(lim, pint.Quantity) and lim != [None, None]:
+        return pint.Quantity(lim, x.pint.units)
+    return lim
 
 def ylim_auto(x, y, xlim):
     "truncate x and y according to xlim"
-    xlim = _validate_xlim(xlim, x)
+    xlim = _validate_lim(xlim, x)
     x_min = xlim[0]
     x_max = xlim[1]
     if pd.isnull(xlim[0]):
