@@ -79,7 +79,6 @@ def plots(
         else:
             ref_mass = sample.reference_mass
 
-        dtg_time_factor = ureg.Quantity(1, sample.tga.time.pint.units).to("min").magnitude
         label = make_title(sample)
         if x_axis not in sample.tga.columns and x_axis not in sample.ega.columns:
             logger.warning(f"{x_axis!r} not found in data.")
@@ -95,7 +94,7 @@ def plots(
             case "TG":
                 y = sample.tga["sample_mass"]
             case "DTG":
-                y = sample.tga["dtg"] * dtg_time_factor
+                y = sample.tga["dtg"].pint.to("mg/min")
             case "heat_flow":
                 y = sample.tga["heat_flow"]
             case "EGA":
@@ -108,7 +107,7 @@ def plots(
         orig_units = y.pint.units
         if y_axis == "rel":
             y = y / ref_mass * 100
-        elif y_axis == "rel_mol":
+        elif y_axis == "rel_mol" and plot == "EGA":
             y = y / sample.linreg["slope"][gas] / ref_mass
 
         # get units or percent
