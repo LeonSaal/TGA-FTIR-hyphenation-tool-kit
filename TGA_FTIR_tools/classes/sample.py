@@ -130,8 +130,9 @@ class Sample:
         else:   
             try:
                 window_length = int(self.tga.index.size * WINDOW_LENGTH_REL/2)*2 + 1
+                delta = self.tga["time"].diff().median().magnitude
                 dtg = savgol_filter(
-                    self.tga["sample_mass"].values._data, window_length, POLYORDER, deriv=1
+                    self.tga["sample_mass"].values._data, window_length, POLYORDER, deriv=1, delta=delta
                 )
                 dtype =  (self.tga["sample_mass"] / self.tga["time"]).dtype
                 self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))

@@ -5,22 +5,21 @@ from ..config import LABELS, UNITS
 import pint
 
 def _validate_lim(lim, x):
-    if not isinstance(lim, pint.Quantity) and lim != [None, None]:
+    if not isinstance(lim, pint.Quantity) and lim != (None, None):
         return pint.Quantity(lim, x.pint.units)
     return lim
 
 def ylim_auto(x, y, xlim):
     "truncate x and y according to xlim"
     xlim = _validate_lim(xlim, x)
-    x_min = xlim[0]
-    x_max = xlim[1]
+    x_min, x_max = xlim[0], xlim[1]
     if pd.isnull(xlim[0]):
         x_min = x.min()
     if pd.isnull(xlim[1]):
         x_max = x.max()
     x = x[(x >= x_min) & (x <= x_max)]
     y = y[x.index]
-    ylim = [None, None]  # reset ylim
+    ylim = (None, None)  # reset ylim
 
     return x, y, ylim
 

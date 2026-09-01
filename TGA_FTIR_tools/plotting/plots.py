@@ -25,7 +25,7 @@ def plots(
     x_axis="sample_temp",
     y_axis=Literal["orig", "rel","rel_mol"],
     ylim="auto",
-    xlim=[None, None],
+    xlim=(None, None),
     gas=None,
     legend=True,
     reference_mass_name=None,
@@ -122,8 +122,8 @@ def plots(
             linewidth=linewidth,
             label=label)
 
-        ax.set_ylim(_validate_lim(ylim_temp, y))
         ax.set_xlim(_validate_lim(xlim, x))
+        ax.set_ylim(_validate_lim(ylim_temp, y))
 
     # set up axes labels
     match plot:
