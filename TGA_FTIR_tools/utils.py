@@ -120,7 +120,7 @@ def create_import_profile(directory: Path=PATH_SET / "import_profiles", loc: Lit
         print(f"Choose {device.upper()}:")
         print(tabulate(df, headers="keys", tablefmt="pretty", showindex=True))
         while True:
-            inp = input("choose number or 's' to skip or 'n' to make new profile")
+            inp = input(f"choose number or 's' to skip or 'n' to make new {device.upper()}-profile")
             if inp in [str(i) for i in range(df.index.size)]:
                 file = df.file[int(inp)]
                 if not (folder / file).exists():

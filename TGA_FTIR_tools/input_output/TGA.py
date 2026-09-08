@@ -1,20 +1,18 @@
 import logging
 import scipy as sp
-from ..config import SAVGOL
 import pint
 ureg = pint.get_application_registry()
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
-WINDOW_LENGTH_REL = SAVGOL.getfloat("window_length_rel")
-POLYORDER = int(SAVGOL.getfloat("polyorder"))
 
 def default_info(name, tga):
     from ..classes import SampleInfo
     info = SampleInfo(
         name=name,
-        initial_mass=tga["sample_mass"].iloc[0] if "sample_mass" in tga.columns else None,
-        final_mass = tga["sample_mass"].iloc[-1] if "sample_mass" in tga.columns else None,
+        initial_mass=tga["dtg"].iloc[0] if "dtg" in tga.columns else None,
+        final_mass = tga["dtg"].iloc[-1] if "dtg" in tga.columns else None,
         steps_idx = {"initial":0, "final":tga.index.size-1}
     )
     return info
@@ -27,13 +25,18 @@ def dry_weight(sample, how_dry="H2O"):
     if how_dry == None:
         dry_point_idx = 0
 
-    if how_dry=="H2O" and sample.ega is None:
+    if how_dry != "dtg" and sample.ega is None:
         logger.warning(f"If {how_dry=!r}, EGA data is required. Reverting to DTG.")
-        how_dry = "sample_mass"
+        how_dry = "dtg"
 
-    if col:="sample_temp" not in sample.ega.columns:
-        logger.error(f"{col!r} must be present in EGA data.")
-        return
+    if how_dry != "dtg" and isinstance(sample.ega, pd.DataFrame):
+        if how_dry not in sample.ega.columns:
+            logger.warning(f"If {how_dry=}, column {how_dry!r} must be present in EGA data. Reverting to DTG.")
+            how_dry = "dtg"
+
+        if col:="sample_temp" not in sample.ega.columns:
+            logger.warning(f"If {how_dry=},{col!r} must be present in EGA data. Reverting to DTG.")
+            how_dry = "dtg"
 
     min_temp, max_temp = sample.tga["sample_temp"].min() , sample.tga["sample_temp"].max()
     
@@ -48,25 +51,16 @@ def dry_weight(sample, how_dry="H2O"):
                 return 
                 # check if how_dry value could not be found (very scarce, but possible..)
 
-        # if how_dry is 'H2O' or 'sample_mass', the dry point is determined from the respective data
+        # if how_dry is 'H2O' or 'dtg', the dry point is determined from the respective data
         case str():
-            if how_dry == "H2O":
+            if how_dry == "dtg":
+                ref = sample.tga.copy()#.filter(items=["sample_temp", "dtg"])
+            else: 
                 ref = sample.ega.copy()#.filter(items=["sample_temp", "H2O"])
-            elif how_dry == "sample_mass":
-                ref = sample.tga.copy()#.filter(items=["sample_temp", "sample_mass"])
-                window_length = int(sample.tga.index.size * WINDOW_LENGTH_REL)
-                ref["sample_mass"] = -sp.signal.savgol_filter(
-                    sample.tga["sample_mass"] / sample.info.initial_mass,
-                    window_length if window_length%2 ==0 else window_length+1,
-                    POLYORDER,
-                    deriv=1,
-                )
-            else:
-                logger.info(f"{how_dry!r} is an invalid option.")
-                return
             
             # look for signal peak between 50 and 200 °C
-            peak_signal_idx = ref[how_dry][(ureg.Quantity(50, "degreeC") < ref["sample_temp"]) & (ref["sample_temp"] < ureg.Quantity(200, "degreeC"))].idxmax()
+            bounds_T = ureg.Quantity(50, "degreeC"), ureg.Quantity(200, "degreeC")
+            peak_signal_idx = ref[how_dry][(bounds_T[0] <= ref["sample_temp"]) & (ref["sample_temp"] <= bounds_T[1])].idxmax()
             min_T = ref["sample_temp"].iloc[peak_signal_idx]
             max_T = min_T + ureg.Quantity(50, "delta_degreeC")
             range_T = (min_T < ref["sample_temp"]) & (ref["sample_temp"]< max_T)
@@ -84,7 +78,7 @@ def dry_weight(sample, how_dry="H2O"):
                 return
         
         case _:
-            logger.error(f"{how_dry=!r} is of the wrong type. Must be either a number between {min_temp:.2f} to {max_temp:.2f} or one of ['H2O' and 'sample_mass'].")
+            logger.error(f"{how_dry=!r} is of the wrong type. Must be either a number between {min_temp:.2f} to {max_temp:.2f}, 'dtg' or an EGA-signal-name, e.g. 'H2O'.")
             pass
 
     # getting the dry_mass at the dry_point as well as the final weight and calculating the relative

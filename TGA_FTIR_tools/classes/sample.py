@@ -181,7 +181,7 @@ class Sample:
                 logger.debug(f"Unable to merge temperature data. {e}")
         try:
             self.dry_weight(plot=False, **kwargs)
-        except Exception as e:
+        except KeyError as e:
             logger.warning(f"Failed to derive dry weight: {e}")
                     
     # initialize object from pickle file
@@ -316,7 +316,7 @@ class Sample:
             if plot:
                 plot_dweight(self, **kwargs)
 
-        except Exception as e:
+        except KeyError as e:
             logger.error(f"Failed to derive dry weight. {e}")
 
     def mass_step(

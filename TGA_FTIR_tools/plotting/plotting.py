@@ -26,7 +26,7 @@ def plot_TGA(
     x_axis="sample_temp",
     y_axis="orig",
     ylim="auto",
-    xlim=[None, None],
+    xlim=(None, None),
     legend=True,
     title=True,
 ):
