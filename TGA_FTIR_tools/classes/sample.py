@@ -683,7 +683,7 @@ class Baseline(Sample):
             for pattern, method in methods.items():
                 signals = [signal for signal in all_signals if re.match(pattern, signal)]
                 if not signals:
-                    logger.warning(f"{pattern!r} did not match any signal!")
+                    logger.debug(f"{pattern!r} did not match any signal!")
                     continue
 
                 kwargs = method.get("kwargs", {})

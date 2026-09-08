@@ -6,13 +6,16 @@ import numpy as np
 
 from ..config import PATHS, SEP, UNITS
 from .plotting import get_label
+import pint
+
+ureg = pint.get_application_registry()
 
 
 def plot_dweight(
     sample, save=False, xlim=[None, None], ylim=[None, None], title=True, how_dry="H2O"
-):
-    times, names = sample.info.step_time, sample.info.mass_steps
-    weights = sample.tga[sample.tga.index.isin(times)]["sample_mass"].values
+):  
+    step_data = sample.step_data()
+    weights, names, times = step_data.sample_mass, step_data.step.to_list(), step_data.index
     mass_loss = abs(np.diff(weights))
 
     fig, ax = plt.subplots()
@@ -39,9 +42,9 @@ def plot_dweight(
             arrowprops=dict(arrowstyle="<->"),
         )
         ax.text(
-            x[times[i + 1]] + 20,
+            x[times[i + 1]] + ureg.Quantity(20, "delta_degreeC"),
             (y[times[i]] + y[times[i + 1]]) / 2,
-            f"$ML$ {get_label(names[i])}: {mass_loss[i]:.2f} mg ({mass_loss[i] / sample.reference_mass * 100:.1f} %)",
+            f"$ML$ {get_label(names[i])}: {mass_loss[i]:.2f} ({(mass_loss[i] / sample.reference_mass * 100).magnitude:.1f}%)",
         )
     ax.hlines(weights[:-1], x[times[:-1]], x[times[1:]], color="black")
     ax.set_ylabel(f"{get_label('sample_mass')} {SEP} {UNITS.get('sample_mass', '?')}")
