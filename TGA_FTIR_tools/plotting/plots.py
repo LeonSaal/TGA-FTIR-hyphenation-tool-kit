@@ -122,8 +122,8 @@ def plots(
             linewidth=linewidth,
             label=label)
 
-        ax.set_xlim(_validate_lim(xlim, x))
-        ax.set_ylim(_validate_lim(ylim_temp, y))
+    ax.set_xlim(_validate_lim(xlim, x))
+    ax.set_ylim(_validate_lim(ylim_temp, y))
 
     # set up axes labels
     match plot:
@@ -145,5 +145,7 @@ def plots(
     # switch on minor ticks on each axis
     ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())  
     ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+    ax.autoscale()
 
 

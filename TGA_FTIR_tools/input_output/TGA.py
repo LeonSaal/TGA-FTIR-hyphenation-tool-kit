@@ -62,15 +62,15 @@ def dry_weight(sample, how_dry="H2O"):
             bounds_T = ureg.Quantity(50, "degreeC"), ureg.Quantity(200, "degreeC")
             peak_signal_idx = ref[how_dry][(bounds_T[0] <= ref["sample_temp"]) & (ref["sample_temp"] <= bounds_T[1])].idxmax()
             min_T = ref["sample_temp"].iloc[peak_signal_idx]
-            max_T = min_T + ureg.Quantity(50, "delta_degreeC")
+            max_T = min_T + ureg.Quantity(20, "delta_degreeC")
             range_T = (min_T < ref["sample_temp"]) & (ref["sample_temp"]< max_T)
+            ref = ref[range_T].astype(float)
 
             # fit line to slope of peak and find intersection with temperature signal
-            x = ref["sample_temp"][range_T].to_numpy(dtype=np.float64)
-            y = ref[how_dry][range_T].to_numpy(dtype=np.float64)
+            x,y = ref["sample_temp"], ref[how_dry]
             slope, intercept, _, _, _ = sp.stats.linregress(x, y)
 
-            intersection = (ref["sample_temp"] >= ureg.Quantity(-intercept / slope, ref["sample_temp"].dtypes.units))
+            intersection = (ref["sample_temp"] >= -intercept / slope)
             if intersection.any():
                 dry_point_idx = ref["sample_temp"][intersection].idxmin()
             else:
