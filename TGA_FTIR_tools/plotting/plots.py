@@ -23,7 +23,7 @@ def plots(
     plot: Literal["TG", "EGA", "DTG", "heat_flow"],
     ax=None,
     x_axis="sample_temp",
-    y_axis=Literal["orig", "rel","rel_mol"],
+    y_axis: Literal["orig", "rel","rel_mol"] = "rel",
     ylim="auto",
     xlim=(None, None),
     gas=None,
