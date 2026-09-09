@@ -357,7 +357,7 @@ class Worklist:
         samples = worklist.index.to_list()
         if worklist.profile.unique().size !=1:
             logger.warning("Sheet contains multiple data loading profiles. Using first one.")
-        profile = worklist.profile.iloc[0]
+        profile = worklist.profile.dropna().iloc[0] if worklist.profile.dropna().size != 0 else DEFAULTS["profile"]
         aliases = worklist.alias
 
         return Worklist(samples, name = str(sheet_name), profile=profile, aliases=aliases)
