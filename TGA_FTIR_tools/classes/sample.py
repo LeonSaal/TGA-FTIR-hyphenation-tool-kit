@@ -200,7 +200,7 @@ class Sample:
     def __repr__(self) -> str:
         attr_names = ["name", "alias", "profile","sample", "reference", "run"]
         attr_vals = ", ".join(
-            [f"{key}={repr(self.__dict__[key])}" for key in attr_names]
+            [f"{key}={repr(self[key])}" for key in attr_names]
         )
         return f"Sample({attr_vals})"
 
@@ -213,8 +213,8 @@ class Sample:
         else:
             logger.debug("Can only add to Sample- or Worklist-type")
 
-    def get(self, key:str) -> Any:
-        return self.__dict__.get(key)
+    def get(self, key:str, default=None) -> Any:
+        return self.__dict__.get(key, default)
 
     @property
     def info(self):
@@ -279,8 +279,8 @@ class Sample:
             self.baseline = Baseline(name="from baseline")
 
         for data, traces in corrs.items():
-            to_corr = self.__dict__.get(data)
-            use_to_corr = baseline.__dict__.get(data)
+            to_corr = self.get(data)
+            use_to_corr = baseline.get(data)
             if not isinstance(to_corr, pd.DataFrame) and not isinstance(use_to_corr, pd.DataFrame):
                 logger.warning(f"{data!r} not in sample or baseline or not of the correct type (required: pandas.DataFrame). Skipping.")
                 continue
@@ -292,20 +292,37 @@ class Sample:
                     continue
                 to_update[signal] = fun(to_corr[signal], use_to_corr[signal], **kwargs)
 
-            self.__dict__[data].update(to_update)
-            index_cols = self.__dict__[data].filter(items=['time', 'sample_temp', 'reference_temp', 'sample_mass'])
-            self.baseline.__dict__[data] = pd.concat([index_cols, to_update], axis=1)
+            self[data].update(to_update)
+            index_cols = self[data].filter(items=['time', 'sample_temp', 'reference_temp', 'sample_mass'])
+            self.baseline[data] = pd.concat([index_cols, to_update], axis=1)
             self.baseline.info["gases"] = to_update.columns.to_list()
             
 
-    def get_value(self, *values, which="sample_mass", at="sample_temp") -> pd.DataFrame:
+    def get_value(self, *values, which="sample_mass", at="sample_temp", data="tga", return_all = False) -> pd.DataFrame:
         "extract values from TG data at e.g. certain temperatures"
+        # check input data
+        if data not in self:
+            logger.warning(f"{data=!r} not in {self.name}.")
+            return
+
+        if self[data].columns.intersection([at, which]).size !=2:
+            logger.warning(f"One of {at!r} and {which!r} was not found in {data.upper()}-data.")
+            return
+
+        # request data
         new_idx = pd.Series(*values if isinstance(values[0], list) else [values], dtype=np.float64, name=at).sort_values()
-        tmp = self.tga[[at, which]].copy().sort_values(at)
+
+        # setup data to merge
+        tmp = self.get(data).copy().sort_values(at)
         tmp[at] = tmp[at].astype(np.float64)
+
+        # merge 
         tmp = pd.merge_asof(new_idx, tmp, on=at)
-        tmp[at] = tmp[at].astype(self.tga[at].dtype)
-        return tmp
+        tmp[at] = tmp[at].astype(self.get(data)[at].dtype)
+
+        # setup columns to return
+        ret_cols = [at, which]+tmp.columns.difference([at, which]).to_list() if return_all else [at, which]
+        return tmp.loc[:, ret_cols]
     
 
     def dry_weight(self, plot:bool=False, **kwargs) -> NoneType:
@@ -633,8 +650,8 @@ class Sample:
                 )
             for key in ["tga", 'ega']:
                 try:
-                    if self.__dict__[key] is not None:
-                        self.__dict__[key].pint.dequantify().rename({"":"No Unit"}).to_excel(writer, sheet_name=key)
+                    if self[key] is not None:
+                        self[key].pint.dequantify().rename({"":"No Unit"}).to_excel(writer, sheet_name=key)
                 except PermissionError:
                     logger.warning(
                         f"Unable to write on {path=} as the file is opened by another program."
@@ -652,6 +669,15 @@ class Sample:
 
     def __iter__(self):
         yield self
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+    def __contains__(self, item):
+        return item in self.__dict__
 
 
 
@@ -672,7 +698,7 @@ class Baseline(Sample):
                 logger.warning(f"{name} is no correctable attribute of {sample.name}.")
                 continue
             else:
-                data = sample.__dict__[name].copy()
+                data = sample[name].copy()
                 if name == "ega":
                     self._info["gases"] = sample.info["gases"]
             all_signals = data.columns
@@ -710,6 +736,6 @@ class Baseline(Sample):
                 logger.debug(f"...with {method=!r}, using function {getsource(fn).strip()!r}")
                 data.update(data[signals].apply(fn))
             idx_colnames = ['time', 'sample_temp', 'reference_temp', 'sample_mass']
-            index_cols = sample.__dict__[name].filter(items=idx_colnames)
-            self.__dict__[name] = pd.concat([index_cols, data.drop(idx_colnames, axis=1, errors="ignore")], axis=1)
+            index_cols = sample[name].filter(items=idx_colnames)
+            self[name] = pd.concat([index_cols, data.drop(idx_colnames, axis=1, errors="ignore")], axis=1)
         return self
