@@ -32,70 +32,75 @@ def plot_TGA(
 ):
     "plot TG data"
 
-    DTG = ax.twinx()
-
+    ax_dtg = ax.twinx()
     x = copy.deepcopy(sample.tga[x_axis])
+    lines = []
 
-    # if (ylim == 'auto'):   # only select relevant range of x data, to auto-scale the y axis
-    dtg_time_factor = ureg.Quantity(1, sample.tga.time.pint.units).to("min").magnitude
-    # adjusting y data and setting axis labels according to y_axis
+    # adjusting y data
+    time_unit = UNITS.get("time", "min")
+    temp_unit = sample.tga.sample_temp.pint.units
+
     if y_axis == "rel":
-        y = (sample.tga[plot] / sample.reference_mass) * 100
-        yDTG = sample.tga["dtg"] * dtg_time_factor / sample.reference_mass * 100
-        ylabelDTG = rf'{get_label("dtg")} {SEP} $ \%\,min^{{-1}}$'
-        if plot == "sample_mass":
-            ylabel = f"{get_label('sample_mass')} {SEP} $\\%$"
-        elif plot == "heat_flow":
-            ylabel = f'{get_label("heat_flow")} {SEP} $ {UNITS.get("heat_flow", '?')}\,{UNITS.get("sample_mass", '?')}^{{-1}}$'
-
+        y = (sample.tga[plot] / sample.reference_mass).pint.to("percent")
+        y_dtg = (sample.tga["dtg"] / sample.reference_mass).pint.to(f"percent/{time_unit}")     
     elif y_axis == "orig":
         y = sample.tga[plot]
-        yDTG = sample.tga["dtg"] * dtg_time_factor  # turning dtg from mg/s in mg/min
-        ylabelDTG = f"{get_label('dtg')} {SEP} ${UNITS.get('sample_mass', '?')}\\,min^{{-1}}$"
-        ylabel = f"{get_label(plot)} {SEP} ${UNITS.get(plot, '?')}$"
-
-    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} ${UNITS.get(x_axis.lower(), '?')}$")
-
+        y_dtg = sample.tga["dtg"].pint.to(UNITS.get("dtg","mg/min")) #* dtg_time_factor  # turning dtg from mg/s in mg/min
+    
     # adjusting x data if x_axis == time and constructing y-axis for temperature
     if x_axis == "time":
-        x = x.pint.to(UNITS.get("time", "min"))
-        temp = ax.twinx()
-        temp.plot(
+        x = x.pint.to(time_unit)
+        ax_temp = ax.twinx()
+        (l_temp, ) = ax_temp.plot(
             x,
             sample.tga["sample_temp"],
-            label=f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$",
-            ls="dashed",
+            label=get_label('sample_temp'),
+            ls="dashdot",
             color="black",
         )
-        temp.spines["right"].set_position(("axes", 1.15))
-        temp.set_ylabel(f"{get_label('sample_temp')} {SEP} ${UNITS.get('sample_temp', '?')}$")
-        if legend:
-            temp.legend(loc=1)
+        ax_temp.spines["right"].set_position(("axes", 1.2))
+        ax_temp.set_ylabel(f"{get_label('sample_temp')} {SEP} {temp_unit}")
+        lines.append(l_temp)
 
     if ylim == "auto":  # only select relevant range of x data, to auto-scale the y axis
         x, y, ylim = ylim_auto(x, y, xlim)
-        x, yDTG, ylim = ylim_auto(x, yDTG, xlim)
+        x, y_dtg, ylim = ylim_auto(x, y_dtg, xlim)
 
     # actual plotting
-    (gTGA,) = ax.plot(x, y, ls="-", color="C0", label=ylabel)
-    (gDTG,) = DTG.plot(x, yDTG, ls="--", color="C1", label="DTG")
+    ## setting axis labels according to y_axis
+    ylabel_dtg = f"{get_label('dtg')} {SEP} {y_dtg.pint.units}"
+    ylabel = f"{get_label(plot)} {SEP} {y.pint.units}"
+    (l_y,) = ax.plot(x, y, ls="-", color="C0", label=get_label(plot))
+    (l_dtg,) = ax_dtg.plot(x, y_dtg, ls="--", color="C1", label=get_label("dtg"))
+    lines = [l_y, l_dtg] + lines
 
+    ## setting labels
+    ax.set_xlabel(f"{get_label(x_axis.lower())} {SEP} {x.pint.units}")
     ax.set_ylabel(ylabel)
     ax.set_ylim(ylim)
     ax.set_xlim(xlim)
-    DTG.set_ylabel(ylabelDTG)
+    ax_dtg.set_ylabel(ylabel_dtg)
 
-    ax.yaxis.label.set_color(gTGA.get_color())
-    DTG.yaxis.label.set_color(gDTG.get_color())
+    ## adjust color of axis labels
+    ax.yaxis.label.set_color(l_y.get_color())
+    ax_dtg.yaxis.label.set_color(l_dtg.get_color())
 
-    DTG.set_yticks(
-        np.linspace(DTG.get_yticks()[0], DTG.get_yticks()[-1], len(ax.get_yticks()))
+    ## set ticks
+    ax_dtg.set_yticks(
+        np.linspace(ax_dtg.get_yticks()[0], ax_dtg.get_yticks()[-1], len(ax.get_yticks()))
     )
     ax.set_yticks(
-        np.linspace(ax.get_yticks()[0], ax.get_yticks()[-1], len(DTG.get_yticks()))
+        np.linspace(ax.get_yticks()[0], ax.get_yticks()[-1], len(ax_dtg.get_yticks()))
     )
+
+    ## optional title and legend
     if title == True:
         ax.set_title(make_title(sample))
+    elif isinstance(title, str):
+        ax.set_title(title)
+    
+    if legend:
+        ax.legend(lines, [l.get_label() for l in lines])
 
 
 def plot_FTIR(

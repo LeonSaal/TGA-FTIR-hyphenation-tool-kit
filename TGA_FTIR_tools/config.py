@@ -148,7 +148,7 @@ write_config(cfg)
 
 # define default units
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]
-units = ["mg", "min", "°C", "mmol", "mW", "mg\\,min^{{-1}}"]
+units = ["mg", "min", "°C", "mmol", "mW", "mg/min"]
 for key, val in zip(keys, units):
     UNITS[key] = val
 
