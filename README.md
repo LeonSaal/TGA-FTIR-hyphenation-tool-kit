@@ -474,7 +474,7 @@ The `settings.ini` file is created in the home directory upon first import of th
 |            | sample_temp       | °C                    |                                    |
 |            | molar_amount      | mmol                  |                                    |
 |            | heat_flow         | mW                    |                                    |
-|            | dtg               | mg\,min^{{-1}}        |                                    |
+|            | dtg               | mg/min       |                                    |
 |       |                   |                       |                                    |  
 | **fitting**    |                   |                       |       Default fitting parameter if not specified in [`Fitting_parameter.xlsx`](#fitting_parameterxlsx-file).                             |
 |       |                   |                       |                                    |  

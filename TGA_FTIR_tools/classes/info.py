@@ -65,6 +65,5 @@ class SampleInfo:
 
     def to_row(self):
         return (pd.DataFrame
-                .from_dict(self.to_dict(), orient="index")
-                .T
+                .from_dict(self.to_dict())
                 .set_index("name").pint.convert_object_dtype())
