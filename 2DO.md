@@ -10,6 +10,8 @@
 | Testing       | Add automated testing for different input data                                 |             |
 | Testing       | Test all possible args and kwargs                                              |             |
 | Documentation | Add docstrings and signatures for every function                               |             |
+| Import | Allow for specification of multiple hyphenations from seperate data files                               |   Sep. 26          |
+
 
 # Medium Priority
 
@@ -79,6 +81,7 @@
 | Category      | Task                                                                                   | First Noted |
 | ------------- | -------------------------------------------------------------------------------------- | ----------- |
 | General       | Use [rich logging](https://rich.readthedocs.io/en/stable/logging.html)                 |             |
+| General       | rename package in `setuptools.setup(name=)` _e.g. **tgega**_          |             |
 | General       | Reduce amount of logging (adjust level to DEBUG)                                       |             |
 | General       | Remove unused functions                                                                |             |
 | Calibration      | Integration plot: add legend and reduce padding between subfigures                     |             |
