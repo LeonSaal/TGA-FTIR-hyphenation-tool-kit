@@ -300,7 +300,7 @@ class Sample:
 
     def get_value(self, *values, which="sample_mass", at="sample_temp") -> pd.DataFrame:
         "extract values from TG data at e.g. certain temperatures"
-        new_idx = pd.Series(*values, dtype=np.float64, name=at).sort_values()
+        new_idx = pd.Series(*values if isinstance(values[0], list) else [values], dtype=np.float64, name=at).sort_values()
         tmp = self.tga[[at, which]].copy().sort_values(at)
         tmp[at] = tmp[at].astype(np.float64)
         tmp = pd.merge_asof(new_idx, tmp, on=at)
