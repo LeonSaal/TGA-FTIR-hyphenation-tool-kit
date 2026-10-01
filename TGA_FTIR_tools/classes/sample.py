@@ -107,9 +107,6 @@ class Sample:
 
         logger.debug("Checking required columns in TGA data.")
         
-        # deriving TG info
-        if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
-            self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
 
         # calculate sample mass with mass loss or percentage mass and initial mass
         try:
@@ -123,6 +120,12 @@ class Sample:
         except DimensionalityError as e:
             logger.error(f"Failed. {e}")
         self._info.steps_idx.update({})
+        
+        # deriving TG info
+        if not self._info["initial_mass"] and "sample_mass" in self.tga.columns:
+            self._info["initial_mass"]=self.tga["sample_mass"].iloc[0]
+        if not self._info["final_mass"] and "sample_mass" in self.tga.columns:
+            self._info["final_mass"]=self.tga["sample_mass"].iloc[-1]
 
         # check required columns
         if missing:=self.missing_tga_columns():
