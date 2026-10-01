@@ -22,7 +22,7 @@ setuptools.setup(
         "pandas[excel, performance, plot, output-formatting, computation, output-formatting]>=3.0.3",
         "scikit-learn>=1.9.0",
         "requests>=2.34.2",
-        "pint>=0.25.3",
+        "pint>=0.26.1",
         "ipykernel>=7.3.0",
         "seaborn>=0.13.2",
         "molmass>=2026.6.9",
