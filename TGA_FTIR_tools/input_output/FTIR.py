@@ -3,6 +3,7 @@ import pandas as pd
 from molmass import Formula
 import logging
 import pint
+from ..config import UNITS
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +21,7 @@ def FTIR_info(sample):
             if pd.isna(area):
                 continue
             molar_amount = (area.magnitude - sample.linreg["intercept"][gas]) / sample.linreg["slope"][gas]
-            info[f"n_{gas}"] = pint.Quantity(molar_amount if molar_amount >= 0 else 0, "mol").to("umol")
+            info[f"n_{gas}"] = molar_amount.to(UNITS.get("molar_amount", "umol"))
             
 
     # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters

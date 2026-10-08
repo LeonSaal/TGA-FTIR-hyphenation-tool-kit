@@ -1,3 +1,12 @@
+# 2026-10
+- work on calibration
+  - `Worklist.calibrate()` now accepts `gases` as keyword-argument
+  - begin to clean up units
+    - ``molar_amount`` in the `settings.ini` now controls axis labels
+    - slope is now saved as *1/mole* instead of *unitless*
+- implement dunder-methods for `Sample`
+- begin to clean up plotting
+
 # 2026-03
 - add config option ``defaults|warnings_action`` to handle warning supression `pint.UnitStrippedWarning`
 - restructure testing

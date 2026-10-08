@@ -6,11 +6,10 @@ import numpy as np
 from ..config import SEP, UNITS
 import pint
 ureg = pint.get_application_registry()
+import pandas as pd
 FIGSIZE = np.array(plt.rcParams["figure.figsize"])
 
 def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_idx, gases, ax:mpl.axes.Axes):        
-    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
     x = ega_data["sample_temp"]
     y = ega_data[gases].transform(lambda x: (x-x.min())/(x.max()-x.min()))
     step_starts = x[step_starts_idx]
@@ -25,9 +24,10 @@ def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_
         ax.axvline(peak, linestyle="dotted")
 
     # append secondary, third... y-axis on right side
-    for i, gas in enumerate(gases):
-        ax.plot(x, y[gas], color=colors[i], label=gas)
+    for gas in gases:
+        (l, ) = ax.plot(x, y[gas], label=gas)
 
+        color = l.get_color()
         # add baseline
         for j, (step_start_idx, step_end_idx) in enumerate(zip(step_starts_idx, step_ends_idx)):
             x_baseline = (
@@ -35,25 +35,24 @@ def plot_integration(ega_data, baselines, peaks_idx, step_starts_idx, step_ends_
             )
             y_baseline = ((baselines[gas][j] - ega_data[gas].min()) / (ega_data[gas].max()- ega_data[gas].min()))
             ax.plot(
-                x_baseline, y_baseline, color=colors[gases.index(gas)], linestyle="dashed"
+                x_baseline, y_baseline, color=color, linestyle="dashed"
             )
 
 def plot_calibration_single(x,y, linreg, ax):
-    x = x.pint.to("umol")
     x_unit = x.dtype.units
     y_unit = y.dtype.units
     ax.scatter(x.to_numpy(), y.to_numpy())
     x_bounds = x.agg(["min", "max"]).astype(x.dtype)
     ax.plot(
         x_bounds,
-        x_bounds / 1e6 * ureg.Quantity(linreg["slope"], y_unit / x_unit) + ureg.Quantity(linreg["intercept"], y_unit),
+        (x_bounds * linreg["slope"] + linreg["intercept"]) * y_unit,
         label="regression",
         ls="dashed",
     )
     ax.text(
-        max(x),
-        min(y),
-        f'y={linreg["slope"]:.1e}x{linreg["intercept"]:+.1e}\n$R^2$={linreg["r_value"] ** 2:.3}, N={len(x)}',
+        x.max(),
+        y.min(),
+        f'y={linreg["slope"]:.1e} x{linreg["intercept"]:+.1e}\n$R^2$={linreg["r_value"] ** 2:.3}, N={len(x)}',
         horizontalalignment="right",
     )
     mf = linreg["molecular_formula"]
@@ -70,16 +69,16 @@ def plot_calibration_combined(x,y, linreg, gases):
     axdict =  {unit: ax for unit, ax in zip(y_units, axs[0])}
 
     for gas in gases:
-        xgas = x[gas].pint.to("umol")
-        ygas = y[gas]
+        df = pd.DataFrame({"x":x[gas], "y":y[gas]}).dropna()
+        xgas, ygas = df.x, df.y
         x_unit = xgas.dtype.units
         y_unit = ygas.dtype.units
 
-        axdict[y_unit].scatter(xgas.to_numpy(), ygas.to_numpy(), label=f"data {get_label(gas)} (N = {len(x)})")
+        axdict[y_unit].scatter(xgas.to_numpy(), ygas.to_numpy(), label=f"data {get_label(gas)} (N={xgas.size})")
         xrange = xgas.agg(["min", "max"]).astype(xgas.dtype)
         axdict[y_unit].plot(
             xrange,
-            xrange / 1e6 * ureg.Quantity(linreg["slope"][gas], y_unit / x_unit) + ureg.Quantity(linreg["intercept"][gas], y_unit),
+            (xrange * linreg["slope"][gas] + linreg["intercept"][gas]) * y_unit,
             ls="dashed",
         )
         axdict[y_unit].set_xlim(0, max(xgas) + abs(min(xgas)))
@@ -89,7 +88,7 @@ def plot_calibration_combined(x,y, linreg, gases):
 def plot_residuals_single(x,y, linreg, ax):
     x_unit = x.dtype.units
     y_unit = y.dtype.units
-    Y_cali = x.mul(ureg.Quantity(linreg["slope"], y_unit/x_unit)).add(ureg.Quantity(linreg["intercept"], y_unit))
-    ax.scatter(Y_cali.to_numpy(), (y - Y_cali).to_numpy(), label=f"data (N = {len(x)})")
+    Y_cali = x.mul(linreg["slope"]).add(linreg["intercept"]) * y_unit
+    ax.scatter(Y_cali.to_numpy(), (y - Y_cali).to_numpy(), label=f"data (N={len(x)})")
     ax.hlines(0, Y_cali.min(), Y_cali.max())
     ax.set_ylabel(f"$y_i-\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")

@@ -229,6 +229,7 @@ Worklist.calibrate()
 
 | Name               | Type     | Default               | Description                                                                                                                                                                      |
 | ------------------ | -------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| gases | list   | None                    | subset of gases to calibrate. |
 | molecular_formulas | dict     | {}                    | If EGA signal name is no valid molecular formula *e.g.* `"mz_44"`, the corresponding one can be passed here *e.g.* `{"mz_44": "CO2"}`.                                           |
 | method             | str      | "max"                 | Calibration method. *max* refers to                                                                                                                                              |
 | width_T            | np.array | np.array([0, np.inf]) | Width range of peaks in DTG to determine mass steps.                                                                                                                             |

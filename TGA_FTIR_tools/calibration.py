@@ -80,15 +80,14 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
 
     stats_rows = []
     for gas in gases:
-        x_unit = x_cali[gas].dtype.units
-        y_unit = y_cali[gas].dtype.units
-        b = ureg.Quantity(linreg["slope"][gas], y_unit / x_unit)
-        a = ureg.Quantity(linreg["intercept"][gas], y_unit)
+        x, y = x_cali[gas], y_cali[gas]
+        b = linreg["slope"][gas]
+        a = linreg["intercept"][gas]
 
-        s_yx = np.sqrt(np.sum(np.power(b * x_cali[gas] + a - y_cali[gas], 2)) / (n - 2))
+        s_yx = np.sqrt(np.sum(np.power(b * x + a - y/y.pint.units, 2)) / (n - 2))
         s_x0 = s_yx / b
-        x_ = np.mean(x_cali[gas])
-        Q_x = np.sum(np.power(x_cali[gas] - x_, 2))
+        x_ = np.mean(x)
+        Q_x = np.sum(np.power(x - x_, 2))
 
         x_NG = (
             s_x0 * sp.stats.t.ppf(alpha, f) * np.sqrt(1 / m + 1 / n + (x_ * x_) / Q_x)
@@ -97,7 +96,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
         x_BG = k * x_NG
 
         stats_row = pd.DataFrame(
-            [[s_yx / y_unit, s_x0, x_NG, x_BG]],
+            [[s_yx, s_x0, x_NG, x_BG]],
             index=[gas],
             columns=["s_yx", "s_x0", "x_LOD", "x_LOQ"]
         )
@@ -106,7 +105,7 @@ def calibration_stats(x_cali, y_cali, linreg, alpha=0.95, beta=None, m=1, k=3):
     return pd.concat(stats_rows).pint.convert_object_dtype()
 
 
-def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([0, np.inf]), min_rel_height = .2, corr_baseline="linear", min_r2=.95, **fig_args):
+def calibrate(worklist=None, gases=None, molecular_formulas = {},plot=False, mode="load", method="max", profile=None, width_T=np.array([0, np.inf]), min_rel_height = .2, corr_baseline="linear", min_r2=.95, **fig_args):
     methods = ['max', "iter", "co_oxi", "co_oxi_iter", 'mlr']
     if method not in methods:
         logger.warning(f'{method=} not in {methods=}.')
@@ -193,7 +192,7 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
                 plot=plot,
                 ax=None if not plot else axs[i, 1],
                 corr_baseline=corr_baseline,
-                gases=sample_data.info.gases,
+                gases=sample_data.info.gases if gases is None else gases,
             )
 
             integrals.insert(
@@ -302,27 +301,31 @@ def calibrate(worklist=None, molecular_formulas = {},plot=False, mode="load", me
 
     # plotting
     if plot:
+        x_unit = UNITS.get("molar_amount", "umol")
         gases = cali["x_mass"].columns
         plot_gases = [gas for gas in gases if gas in cali["linreg"].index]
         figdim = len(plot_gases),2
         fig, axs = plt.subplots(*figdim ,gridspec_kw = {"hspace":.5, "wspace":.25}, figsize=FIGSIZE*figdim[::-1],**fig_args)
+        
+        # convert unit for plotting
+        x = cali["x_mol"].pint.convert_object_dtype().apply(lambda x: x.pint.to(x_unit))
+        y = cali["y"].pint.convert_object_dtype()
         for i,gas in enumerate(plot_gases):
-            x = cali["x_mol"][gas].pint.convert_object_dtype()
-            y = cali["y"][gas].pint.convert_object_dtype()
-            plot_calibration_single(x, y, cali["linreg"].loc[gas,:], axs[i, 0])
-            plot_residuals_single(x, y, cali["linreg"].loc[gas,:], axs[i, 1])
+            # remove missing
+            df  = pd.DataFrame({"x":x[gas], "y": y[gas]}).dropna()
+            xgas,ygas = df.x, df.y
+            plot_calibration_single(xgas,ygas, cali["linreg"].loc[gas,:], axs[i, 0])
+            plot_residuals_single(xgas,ygas, cali["linreg"].loc[gas,:], axs[i, 1])
 
             # set labels, titles only at borders
             if i == 0:
                 axs[i, 0].set_title("Regression")
                 axs[i, 1].set_title("Residuals")
             if i == len(plot_gases)-1:
-                axs[i, 0].set_xlabel("µmol")
+                axs[i, 0].set_xlabel(x_unit)
                 axs[i, 1].set_xlabel(f"$\\hat{{y}}_i$ {SEP} {UNITS.get('int_ega', '?')}")
         fig.savefig(output_path / f"regression.png")
 
-        x = cali["x_mol"].pint.convert_object_dtype()
-        y = cali["y"].pint.convert_object_dtype()
         fig, axs = plot_calibration_combined(x, y, cali["linreg"], plot_gases)
         fig.savefig(output_path / f"regression_combined.png")
 
@@ -337,21 +340,27 @@ def calibrate_max(cali: dict, molecular_formulas:dict, min_r2=0) -> dict:
     cali["x_mol"] = pd.DataFrame(index = cali["x_mass"].index, columns = cali["x_mass"].columns)
     invalid_mfs = []
     for gas in cali["x_mass"].columns:
-        molecular_formula = gas if gas not in molecular_formulas else molecular_formulas[gas]
+        molecular_formula = molecular_formulas.get(gas, gas)
         if validate_mf(molecular_formula):
             molar_mass = ureg.Quantity(Formula(molecular_formula).mass, "g/mol")
         else:
             invalid_mfs.append(molecular_formula)
             cali["x_mol"].drop(gas, axis=1, inplace=True)
             continue
+        # convert molar_amount to base mol
         molar_amount = (cali["x_mass"][gas] / molar_mass).pint.to_base_units()
         cali["x_mol"][gas] = molar_amount
-        x = cali["x_mol"][gas].values._data#.dropna(axis=0)#.astype(float)
-        y = cali["y"][gas].values._data#.dropna(axis=0)#.astype(float)
+
+        # drop rows with missing  data
+        df = pd.DataFrame({"x":cali["x_mol"][gas], "y":cali["y"][gas]}).dropna()
+        x = df.x.values._data
+        y = df.y.values._data
         regr_res = list(sp.stats.linregress(x, y))
         regression = pd.DataFrame(
             [[molecular_formula, molar_mass]+regr_res], index=[gas], columns=REGR_COLS
         )
+        # set slope unit to 1/mol, as y-unit differs per gas
+        regression["slope"] = regression.slope.astype("pint[1/mol]")
         if (r2:=regr_res[2]) < min_r2 or regr_res[2]==1:
             logger.warning(f"R² for {gas} {r2} is out of bounds [{min_r2}, 1). Consider adjusting lower bound with 'min_r2='")
 
