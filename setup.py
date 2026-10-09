@@ -29,5 +29,7 @@ setuptools.setup(
         "pint-pandas>=0.8.0",
     ],
     python_requires=">=3.10.4",
-    package_data={"TGA_FTIR_tools.settings": ["*.ini", "*.xlsx", "*.json"]},
+    package_data={"TGA_FTIR_tools.settings": ["*.ini", "*.xlsx", "*.json"],
+                 "TGA_FTIR_tools.settings.import_profiles.tga": ["*.json"],
+                 "TGA_FTIR_tools.settings.import_profiles.ega": ["*.json"]},
 )
