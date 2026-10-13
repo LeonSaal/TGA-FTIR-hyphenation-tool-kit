@@ -227,7 +227,7 @@ def plot_FTIR(
                     dy = 1 / ngases
                     for j, (gas_axes, col_gas) in enumerate(gases_axes.items()):
                         yoff = 1-dy*(j+.5)
-                        graphs[i].text(axlocx+.1, yoff, gas_axes, transform = ax.transAxes, color=col_gas)#, bbox={"edgecolor":"grey","facecolor":"white","boxstyle":"round"})
+                        graphs[i].text(axlocx+.1, yoff, get_label(gas_axes), transform = ax.transAxes, color=col_gas)#, bbox={"edgecolor":"grey","facecolor":"white","boxstyle":"round"})
                     
                     # nticks = max(2, 12-(ngases+ngases%2)) 
                     # ticks = np.linspace(
