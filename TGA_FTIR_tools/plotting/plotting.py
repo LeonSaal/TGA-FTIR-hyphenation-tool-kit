@@ -389,7 +389,7 @@ def FTIR_to_DTG(
             )
 
     # plot error of reconstruction
-    error.plot(x, DTG - cumul)
+    error.plot(x, DTG.pint.magnitude - cumul)
     error.hlines(0, min(x), max(x), ls="dashed")
     error.set_ylabel(f"$\\Delta$ {get_label('dtg')}")
     stack.set_xlim(xlim)
