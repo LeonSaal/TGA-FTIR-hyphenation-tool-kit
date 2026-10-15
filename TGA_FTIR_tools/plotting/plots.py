@@ -40,7 +40,7 @@ def plots(
 
     # setting up axis-labels and catching possible input errors
     if plot == "EGA":
-        avail = {gas for sample in samples for gas in sample.ega.columns.to_list()}
+        avail = {gas for sample in samples for gas in sample.ega.columns.to_list() if sample.ega is not None}
         if gas == None:
             logger.warning(f"Supply 'gas = '. Available gases: {avail}.")
             return

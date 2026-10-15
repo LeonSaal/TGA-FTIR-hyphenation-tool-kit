@@ -69,12 +69,13 @@ def dry_weight(sample, how_dry="H2O"):
             # fit line to slope of peak and find intersection with temperature signal
             x,y = ref["sample_temp"], ref[how_dry]
             slope, intercept, _, _, _ = sp.stats.linregress(x, y)
+            root = -intercept / slope
 
-            intersection = (ref["sample_temp"] >= -intercept / slope)
+            intersection = (sample.tga["sample_temp"].pint.magnitude >= root)
             if intersection.any():
-                dry_point_idx = ref["sample_temp"][intersection].idxmin()
+                dry_point_idx = sample.tga["sample_temp"][intersection].idxmin()
             else:
-                logger.error(f"Unable to determine dry point from {how_dry}-trace.")
+                logger.error(f"Unable to determine dry point from {how_dry}-trace. Maximum was at {bounds_T[0]} < {min_T} < {bounds_T[1]}. {slope}, {intercept}, {root}")
                 return
         
         case _:
@@ -86,7 +87,7 @@ def dry_weight(sample, how_dry="H2O"):
     dry_temp = sample.tga["sample_temp"][dry_point_idx]
     info = {}
 
-    info["steps_idx"] = {"dry_mass":dry_point_idx, **sample.info.steps_idx}
+    info["steps_idx"] = {**sample.info.steps_idx, "dry_mass":dry_point_idx}
     info['reference_mass_name'] = "dry_mass"
     info['dry_mass'] = sample.tga["sample_mass"][dry_point_idx]
     info['dry_temp'] = dry_temp
