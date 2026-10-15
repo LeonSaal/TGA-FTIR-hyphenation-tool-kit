@@ -546,10 +546,10 @@ class Sample:
         if (reference_name not in self.results["fit"] or overwrite) or not mod_sample:
             # setting upper limit for data
             if T_max is None:
-                T_max = max(self.tga["sample_temp"]).magnitude
-            elif T_max > (T_max_data := max(self.tga["sample_temp"])):
+                T_max = self.tga["sample_temp"].max().magnitude
+            elif T_max > (T_max_data := self.tga["sample_temp"].max().magnitude):
                 logger.warning(f"{T_max=} exceeds maximum temperature of data ({T_max_data}).")
-                T_max = max(self.tga["sample_temp"]).magnitude
+                T_max = self.tga["sample_temp"].max().magnitude
                 logger.info(f'"T_max" has been set to {T_max_data}.')
 
             # load presets for deconvolution
@@ -573,9 +573,8 @@ class Sample:
                 f'Fitting of "{self.name}" according to "{reference_name}" in Fitting_parameters.xlsx is in progress ...'
             )
             temp = copy.deepcopy(self)
-            temp_unit = temp.tga.sample_temp.dtypes.units
-            temp.tga = temp.tga[temp.tga["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
-            temp.ega = temp.ega[temp.ega["sample_temp"] < ureg.Quantity(T_max, temp_unit)]
+            temp.tga = temp.tga[temp.tga["sample_temp"].pint.magnitude < T_max]
+            temp.ega = temp.ega[temp.ega["sample_temp"].pint.magnitude < T_max]
             peaks, profiles = fitting(temp, presets, save=save, **kwargs)
             
             logger.info("Fitting finished!")
