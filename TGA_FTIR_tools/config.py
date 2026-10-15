@@ -141,10 +141,10 @@ if PATHS["data"] == Path() or not PATHS["data"].exists():
         )
     else:
         logger.info(f"Data path set to {cfg['paths']['data']!r}.")
+    
+    write_config(cfg)
 
 PATHS.update({key: Path(value) for key, value in cfg["paths"].items()})
-
-write_config(cfg)
 
 # define default units
 keys = ["sample_mass", "time", "sample_temp", "molar_amount", "heat_flow", "dtg"]

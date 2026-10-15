@@ -169,7 +169,7 @@ class Worklist:
                     save=save,
                     save_dir = path
                 ))      
-        res = self.results["fit"].pint.convert_object_dtype() if mod_samples else pd.concat(fits).pint.convert_object_dtype()
+        res = self.results["fit"] if mod_samples else pd.concat(fits)
 
         if save:
             with pd.ExcelWriter("summary.xlsx") as writer:
@@ -240,9 +240,7 @@ class Worklist:
             if results is None:
                 logger.warning(f"No results to plot. Run .{plot}().")
                 return
-            results = (
-                results.pint.convert_object_dtype().astype(np.float64).reset_index()
-            )
+            results = results.astype(np.float64).reset_index()
             avail_gases = results.gas.unique()
             avail_references = results.reference.unique()
 

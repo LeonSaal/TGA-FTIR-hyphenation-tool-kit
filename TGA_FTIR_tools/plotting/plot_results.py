@@ -19,6 +19,9 @@ def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias
     y = value if orient =="v" else "group"
     x = value if orient =="h" else "group"
     row = "reference" if compare in ["sample", "alias", "run"] else "sample"
+    if value not in data.columns:
+        logger.error(f"{value=!r} not available. Choose one of {data.columns}")
+        return
     plot = sns.catplot(data, y=y, x=x, kind=kind, hue=compare, row=row, col="gas", margin_titles=True)
     return plot.figure, plot.axes
 
