@@ -49,7 +49,7 @@ def fitting(
             if "dry_temp" in data.info:
                 minimum_temp = data.info["dry_temp"]
             else:
-                minimum_temp = data.ega[gas].min()
+                minimum_temp = data.ega.sample_temp.min()
             tot_area = np.sum(data.ega[gas][data.ega.sample_temp > minimum_temp])
 
         if y_axis == "rel" and data.linreg is not None:
