@@ -298,7 +298,7 @@ class Sample:
             self.baseline.info["gases"] = to_update.columns.to_list()
             
 
-    def get_value(self, *values, which="sample_mass", at="sample_temp", data="tga", return_all = False) -> pd.DataFrame:
+    def get_value(self, *values, which="sample_mass", at="sample_temp", data="tga", steps = False, ref_start=False, normalize=True,return_all = False, info_update=False) -> pd.DataFrame:
         "extract values from TG data at e.g. certain temperatures"
         # check input data
         if data not in self:
@@ -322,7 +322,30 @@ class Sample:
 
         # setup columns to return
         ret_cols = [at, which]+tmp.columns.difference([at, which]).to_list() if return_all else [at, which]
-        return tmp.loc[:, ret_cols]
+        ret = tmp.loc[:, ret_cols].set_index(at)
+        cols = ret.columns
+
+        # add differences of variables between specified points
+        if steps:
+            ret = ret.assign(**{f"{col}_diff": lambda x, y=col: x[y].diff() for col in cols})
+
+        # add differences to initial value
+        if ref_start:
+            ret = ret.assign(**{f"{col}_diff_0": lambda x, y=col: x[y]-x[y].iloc[0] for col in cols})
+
+        # normalize values with reference mass if dimensionality is [mass], else initial value
+        if normalize:
+            ret = ret.assign(**{f"rel_{col}": lambda x, y=col: x[y] / self.info[self.info.reference_mass_name] if x[col].pint.check("[mass]") else x[y] / x[y].iloc[0] for col in ret.columns} )
+
+        # update Sample.info and respectively samplelog columns
+        if info_update:
+            ret_wide = ret.reset_index().assign(idx=0).pivot_table(values=ret.columns, index="idx", columns=at)#.to_excel("test.xlsx")
+            new_colnames = ret_wide.columns.get_level_values(0) + "_" + pd.Series(ret_wide.columns.get_level_values(1)).apply(str)
+            ret_wide.columns = new_colnames
+            self.info.update(ret_wide.T.squeeze().to_dict())
+
+        return ret
+
     
 
     def dry_weight(self, plot:bool=False, **kwargs) -> NoneType:

@@ -128,6 +128,12 @@ class Worklist:
             profile=self.profile
         )
 
+    def get_value(self, *values, **kwargs) -> pd.DataFrame:
+        # collect get_value results from Samples and return DataFrame
+        return (pd.concat([s.get_value(*values, **kwargs).assign(sample=s.name) for s in self])
+                .set_index("sample", append=True)
+                .swaplevel())
+
     def append(self, other) -> NoneType:
         if isinstance(other, Worklist):
             self.names.extend(other.names)

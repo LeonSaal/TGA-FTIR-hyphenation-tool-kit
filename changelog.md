@@ -1,4 +1,10 @@
 # 2026-10
+- added functionality to `Sample.get_value` via `bool` keyword-arguments
+  - `steps`: calculate differences between specified steps
+  - ``ref_start``: calculate difference to initial value
+  - ``normalize``: normalize values with `Sample.reference_mass` if dimensionality is ``[mass]``, else initial value
+  - ``return_all``: return all columns in `data`, not only `which`
+  - ``info_update``: write info to `Sample.info` to facilitate storing via `samplelog`
 - work on calibration
   - `Worklist.calibrate()` now accepts `gases` as keyword-argument
   - begin to clean up units
