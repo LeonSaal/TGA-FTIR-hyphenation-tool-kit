@@ -64,6 +64,9 @@ class SampleInfo:
         }
 
     def to_row(self):
-        return (pd.DataFrame
-                .from_dict(self.to_dict())
-                .set_index("name").pint.convert_object_dtype())
+        info_dict = self.to_dict()
+        info_df = pd.DataFrame.from_dict(info_dict).set_index("name")
+        
+        # convert units as DataFrame.from_dict() loses them
+        info_df = info_df.apply(lambda x: x.astype(f"pint[{info_dict[x.name].units}]") if info_dict[x.name].units != "dimensionless" else x)
+        return info_df
