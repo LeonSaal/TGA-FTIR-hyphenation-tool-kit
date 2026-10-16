@@ -1,7 +1,12 @@
 {"corrections": {
         "ega": {
             "H2O": {
-                "method": "arpls"
-            }
+                "method": "const"
+            },
+            "CO2": {
+                "method": "const"
+            },
+            "CO": {
+                "method": "const"
         }
     }}
