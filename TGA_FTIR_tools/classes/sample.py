@@ -344,7 +344,7 @@ class Sample:
             ret_wide.columns = new_colnames
             self.info.update(ret_wide.T.squeeze().to_dict())
 
-        return ret
+        return ret.reset_index()
 
     
 
