@@ -337,14 +337,31 @@ class Sample:
         if normalize:
             ret = ret.assign(**{f"rel_{col}": lambda x, y=col: x[y] / self.info[self.info.reference_mass_name] if x[col].pint.check("[mass]") else x[y] / x[y].iloc[0] for col in ret.columns} )
 
+        ret = ret.reset_index()
+
         # update Sample.info and respectively samplelog columns
         if info_update:
-            ret_wide = ret.reset_index().assign(idx=0).pivot_table(values=ret.columns, index="idx", columns=at)#.to_excel("test.xlsx")
-            new_colnames = ret_wide.columns.get_level_values(0) + "_" + pd.Series(ret_wide.columns.get_level_values(1)).apply(str)
-            ret_wide.columns = new_colnames
+            ret_wide = (ret
+                        .assign(idx=0, at_shift = lambda x: x[at].shift())
+                        .pivot_table(values=ret.columns, index="idx", columns=[at, "at_shift"]))
+
+            # construct names for fields depending on whether its a difference or point value
+            def make_names(df):
+                new_colnames = []
+                for var, at_0, at_shift in df.columns.to_list():
+                    if var.endswith("_diff"):
+                        new_name = f"{var}_{at_shift.magnitude}-{str(at_0)}"
+                    else:
+                        new_name = f"{var}_{str(at_0)}"
+
+                    new_colnames.append(new_name.replace(" ", ""))
+                return new_colnames
+            
+            # override column names
+            ret_wide.columns = make_names(ret_wide)
             self.info.update(ret_wide.T.squeeze().to_dict())
 
-        return ret.reset_index()
+        return ret
 
     
 
