@@ -23,6 +23,7 @@
         "Mass/mg": "sample_mass",
         "Mass loss/mg": "mass_loss",
         "c-DTA®(1)/K": "heat_flow",
+        "DSC/mW": "heat_flow",
         "Sensit./(uV/mW)": "sensitivity",
         "Segment": null
     },
