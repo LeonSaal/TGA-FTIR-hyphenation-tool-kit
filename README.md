@@ -253,6 +253,7 @@ Worklist.plot(option, **kwargs)
 | Option        | Description            |
 | ------------- | ---------------------- |
 | "TG"          | TG data                |
+| "DTG"         | First derivative of TG data to obtain mass loss rates as positive peaks (only available for Worklist)             |
 | "mass_steps"  | Mass steps             |
 | "heat_flow"   | Heat flow              |
 | "EGA"         | EGA data               |
