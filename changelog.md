@@ -1,4 +1,5 @@
 # 2026-10
+- added possibility for multiple hyphenated devices and restructured internal handling of data. On import, all data is merged to a single table `Sample.data`, that is subset by accessing `Sample.tga` and `Sample.ega` (#127).
 - added functionality to `Sample.get_value` via `bool` keyword-arguments
   - `steps`: calculate differences between specified steps
   - ``ref_start``: calculate difference to initial value

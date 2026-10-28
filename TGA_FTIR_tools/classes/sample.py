@@ -44,9 +44,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Sample:
     name: str = field(default=None)
-    ega: Optional[pd.DataFrame] = field(default=None)
-    tga: Optional[pd.DataFrame] = field(default=None)
+    # ega: Optional[pd.DataFrame] = field(default=None)
+    # tga: Optional[pd.DataFrame] = field(default=None)
     linreg: Optional[pd.DataFrame] = field(default=None)
+    calibrated: bool = field(default=False)
     alias: str = field(default=None)
     reference: str = field(default=None)
     sample: str = field(default=None) 
@@ -74,9 +75,9 @@ class Sample:
             return
         self._info = SampleInfo(self.name, info=self._info, profile=self.profile)
 
-        if "tga" in self.profile_data["data"]:
+        if "tga" in self:
             self.post_init_tga()
-        if "ega" in self.profile_data["data"]:
+        if "ega" in self:
             self.post_init_ega(**kwargs)
 
         if self.ega is None and self.tga is None:
@@ -112,11 +113,11 @@ class Sample:
         try:
             if "sample_mass" not in self.tga.columns and "mass_loss" in self.tga.columns:
                 if "initial_mass" in self.info:
-                    self.tga["sample_mass"] =  self.tga["mass_loss"] + self.info["initial_mass"]
+                    self.data[("tga", "sample_mass")] =  self.tga["mass_loss"] + self.info["initial_mass"]
 
-            elif "sample_mass" in self.tga.columns and  self.tga.sample_mass.dtype == "pint[%]":
+            elif "sample_mass" in self.tga.columns and self.tga.sample_mass.dtype == "pint[%]":
                 if "initial_mass" in self.info:
-                    self.tga["sample_mass"] = self.info["initial_mass"] * (self.tga["sample_mass"].astype("pint[dimensionless]"))
+                    self.data[("tga", "sample_mass")] = self.info["initial_mass"] * (self.tga["sample_mass"].astype("pint[dimensionless]"))
         except DimensionalityError as e:
             logger.error(f"Failed. {e}")
         self._info.steps_idx.update({})
@@ -138,7 +139,7 @@ class Sample:
                     self.tga["sample_mass"].values._data, window_length, POLYORDER, deriv=1, delta=delta
                 )
                 dtype =  (self.tga["sample_mass"] / self.tga["time"]).dtype
-                self.tga = self.tga.assign(dtg = -pd.Series(dtg).astype(dtype))
+                self.data[("tga", "dtg")] = -pd.Series(dtg).astype(dtype)
             except ValueError as e:
                 print(e)
             except AttributeError as e:
@@ -149,13 +150,14 @@ class Sample:
             logger.error(f"No EGA data found for {self.name!r}.")
             return
         
-        self._info["gases"] = self.ega.columns[1:].to_list()
+        self._info["gases"] = self.data.ega.columns.to_list()
         
         # load calibration
         self.calibrate(mode="load", profile=self.profile)
         
         gases = self._info["gases"]
         if self.linreg is not None:
+            self.calibrated = True
             calibrated_gases = self.linreg.index 
             gases_annotated = [gas+ ("*"if  gas in calibrated_gases else "")
                         for gas in gases
@@ -169,14 +171,14 @@ class Sample:
         )
 
         if "sample_temp" not in self.ega and "time" in self.ega:
-            self.ega.time = self.ega.time.astype(self.tga.time.dtype)
-            self.ega = self.ega.set_index("time").reindex(self.tga.time, method="nearest").reset_index()
+            self.ega.time = self.ega.time.pint.to(self.tga.time.pint.units)
+            self.ega = self.ega.set_index("time").reindex(self.tga.time, method="nearest", limit=1).reset_index()
             try:
                 self.ega = pd.merge(
+                    self.ega,
                     self.tga.filter(
                         ["time", "sample_temp", "reference_temp", "sample_mass"], axis=1
                     ),
-                    self.ega,
                     how="left",
                     on="time",
                 )#.dropna(axis=0)
@@ -216,6 +218,16 @@ class Sample:
     def get(self, key:str, default=None) -> Any:
         return self.__dict__.get(key, default)
 
+    @property
+    def ega(self):
+        if (d:=self.data.get(["env", "ega"])) is not None:
+            return d.droplevel(0, axis=1)
+
+    @property
+    def tga(self):
+        if (d:=self.data.get(["env", "tga"])) is not None:
+            return d.droplevel(0, axis=1)
+    
     @property
     def info(self):
         self._info.alias = self.alias
@@ -263,7 +275,7 @@ class Sample:
             "sample_temp",
             "time"
         ]
-        missing = [col for col in required_columns if col not in self.tga.columns]
+        missing = [col for col in required_columns if col not in self.data.columns.get_level_values(1)]
         return missing if missing else None
 
     def corr(self, baseline, corrs: dict, **kwargs) -> NoneType:
@@ -313,12 +325,12 @@ class Sample:
         new_idx = pd.Series(*values if isinstance(values[0], list) else [values], dtype=np.float64, name=at).sort_values()
 
         # setup data to merge
-        tmp = self.get(data).copy().sort_values(at)
+        tmp = self[data].copy().sort_values(at)
         tmp[at] = tmp[at].astype(np.float64)
 
         # merge 
         tmp = pd.merge_asof(new_idx, tmp, on=at)
-        tmp[at] = tmp[at].astype(self.get(data)[at].dtype)
+        tmp[at] = tmp[at].astype(self[data][at].dtype)
 
         # setup columns to return
         ret_cols = [at, which]+tmp.columns.difference([at, which]).to_list() if return_all else [at, which]
@@ -710,13 +722,16 @@ class Sample:
         yield self
 
     def __getitem__(self, key):
-        return self.__dict__[key]
+        if key in dir(self):
+            return self.__getattribute__(key)
+        elif key in self.data:
+            return self.data[key]
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
 
     def __contains__(self, item):
-        return item in self.__dict__
+        return (item in dir(self)) or (item in self.data)
 
 
 
@@ -738,6 +753,7 @@ class Baseline(Sample):
                 continue
             else:
                 data = sample[name].copy()
+                logger.debug(f"Correcting {name} data of shape {data.shape}")
                 if name == "ega":
                     self._info["gases"] = sample.info["gases"]
             all_signals = data.columns
@@ -745,8 +761,8 @@ class Baseline(Sample):
             # nomatch = list(set(signal for pattern in methods.keys() for signal in all_signals if not re.match(pattern, signal)))
             nomatches = [{signal for signal in all_signals if not re.match(pattern, signal)} for pattern in methods.keys()]
             nomatch = list(ft.reduce(lambda x,y: x&y, nomatches))
-            logger.debug(f"Ignore columns: {nomatch!r}")
-            data.loc[:, nomatch] = data.loc[:, nomatch] * 0
+            logger.debug(f"Ignore columns: {nomatch!r} from {data.columns!r}")
+            data.update(data.loc[:, nomatch].apply(lambda x: np.zeros_like(x)))
 
             for pattern, method in methods.items():
                 signals = [signal for signal in all_signals if re.match(pattern, signal)]

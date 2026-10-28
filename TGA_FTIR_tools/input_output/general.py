@@ -4,7 +4,8 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Mapping
+from typing import List, Literal, Mapping
+import functools as ft
 
 import pandas as pd
 
@@ -13,13 +14,25 @@ import pint
 ureg = pint.get_application_registry()
 Q_ = ureg.Quantity
 
-from ..config import DEFAULTS, PATH_SET, PATHS
+from ..config import DEFAULTS, PATH_SET, PATHS, UNITS
 
 logger = logging.getLogger(__name__)
 
 
 def time():
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+def get_coltype(col, patterns = {"env":["time", "temp"], "tga":["mass", "heat"], "ega":["[CHNO\\d]+", "m:"]}) -> Literal["tga", "ega", "env", "misc"]:
+    """determines column type from name with regular expression
+
+    Returns:
+        str: one of categories "tga": columns associated with mass and heat, "ega": columns with evolved gas intensity, "env": columns describing the environment e.g. time and temperature, "misc": any other (default)
+    """
+    for coltype, pattern in patterns.items():
+        for pat in pattern:
+            if re.search(pat, col):
+                return coltype
+    return "misc"
 
 
 def find_files_re(file: str, suffix: str, parent_dir: str) -> List[str]:
@@ -105,6 +118,7 @@ def read_info(path:str, profile:dict):
     return info
             
 def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
+    data_dict = {}
     out = {}
     info = {}
     init_paths = []
@@ -260,10 +274,33 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
         units = {mapper[oldname]: units.get(oldname) if units.get(oldname) else "dimensionless" for oldname in oldnames}
 
         # assign units to columns
-        concat = concat.transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) for col, unit in units.items()})
-        out[key] = concat.pint.convert_object_dtype()
-        
+        concat = (concat
+                  .transform({col: (lambda x, unt=unit: x.astype(f"pint[{unt}]")) for col, unit in units.items()})
+                  .pint.convert_object_dtype())
+
+        # assign column types
+        cols = concat.columns.to_list()
+        coltypes = {col: get_coltype(col) for col in cols}
+        new_cols = pd.MultiIndex.from_tuples(((coltype, col) for col, coltype in coltypes.items()))  
+        concat.columns = new_cols
+
+        data_dict[key] = concat
+
+    # merge data
+    most_datapoints = max(data_dict, key=lambda x: data_dict[x].index.size)
+    new_idx = data_dict[most_datapoints][("env", "time")]
+
+    ## prepare merge by aligning merge axis "time"
+    aligned = {}
+    for key, df in data_dict.items():
+        df[("env", "time")] = df[("env", "time")].pint.to(UNITS.get("time", "minute"))
+        df = df.set_index(("env","time")).reindex(new_idx, method="nearest", limit=1).reset_index()
+        aligned[key] = df
+    ## actual merge
+    merged = ft.reduce(lambda x,y: pd.merge(x, y, on = [("env", "time")], how="outer"), aligned.values())
+    
     info["paths"] = set(init_paths)
+    out["data"] = merged
     out["_info"] = info
 
     return out
