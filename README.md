@@ -103,9 +103,11 @@ Sample(name, alias=None, mode="construct", profile=None)
 | sample    | str              | alias                     | Sample type for grouping               |
 | run       | str \| int       | alias                     | Sample run for grouping replicates     |
 | info      | dict             | —                         | Sample information (e.g. initial_mass) |
-| tga       | pd.DataFrame     | None                      | TGA data                               |
-| ega       | pd.DataFrame     | None                      | EGA data                               |
+| data       | pd.DataFrame     | None                      | all available data                               |
+| tga       | pd.DataFrame     | None                      | TGA data, referencing ``self.data``                            |
+| ega       | pd.DataFrame     | None                      | EGA data, referencing `self.data`                           |
 | linreg    | pd.dataFrame     | None                      | Calibration data                       |
+| calibrated    | bool    | False                      | Calibration flag                      |
 | results   | dict             | "fit":{}, "robustness":{} | Fit and robustness results             |
 | raw       | Sample           | None                      | Raw data from initialization           |
 | baseline  | Baseline(Sample) | None                      | Baseline data after correction         |
@@ -359,8 +361,10 @@ The hyphenation is achieved with a `.json`-file in the ``settings/import_profile
 ```json
 {
     "data": {
-        "tga": "path to tga profile.json",
-        "ega": "path to ega profile.json"
+        "tga": "path to TGA profile.json",
+        "ftir": "path to FTIR profile.json",
+        "ms": "path to MS profile.json",
+        ...
     },
     "supplementary": {
         "name_pattern": "",
@@ -379,7 +383,9 @@ The hyphenation is achieved with a `.json`-file in the ``settings/import_profile
 }
 ```
 #### Data
-For the *data*-field, for each of the hyphenated devices a path leading to a file of the following structure has to be provided in the respective *tga* and *ega* folders.
+For the *data*-field, for each of the hyphenated devices a path leading to a file of the following structure has to be provided. 
+
+
 
 Each file must contain the two topmost and can contain other otional key-value-pairs.
 
@@ -393,6 +399,10 @@ Each file must contain the two topmost and can contain other otional key-value-p
 | info_pattern | dict            | —                                                                   | Key-regular expressions (regex) pairs to extract additional information from raw data *e.g.* from the header or footer of the file. The regex must have named capture groups: "name", "value" and "unit" (can be empty). If the regex matches once, the key from the dict is used, otherwise the name from the capture group.                                                       |
 | usecols      | dict            | —                                                                   | Subset and rename columns in combined data. Dict keys can contain a combination of integer indices, column names and column name patterns. The corresponding value (if not `null`) is the replacement value. For patterns, the replacement is done using [`re.sub`](https://docs.python.org/3/library/re.html#re.sub), so capture groups can be accessed via *e.g.* number or name. |
 | units        | str, list, dict | —                                                                   | Assign units to columns. If str, regex with capture-group "unit" to extract unit from column header. If list, unit for respective column (must have same length). If dict, a mapping of column-name: unit.                                                                                                                                                                          |
+
+> [!important]
+> Each table returned from seperate data loading profiles must contain a `time`-column that is used to merge data sources.
+> Other names required for full functionality encompass: `sample_temp` for the temperature and `sample_mass` for the mass of the sample.
 
 For examples, see [settings/import_profiles](https://github.com/LeonSaal/TGA-FTIR-hyphenation-tool-kit/tree/main/TGA_FTIR_tools/settings/import_profiles). The default profile is saved in the [settings-File](#settingsini-file).
 
@@ -412,6 +422,13 @@ The *corrections*-field can contain correction methods to be applied during init
 | `none`  | Baseline is set to zero.                                                                                                    | —                                      |                                                                                                                                                                                                         |
 
 
+Internally, each column is mapped to a category with different regular expression patterns.
+|category|description|pattern|
+|-|-|-|
+|tga|columns with mass or heat flow information| *mass* or *heat* |
+|ega|columns with EGA intensities|*[CHNO\\d]+* or *m:*|
+|env|columns with environment variables like time and temperature|*time* or *temp*|
+|misc|every column not matching any of the above|- |
 ### `settings.ini` File
 The `settings.ini` file is created in the home directory upon first import of the package. It contains paths and default settings for various functions. You can modify these settings to your needs.
 

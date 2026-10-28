@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from molmass import Formula
+import scipy as sp
 import logging
 import pint
 from ..config import UNITS
@@ -13,11 +14,13 @@ def FTIR_info(sample):
     gases = sample._info["gases"]
     # calculate total area of each gas
     for gas in sample._info["gases"]:
-        area = sample.ega[gas].sum()
+        df = sample.ega[["time", gas]].dropna()
+        x, y = df.time.pint.magnitude,  df[gas].pint.magnitude
+        area = sp.integrate.simpson(y,x)
         info[f"area_{gas}"] = area if area > 0 else np.nan
 
         # add molar amount for calibrated traces
-        if gas in sample.linreg.index:
+        if sample.calibrated and (gas in sample.linreg.index):
             if pd.isna(area):
                 continue
             molar_amount = (area.magnitude - sample.linreg["intercept"][gas]) / sample.linreg["slope"][gas]
@@ -25,20 +28,21 @@ def FTIR_info(sample):
             
 
     # calculate molar amount of elements in gases, assuming the elemental formaula of gases does not exceed 5 characters
-    try:
-        cali_substances = sample.linreg.filter(gases, axis=0).molecular_formula
-        substances = [Formula(mf) for _, mf in cali_substances.items()]
-        elems = {elem for f in substances for elem in f.composition().keys()}
-        for elem in elems:
-            temp = 0
-            for name, mf in cali_substances.items():
-                gas = Formula(mf)
-                if elem in gas.composition().keys():
-                    n = gas.composition()[elem].count
-                    temp += n * info[f"n_{name}"]
-            #if temp != 0:
-            info[f"n_{elem}"] = temp
-    except Exception as e:
-        logger.warning(f"Unable to calculate released molar masses. {e}")
+    if sample.calibrated:
+        try:
+            cali_substances = sample.linreg.filter(gases, axis=0).molecular_formula
+            substances = [Formula(mf) for _, mf in cali_substances.items()]
+            elems = {elem for f in substances for elem in f.composition().keys()}
+            for elem in elems:
+                temp = 0
+                for name, mf in cali_substances.items():
+                    gas = Formula(mf)
+                    if elem in gas.composition().keys():
+                        n = gas.composition()[elem].count
+                        temp += n * info[f"n_{name}"]
+                #if temp != 0:
+                info[f"n_{elem}"] = temp
+        except Exception as e:
+            logger.warning(f"Unable to calculate released molar masses. {e}")
 
     return info
