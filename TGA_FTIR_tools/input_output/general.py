@@ -300,7 +300,7 @@ def read_data(sample_name: str, profile=DEFAULTS["profile"]) -> pd.DataFrame:
     merged = ft.reduce(lambda x,y: pd.merge(x, y, on = [("env", "time")], how="outer"), aligned.values())
     
     info["paths"] = set(init_paths)
-    out["data"] = merged
+    out["data"] = merged.apply(lambda x: x.pint.magnitude.interpolate(limit_area = "inside").astype(x.dtype))
     out["_info"] = info
 
     return out

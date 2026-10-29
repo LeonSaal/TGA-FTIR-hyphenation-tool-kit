@@ -13,6 +13,9 @@
 | General | Replace references to `Sample.tga` and `Sample.ega` where possible with `Sample.data`  |   Oct. 26          |
 |Import| `mode = [auto, pickle, construct]`. After `init` auto-save pickle if not exists, else load pickle ||
 |Worklist| Rename attributes `.names`, `.samples`, `.aliases` and/or make property| |
+|Import| rework profile prompt| |
+|Import| update profiles| |
+|`get_value`| FTIR-Info not by default, only with `get_value`, automatic calibration<br>more `which`-values| |
 
 
 
