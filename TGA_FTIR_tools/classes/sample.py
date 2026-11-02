@@ -661,8 +661,7 @@ class Sample:
                 f'Fitting of "{self.name}" according to "{reference_name}" in Fitting_parameters.xlsx is in progress ...'
             )
             temp = copy.deepcopy(self)
-            temp.tga = temp.tga[temp.tga["sample_temp"].pint.magnitude < T_max]
-            temp.ega = temp.ega[temp.ega["sample_temp"].pint.magnitude < T_max]
+            temp.data = temp.data[temp.data[("env", "sample_temp")].pint.magnitude < T_max]
             peaks, profiles = fitting(temp, presets, save=save, **kwargs)
             
             logger.info("Fitting finished!")
@@ -752,6 +751,7 @@ class Sample:
         self.linreg, self.stats, self.xcali, self.ycali = calibrate(profile=profile, **kwargs)
 
     def cluster(self, dist_metric = "correlation", clust_method = "complete", clust_crit = "distance", clust_dist_thres = .13):
+        logger.info(f"Clustering EGA data using {dist_metric=}, {clust_method=}, {clust_crit=} and {clust_dist_thres=}.")
         # get ega cols
         data = self.data.ega.pint.dequantify()
 
@@ -781,13 +781,26 @@ class Sample:
             cols = self.data.columns.get_level_values(0).intersection(["env", key, "misc"])
             return self.data[cols].droplevel(0, axis=1)
         
-    def __getattr__(self, attr):
-        if attr == "__setstate__":
-            raise AttributeError(attr)
+    # def __getattr__(self, attr):
+    #     if attr == "__setstate__":
+    #         raise AttributeError(attr)
 
-        if attr in self.data:
-            cols = self.data.columns.get_level_values(0).intersection(["env", attr, "misc"])
+    #     if attr in self.data:
+    #         cols = self.data.columns.get_level_values(0).intersection(["env", attr, "misc"])
+    #         return self.data[cols].droplevel(0, axis=1)
+
+    @property
+    def ega(self):
+        if "ega" in self.data:
+            cols = self.data.columns.get_level_values(0).intersection(["env", "ega", "misc"])
             return self.data[cols].droplevel(0, axis=1)
+
+    @property
+    def tga(self):
+        if "tga" in self.data:
+            cols = self.data.columns.get_level_values(0).intersection(["env", "tga", "misc"])
+            return self.data[cols].droplevel(0, axis=1)
+
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value

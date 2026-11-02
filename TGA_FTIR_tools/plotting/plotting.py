@@ -148,7 +148,7 @@ def plot_FTIR(
                         f"{', '.join([gas for gas in gases - calibrated])} not calibrated."
                     )
                 if len(intersection) != 0:
-                    logger.info(
+                    logger.debug(
                         f"Proceeding with {', '.join([gas for gas in intersection])}."
                     )
                     gases = intersection
@@ -165,7 +165,7 @@ def plot_FTIR(
                         f"{', '.join([gas for gas in gases - on_axis])} not found in IR data."
                     )
                 if len(intersection) != 0:
-                    logger.info(
+                    logger.debug(
                         f"Proceeding with {', '.join([gas for gas in intersection])}."
                     )
                     gases = intersection
