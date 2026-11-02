@@ -5,10 +5,12 @@ import logging
 import os
 import pickle
 import re
+import math
 from dataclasses import InitVar, dataclass, field
 from types import NoneType
 from typing import Any, Literal, Mapping, Optional, List, Union
 from webbrowser import get
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import get_args
 from inspect import signature, getsource
@@ -443,7 +445,41 @@ class Sample:
 
         match plot:
             case "EGA":
-                plot_FTIR(self, ax, **kwargs)
+                if "cluster" in kwargs:
+                    match args:=kwargs.get("cluster"):
+                        case dict():
+                            cluster, clusterargs = True, args
+        
+                        case bool():
+                            cluster, clusterargs = args, {}
+
+                        case _:
+                            cluster, clusterargs = False, {}        
+                    kwargs.pop("cluster")
+                else:
+                    cluster, clusterargs = True, {}
+
+                # cluster traces if no gases were supplied
+                cluster = cluster and (kwargs.get("gases") is None)
+
+                if cluster:
+                    logger.info("Clustering gases, as no 'gases=' were supplied and 'cluster' was not explicitly set to 'False'.")
+                    # make cluster 
+                    clusters = self.cluster(**clusterargs)
+                    
+                    # setup figure
+                    ncols = 3
+                    nrows = math.ceil(len(clusters)/ncols)
+                    basew, baseh = mpl.rcParams["figure.figsize"]
+                    fig, axs = plt.subplots(nrows = nrows, ncols = ncols, gridspec_kw={"hspace":.3, "wspace":.5}, figsize=[basew *ncols, baseh*nrows])
+
+                    # iterate over clusters
+                    for (clustid, gases), ax in zip(clusters.items(), axs.flatten()):
+                        self.plot("EGA", gases=gases, ax=ax, title=False, y_axis="rel", **kwargs)
+                        ax.set_title(f"Cluster: {clustid}") 
+
+                else:
+                    plot_FTIR(self, ax, **kwargs)
 
             case "cumsum":
                 temp = copy.deepcopy(self)
