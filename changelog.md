@@ -1,4 +1,5 @@
 # 2026-10
+- `get_value` with ``data="ega"`` now computes differences on cumulated values. `which`-argument can now be a list of columns
 - added clustering of EGA traces via `Sample.cluster(**kwargs)`. Returns dict of clusters associated with gases
 - added possibility for multiple hyphenated devices and restructured internal handling of data. On import, all data is merged to a single table `Sample.data`, that is subset by accessing `Sample.tga` and `Sample.ega` (#127).
 - added functionality to `Sample.get_value` via `bool` keyword-arguments

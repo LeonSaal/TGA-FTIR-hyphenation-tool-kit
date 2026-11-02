@@ -226,11 +226,11 @@ class Sample:
     def info(self):
         self._info.alias = self.alias
         # deriving IR info
-        try:
-            self._info.update(FTIR.FTIR_info(self))
-        except Exception as e:
-            logger.debug(f"Unable to derive EGA-info. {e}")
-            #raise e
+        # try:
+        #     self._info.update(FTIR.FTIR_info(self))
+        # except Exception as e:
+        #     logger.debug(f"Unable to derive EGA-info. {e}")
+        #     #raise e
 
         return self._info
 
@@ -307,11 +307,14 @@ class Sample:
     def get_value(self, *values, which="sample_mass", at="sample_temp", data="tga", steps = False, ref_start=False, normalize=True,return_all = False, info_update=False) -> pd.DataFrame:
         "extract values from TG data at e.g. certain temperatures"
         # check input data
+        if not isinstance(which, list):
+            which = [which]
+
         if data not in self:
             logger.warning(f"{data=!r} not in {self.name}.")
             return
 
-        if self[data].columns.intersection([at, which]).size !=2:
+        if self[data].columns.intersection([at]+which).size !=1+len(which):
             logger.warning(f"One of {at!r} and {which!r} was not found in {data.upper()}-data.")
             return
 
@@ -321,13 +324,18 @@ class Sample:
         # setup data to merge
         tmp = self[data].copy().sort_values(at)
         tmp[at] = tmp[at].astype(np.float64)
+        if data == "ega":
+            logger.info(f"For {data.upper()}, instead of point values, cumulated values are considered for computation.")
+            tmp.update(self.data.ega.cumsum().apply(lambda x: x*tmp.time.pint.magnitude.diff()))
+            tmp = tmp.rename({gas:f"cumsum_{gas}"for gas in self.data.ega.columns}, axis=1)
+            which = [f"cumsum_{name}" for name in which]
 
         # merge 
         tmp = pd.merge_asof(new_idx, tmp, on=at)
         tmp[at] = tmp[at].astype(self[data][at].dtype)
 
         # setup columns to return
-        ret_cols = [at, which]+tmp.columns.difference([at, which]).to_list() if return_all else [at, which]
+        ret_cols = [at] + which + tmp.columns.difference([at]+which).to_list() if return_all else [at]+which
         ret = tmp.loc[:, ret_cols].set_index(at)
         cols = ret.columns
 

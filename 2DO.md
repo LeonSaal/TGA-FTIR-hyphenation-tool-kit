@@ -16,11 +16,6 @@
 |Import| rework profile prompt| |
 |Import| update profiles| |
 |`get_value`| FTIR-Info not by default, only with `get_value`, automatic calibration<br>more `which`-values| |
-|Plotting| EGA with kwarg ``clustering: bool\|dict``<br> `clusters = self.cluster(..., {} if clustering else **clustering)`<br> `setup fig, axs`<br>`for ax, gases in zip(axs, clusters):`<br>`self.plot("EGA", gases=gases, ax=ax)` | Nov. 26 |
-
-
-
-
 
 # Medium Priority
 
