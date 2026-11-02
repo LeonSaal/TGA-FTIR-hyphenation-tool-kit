@@ -16,6 +16,9 @@
 |Import| rework profile prompt| |
 |Import| update profiles| |
 |`get_value`| FTIR-Info not by default, only with `get_value`, automatic calibration<br>more `which`-values| |
+|Plotting| EGA with kwarg ``clustering: bool\|dict``<br> `clusters = self.cluster(..., {} if clustering else **clustering)`<br> `setup fig, axs`<br>`for ax, gases in zip(axs, clusters):`<br>`self.plot("EGA", gases=gases, ax=ax)` | Nov. 26 |
+
+
 
 
 
@@ -97,6 +100,5 @@
 | Calibration      | Integration plot: add legend and reduce padding between subfigures                     |             |
 | Plotting      | Make plot interactive (measure mass-, temperature- or time-differences)                |             |
 | Import        | Helper to determine `kwargs` for `read_csv` (auto encoding, delimiter detection, etc.) |             |
-|Import.Helper| get `ext` from sample names||
-||1. look for files<br>2. list suffixes<br>3. detect \<suffix> <br> 4. first 100 rows, determine `sep` and `decimal` <br>5. skiprows||
+|Import.Helper| get `ext` from sample names<br>1. look for files<br>2. list suffixes<br>3. detect \<suffix> <br> 4. first 100 rows, determine `sep` and `decimal` <br>5. skiprows||
 

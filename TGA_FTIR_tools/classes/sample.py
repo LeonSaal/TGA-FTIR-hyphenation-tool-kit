@@ -26,6 +26,8 @@ from pint import DimensionalityError
 ureg = pint.get_application_registry()
 import scipy as sp
 from scipy.signal import savgol_filter
+from scipy.cluster.hierarchy import fcluster,linkage, dendrogram
+from scipy.spatial.distance import pdist
 
 from ..config import DEFAULTS, PATHS, SAVGOL, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
@@ -217,16 +219,6 @@ class Sample:
 
     def get(self, key:str, default=None) -> Any:
         return self.__dict__.get(key, default)
-
-    @property
-    def ega(self):
-        if (d:=self.data.get(["env", "ega"])) is not None:
-            return d.droplevel(0, axis=1)
-
-    @property
-    def tga(self):
-        if (d:=self.data.get(["env", "tga"])) is not None:
-            return d.droplevel(0, axis=1)
     
     @property
     def info(self):
@@ -446,7 +438,7 @@ class Sample:
             logger.warning("Option unavailable without calibration.")
             return
 
-        if not isinstance(ax, plt.Axes) and plot not in ["EGA_to_DTG", "calibration", "fit", "results"]:
+        if not isinstance(ax, plt.Axes) or (plot in ["EGA_to_DTG", "calibration", "fit", "results"]):
             fig, ax = plt.subplots()
 
         match plot:
@@ -715,6 +707,23 @@ class Sample:
 
         self.linreg, self.stats, self.xcali, self.ycali = calibrate(profile=profile, **kwargs)
 
+    def cluster(self, dist_metric = "correlation", clust_method = "complete", clust_crit = "distance", clust_dist_thres = .13):
+        # get ega cols
+        data = self.data.ega.pint.dequantify()
+
+        # calculate distance matrix r
+        r = pdist(data.to_numpy().T, metric=dist_metric)  
+
+        # hierarchal clustering, scale r to [0,1]
+        Z = linkage(r/2, method=clust_method)                     
+
+        # make cluster
+        clusts = fcluster(Z, t=clust_dist_thres, criterion=clust_crit)  
+
+        # make dict with {cluster id: [gases]}
+        clust_cols = {i: self.data.ega.columns[clusts==i].to_list() for i in range(1, clusts.max()+1)}
+        return clust_cols
+
     def __len__(self) -> int:
         return 1
 
@@ -725,7 +734,16 @@ class Sample:
         if key in dir(self):
             return self.__getattribute__(key)
         elif key in self.data:
-            return self.data[key]
+            cols = self.data.columns.get_level_values(0).intersection(["env", key, "misc"])
+            return self.data[cols].droplevel(0, axis=1)
+        
+    def __getattr__(self, attr):
+        if attr == "__setstate__":
+            raise AttributeError(attr)
+
+        if attr in self.data:
+            cols = self.data.columns.get_level_values(0).intersection(["env", attr, "misc"])
+            return self.data[cols].droplevel(0, axis=1)
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
