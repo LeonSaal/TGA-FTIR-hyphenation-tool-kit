@@ -210,13 +210,12 @@ class Worklist:
             new_col = "varied"
             out["robustness"] = (
                 self._results["robustness"]
-                .astype(np.float64)
                 .reset_index()
                 .melt(
                     id_vars=idx_cols,
                     ignore_index=False,
                     var_name=new_col,
-                    value_name="mmol_per_mg",
+                    value_name="n_rel",
                 )
             ).set_index(idx_cols+[new_col])
         return out
@@ -228,7 +227,7 @@ class Worklist:
             path = PATHS["robustness"] / "_".join([time(), reference, f"{var_T=}_{var_rel=}"])
             os.makedirs(path)
             os.chdir(path)
-            logger.info(f"Plots and results are saved.'{path=}'.")
+            logger.info(f"Plots and results are saved.'{path.relative_to(PATHS["home"]).as_posix()}'.")
             with pd.ExcelWriter("robustness_in_mmol_per_mg.xlsx") as writer:
                 summary.to_excel(writer, sheet_name="summary", merge_cells=MERGE_CELLS)
                 self._results["robustness"].to_excel(writer, sheet_name="data", merge_cells=MERGE_CELLS)
@@ -246,7 +245,7 @@ class Worklist:
             if results is None:
                 logger.warning(f"No results to plot. Run .{plot}().")
                 return
-            results = results.astype(np.float64).reset_index()
+            results = results.reset_index()
             avail_gases = results.gas.unique()
             avail_references = results.reference.unique()
 

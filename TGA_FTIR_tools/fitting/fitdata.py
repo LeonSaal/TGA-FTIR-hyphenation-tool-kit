@@ -146,15 +146,15 @@ class FitData:
     def calculate_molar_mass(self):
         tot_area = (
             pd.Series(self.peaks.index.get_level_values(1))
-            .apply(lambda x: self.info[f"area_{x}"])
+            .apply(lambda x: self.sample.integrate(x))
             .values
         )
         tot_n = (
             pd.Series(self.peaks.index.get_level_values(1))
-            .apply(lambda x: self.info[f"n_{x}"])
+            .apply(lambda x: self.sample.integrate(x, quantify=True))
             .values
         )
-        self.peaks.n = self.peaks.area / tot_area * tot_n
+        self.peaks.n = (self.peaks.area / tot_area * tot_n)
         self.peaks.n_rel = (
             self.peaks.n / (np.ones_like(self.peaks.n) * self.info[self.info.reference_mass_name])
         )

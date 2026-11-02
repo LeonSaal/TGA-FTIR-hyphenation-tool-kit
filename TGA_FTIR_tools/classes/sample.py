@@ -31,7 +31,7 @@ from scipy.signal import savgol_filter
 from scipy.cluster.hierarchy import fcluster,linkage, dendrogram
 from scipy.spatial.distance import pdist
 
-from ..config import DEFAULTS, PATHS, SAVGOL, update_config
+from ..config import DEFAULTS, PATHS, SAVGOL, UNITS, update_config
 from ..input_output import (FTIR, TGA, corrections, general, mass_step,
                             read_data, samplelog, read_profile_json)
 from ..plotting import plot_dweight, plot_mass_steps, plot_calibration_single, plot_residuals_single, plot_calibration_combined, plot_results
@@ -377,7 +377,20 @@ class Sample:
 
         return ret
 
-    
+    def integrate(self, which, start=0, end=-1, at="sample_temp", quantify=False):
+        end = end if end > 0 else self.data[("env", at)].max().magnitude 
+
+        # subset data
+        sub = self.ega.query("sample_temp.pint.magnitude.between(@start, @end)")
+
+        # integrate, weighed by time
+        area = (sub[which] * sub.time.pint.magnitude.diff()).sum()
+
+        # quantify if possible
+        if quantify and self.calibrated and (which in self.linreg.index):
+            return ((area.magnitude - self.linreg["intercept"][which]) / self.linreg["slope"][which]).to(UNITS["molar_amount"])
+
+        return area
 
     def dry_weight(self, plot:bool=False, **kwargs) -> NoneType:
         "determine dry point and mass of sample"
@@ -670,7 +683,7 @@ class Sample:
                 [peaks],
                 keys=[(reference_name, self.name, self.sample, self.alias, self.run)],
                 names=["reference", "name", "sample", "alias", "run"],
-            )
+            ).pint.convert_object_dtype()
             if mod_sample:
                 self.results["fit"].update({reference_name: results})
             

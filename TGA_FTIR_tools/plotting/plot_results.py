@@ -15,7 +15,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['RMSE','center', 'height', 'hwhm', 'area', 'mmol', 'mmol_per_mg']="mmol_per_mg", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
+def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias", "run"]="alias", value:Literal['RMSE','center', 'height', 'hwhm', 'area', 'n', 'n_rel']="n_rel", orient:Literal["v", "h"]="h", kind:Literal["bar"]="bar"):
     y = value if orient =="v" else "group"
     x = value if orient =="h" else "group"
     row = "reference" if compare in ["sample", "alias", "run"] else "sample"
@@ -23,6 +23,8 @@ def plot_results(data:pd.DataFrame, compare:Literal["sample","reference", "alias
         logger.error(f"{value=!r} not available. Choose one of {data.columns}")
         return
     plot = sns.catplot(data, y=y, x=x, kind=kind, hue=compare, row=row, col="gas", margin_titles=True)
+    unit = data[value].pint.units
+    plot.set_axis_labels(x_var=str(unit))
     return plot.figure, plot.axes
 
 def bar_plot_results_old(
