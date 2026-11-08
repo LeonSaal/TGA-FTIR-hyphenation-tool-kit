@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 from .utils import validate_mf
-from sklearn import linear_model
+from scikit-learn import linear_model
 import re
 from .config import MERGE_CELLS, PATHS, SEP, UNITS
 from .plotting import plot_integration, plot_calibration_single, plot_calibration_combined, plot_residuals_single
