@@ -1,0 +1,24 @@
+{
+    "data": {
+        "tga": "C:/Programs/pythonEnvs/project7/Lib/site-packages/TGA_FTIR_tools/settings/import_profiles/tga/Netzsch STA 449F3.json",
+        "FTIR": "C:/Programs/pythonEnvs/project7/Lib/site-packages/TGA_FTIR_tools/settings/import_profiles/ega/Bruker_InvenioX.json",
+        "MS": "C:/Programs/pythonEnvs/project7/Lib/site-packages/TGA_FTIR_tools/settings/import_profiles/ega/Netzsch_IR_MS.json"
+    },
+    "supplementary": {
+        "name_pattern": "",
+        "mass_resolution_ug": ""
+    },
+    "corrections": {
+        "FTIR": {
+            "H2O": {
+                "method": "const"
+            },
+            "CO2": {
+                "method": "const"
+            },
+            "CO": {
+                "method": "const"
+            }
+        }
+    }
+}
